@@ -2,7 +2,7 @@ package io.github.yuraburyakov.casttomarkdown.internal.pdf;
 
 /**
  * One text line as PDFBox emits it; {@code y} grows downwards from the top of the page,
- * {@code fontSize} is the largest on the line, {@code bold} means most characters are bold,
+ * {@code fontSize} is the size of most characters, {@code bold} means most characters are bold,
  * {@code rotated} means the text is not horizontal (e.g. vertical text in a page margin).
  */
 record Line(int page, float pageHeight, float x, float y, float fontSize, boolean bold, boolean rotated, String text) {
