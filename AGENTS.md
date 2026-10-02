@@ -66,7 +66,7 @@ If you can reach the vault, read the Project Context before proposing architectu
 |---|---|
 | Entry point | Instance: `CastToMarkdown.create().convert(path)`; immutable, thread-safe. No static `convert` yet |
 | Result | `public final class PreparedDocument` (not a record), package-private constructor, only `markdown()` for now |
-| Input | `Path` only. `InputStream` later, together with a resource-ownership contract |
+| Input | `convert(Path)` and `convert(InputStream, String fileName)`. The caller owns the stream: it is read to the end, never closed (also on error). The file name's extension selects the format |
 | Errors | Unchecked `DocumentConversionException`; subclass `UnsupportedFormatException` |
 | Converters | Internal interface `internal.DocumentConverter`; one package per format (`internal.pdf`, ...) with exactly one public class, the rest package-private. `CastToMarkdown` picks the converter by file extension. `module-info` exports only the root package. No public SPI |
 

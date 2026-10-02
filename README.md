@@ -19,6 +19,14 @@ PreparedDocument document = converter.convert(Path.of("report.pdf"));
 String markdown = document.markdown();
 ```
 
+From a stream, for example a Spring `MultipartFile` upload. The stream is read but not closed: you own it.
+
+```java
+try (InputStream in = upload.getInputStream()) {
+    String markdown = converter.convert(in, upload.getOriginalFilename()).markdown();
+}
+```
+
 Errors are unchecked: `UnsupportedFormatException` for unsupported formats, `DocumentConversionException` for unreadable or damaged files (the original exception is the cause).
 
 Scanned PDFs (pages are images without a text layer) are not supported: the converter throws `UnsupportedFormatException` instead of returning empty Markdown. Run OCR first, for example with [OCRmyPDF](https://ocrmypdf.readthedocs.io/), which adds a text layer to the PDF; the result can then be converted.

@@ -4,6 +4,7 @@ import io.github.yuraburyakov.casttomarkdown.DocumentConversionException;
 import io.github.yuraburyakov.casttomarkdown.UnsupportedFormatException;
 import io.github.yuraburyakov.casttomarkdown.internal.DocumentConverter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.StringJoiner;
@@ -38,18 +39,37 @@ public final class PdfConverter implements DocumentConverter {
 
     @Override
     public String convert(Path path) {
-        try (PDDocument document = Loader.loadPDF(path.toFile())) {
+        return convert(() -> Loader.loadPDF(path.toFile()), path.toString());
+    }
+
+    /**
+     * ponytail: the whole stream is read into memory; PDFBox needs random access to the file.
+     * A size limit comes with the configuration (builder).
+     */
+    @Override
+    public String convert(InputStream input, String name) {
+        return convert(() -> Loader.loadPDF(input.readAllBytes()), name);
+    }
+
+    private String convert(Source source, String name) {
+        try (PDDocument document = source.load()) {
             List<Line> lines = LineCollector.collect(document);
             if (lines.isEmpty() && hasImages(document)) {
                 throw new UnsupportedFormatException("PDF has no text layer, only images (scanned document?); "
-                        + "OCR is not supported, run OCR first: " + path);
+                        + "OCR is not supported, run OCR first: " + name);
             }
             return normalize(toMarkdown(lines));
         } catch (InvalidPasswordException e) {
-            throw new DocumentConversionException("PDF is encrypted: " + path, e);
+            throw new DocumentConversionException("PDF is encrypted: " + name, e);
         } catch (IOException e) {
-            throw new DocumentConversionException("Cannot read PDF: " + path, e);
+            throw new DocumentConversionException("Cannot read PDF: " + name, e);
         }
+    }
+
+    /** Opens the document; the caller closes it. */
+    @FunctionalInterface
+    private interface Source {
+        PDDocument load() throws IOException;
     }
 
     /**

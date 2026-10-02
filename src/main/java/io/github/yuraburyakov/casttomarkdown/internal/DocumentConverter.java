@@ -1,6 +1,7 @@
 package io.github.yuraburyakov.casttomarkdown.internal;
 
 import io.github.yuraburyakov.casttomarkdown.DocumentConversionException;
+import java.io.InputStream;
 import java.nio.file.Path;
 
 /**
@@ -17,4 +18,13 @@ public interface DocumentConverter {
      * @throws DocumentConversionException if the file cannot be read or parsed
      */
     String convert(Path path);
+
+    /**
+     * Converts the document read from {@code input} into Markdown. Reads the stream to the end
+     * and does not close it.
+     *
+     * @param name document name for error messages
+     * @throws DocumentConversionException if the stream cannot be read or the document cannot be parsed
+     */
+    String convert(InputStream input, String name);
 }
