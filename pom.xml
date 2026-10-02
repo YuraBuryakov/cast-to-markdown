@@ -5,13 +5,18 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.github.yuraburyakov</groupId>
-    <artifactId>cast-to-markdown</artifactId>
+    <artifactId>cast-to-markdown-parent</artifactId>
     <version>0.1.0-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <packaging>pom</packaging>
 
-    <name>CastToMarkdown</name>
+    <name>CastToMarkdown (parent)</name>
     <description>Java-native library that converts common document formats into clean, LLM/RAG-friendly Markdown.</description>
     <url>https://github.com/yuraburyakov/cast-to-markdown</url>
+
+    <modules>
+        <module>core</module>
+        <module>pdf</module>
+    </modules>
 
     <licenses>
         <license>
@@ -42,6 +47,16 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
+                <groupId>io.github.yuraburyakov</groupId>
+                <artifactId>cast-to-markdown-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.pdfbox</groupId>
+                <artifactId>pdfbox</artifactId>
+                <version>${pdfbox.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.junit</groupId>
                 <artifactId>junit-bom</artifactId>
                 <version>${junit.version}</version>
@@ -51,13 +66,8 @@
         </dependencies>
     </dependencyManagement>
 
+    <!-- Test dependencies for every module -->
     <dependencies>
-        <dependency>
-            <groupId>org.apache.pdfbox</groupId>
-            <artifactId>pdfbox</artifactId>
-            <version>${pdfbox.version}</version>
-        </dependency>
-
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>

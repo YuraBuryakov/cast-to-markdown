@@ -45,10 +45,12 @@ PDF, DOCX, HTML, TXT, CSV.
 
 ## Project structure
 
-A single Maven module for now.
-`io.github.yuraburyakov.casttomarkdown` is the only API package. Format converters live in `internal.*` packages (one package per format), which the module descriptor does not export and which may change in any version.
+| Module | Artifact | Content |
+|---|---|---|
+| `core` | `cast-to-markdown-core` | the API (`io.github.yuraburyakov.casttomarkdown`); no parser dependencies |
+| `pdf` | `cast-to-markdown-pdf` | PDF, based on Apache PDFBox |
 
-The project will be split into Maven modules when a second heavy format (DOCX via Apache POI) arrives, so users who need only PDF do not pull POI.
+Add the format modules you need; they depend on `core` and are found automatically (`ServiceLoader`), so users who need only PDF do not pull other parsers. `io.github.yuraburyakov.casttomarkdown` is the only API package; the converter contract in `internal` is exported only to the format modules and may change in any version.
 
 ## Build
 

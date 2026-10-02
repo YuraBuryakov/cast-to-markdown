@@ -18,11 +18,9 @@ Reply in the language the author writes in.
 
 ### Current next step
 
-Iteration 1 (API + PDF → paragraphs) is written. First make sure `mvn verify` is green: the code was written without running the build.
+PDF works: paragraphs, headings, bullet lists, headers/footers removed, scans rejected, `Path` and `InputStream` input, size limit. The build is split into `core` + `pdf`. Next: the DOCX module (Apache POI).
 
-Next, iteration 2: a set of test PDFs (simple, with headings, with headers/footers, two-column) and a look at what PDFBox actually returns for them. Use the findings to plan heading detection (iteration 3).
-
-Known limitations: Markdown special characters are not escaped; a paragraph that continues on the next page is split in two.
+Known limitations: Markdown escaping covers only `#` at line start; a paragraph that continues on the next page is split in two; tables are plain text. Findings and open questions are in the Obsidian notes "CastToMarkdown - Experiment 01/02".
 
 ### During the session
 
@@ -58,7 +56,7 @@ If you can reach the vault, read the Project Context before proposing architectu
 | groupId | `io.github.yuraburyakov` |
 | Base package | `io.github.yuraburyakov.casttomarkdown` |
 | License | Apache 2.0 |
-| Structure | One Maven module `cast-to-markdown` for now; split into modules (`core`, `pdf`, `docx`, converters found via `ServiceLoader`) when DOCX/POI arrives |
+| Structure | Maven modules: `core` (API, no parsers), one module per format (`pdf`, ...). Converters are found with `ServiceLoader` (`provides` in `module-info` + `META-INF/services`) |
 
 ### Public API (iteration 1)
 
@@ -69,7 +67,7 @@ If you can reach the vault, read the Project Context before proposing architectu
 | Input | `convert(Path)` and `convert(InputStream, String fileName)`. The caller owns the stream: it is read to the end, never closed (also on error). The file name's extension selects the format |
 | Errors | Unchecked `DocumentConversionException`; subclasses `UnsupportedFormatException` (format, scanned PDF) and `DocumentTooLargeException` |
 | Settings | `CastToMarkdown.builder()...build()`; `create()` = defaults. Only `maxDocumentSize` (default 100 MiB) so far |
-| Converters | Internal interface `internal.DocumentConverter`; one package per format (`internal.pdf`, ...) with exactly one public class, the rest package-private. `CastToMarkdown` picks the converter by file extension. `module-info` exports only the root package. No public SPI |
+| Converters | Interface `internal.DocumentConverter` in `core`, exported only to the format modules (`exports ... to`). Each format module has one package with exactly one public class, the rest package-private. `CastToMarkdown` picks the converter by file extension. No public SPI |
 
 Not decided yet: metadata, warnings, logging, Markdown escaping beyond `#` at line start.
 
@@ -86,7 +84,7 @@ Not decided yet: metadata, warnings, logging, Markdown escaping beyond `#` at li
 ## Library rules (short version)
 
 - Keep the public API small; everything else package-private where possible.
-- Public types do not expose parser types. The root package is the only API; `internal.*` is not exported and may change in any version.
+- Public types do not expose parser types. The root package is the only API; `internal` is exported only to format modules and may change in any version.
 - No framework dependencies (no Spring).
 - Do not leak PDFBox/POI types through the public API.
 - Every new dependency needs a reason: is it a capability or a convenience?
