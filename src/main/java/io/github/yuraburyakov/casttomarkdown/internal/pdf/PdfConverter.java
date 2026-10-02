@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.StringJoiner;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -20,11 +21,14 @@ import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
  * <p>Current output: paragraphs separated by a blank line; headings: text larger than the body
  * font, or bold text starting with a section number; the level comes from the section number
  * ({@code 2.1} is {@code ###}) or from the font size. Pages are separated by a blank line.
- * Lists and tables are not detected yet. Markdown special characters are not escaped yet.
+ * Lists and tables are not detected yet. Of Markdown special characters only {@code #} at the start
+ * of a line is escaped, so text such as {@code # layers} in a table does not turn into a heading.
  *
  * <p>Stateless and thread-safe: every call works on its own document and collector.
  */
 public final class PdfConverter implements DocumentConverter {
+
+    private static final Pattern LEADING_HASH = Pattern.compile("^(\\s*)#");
 
     @Override
     public String convert(Path path) {
@@ -49,12 +53,20 @@ public final class PdfConverter implements DocumentConverter {
         for (int i = 0; i < paragraphs.size(); i++) {
             List<Line> paragraph = paragraphs.get(i);
             if (levels[i] > 0) {
-                out.add("#".repeat(levels[i]) + " " + Headings.text(paragraph));
+                out.add("#".repeat(levels[i]) + " " + escape(Headings.text(paragraph)));
             } else {
-                out.add(paragraph.stream().map(Line::text).collect(Collectors.joining("\n")));
+                out.add(paragraph.stream().map(line -> escape(line.text())).collect(Collectors.joining("\n")));
             }
         }
         return out.toString();
+    }
+
+    /**
+     * Escapes {@code #} at the start of a line, which Markdown reads as a heading.
+     * ponytail: other block markers ({@code >}, {@code -}, {@code *}, code fences) are not escaped yet (Q-API-02).
+     */
+    static String escape(String line) {
+        return LEADING_HASH.matcher(line).replaceFirst("$1\\\\#");
     }
 
     /**
