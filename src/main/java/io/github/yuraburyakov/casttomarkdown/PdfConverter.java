@@ -8,11 +8,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
+import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDFontDescriptor;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
 
@@ -43,9 +46,20 @@ final class PdfConverter {
     private static final int MAX_HEADING_LINES = 2;
     private static final int MAX_HEADING_LENGTH = 200;
     private static final int MAX_HEADING_LEVEL = 6;
-    /** A heading has at least one real word; rotated or scattered text gives only fragments. */
+    /** A heading without a section number has at least one real word; rotated or scattered text gives only fragments. */
     private static final Pattern WORD = Pattern.compile("\\p{L}{3}");
-    private static final Pattern LIST_ITEM = Pattern.compile("^\\s*([•◦▪‣*-]|\\d+[.)])\\s");
+    /** Table of contents entries: dot leaders between the title and the page number. */
+    private static final Pattern DOT_LEADER = Pattern.compile("\\.{4,}|(\\. ){3,}");
+    /**
+     * Section number at the start of a heading: {@code 2}, {@code 2.1.}, {@code A.}, {@code A.1},
+     * {@code Appendix A}. Group 1 holds the {@code .N} parts after the first number.
+     */
+    private static final Pattern SECTION_NUMBER = Pattern.compile(
+            "^(?:Appendix\\s+[A-Z]|\\d{1,2}((?:\\.\\d{1,2})*)\\.?|[A-Z]((?:\\.\\d{1,2})+)\\.?|[A-Z]\\.)(?=[\\s\u2014:])");
+    /** Bold text may be up to this much smaller than the body font and still be a numbered heading. */
+    private static final float BOLD_HEADING_MIN_SIZE_DIFF = 1.5f;
+    private static final Pattern BOLD_FONT_NAME = Pattern.compile("(?i)bold|black|heavy|semibold|demibold");
+    private static final Pattern LIST_ITEM = Pattern.compile("^\\s*([\u2022\u25e6\u25aa\u2023*-]|\\d+[.)])\\s");
 
     String convert(Path path) {
         try (PDDocument document = Loader.loadPDF(path.toFile())) {
@@ -59,8 +73,15 @@ final class PdfConverter {
         }
     }
 
-    /** One text line as PDFBox emits it; {@code y} grows downwards, {@code fontSize} is the largest on the line. */
-    record Line(int page, float x, float y, float fontSize, String text) {
+    /**
+     * One text line as PDFBox emits it; {@code y} grows downwards, {@code fontSize} is the largest
+     * on the line, {@code bold} means most characters are bold.
+     */
+    record Line(int page, float x, float y, float fontSize, boolean bold, String text) {
+
+        Line(int page, float x, float y, float fontSize, String text) {
+            this(page, x, y, fontSize, false, text);
+        }
     }
 
     /**
@@ -70,21 +91,13 @@ final class PdfConverter {
     static String toMarkdown(List<Line> lines) {
         List<List<Line>> paragraphs = paragraphs(lines);
         boolean[] headings = headings(paragraphs);
-        List<Integer> headingSizes = new ArrayList<>(); // distinct heading font sizes, largest first
-        for (int i = 0; i < paragraphs.size(); i++) {
-            int key = sizeKey(paragraphs.get(i).get(0));
-            if (headings[i] && !headingSizes.contains(key)) {
-                headingSizes.add(key);
-            }
-        }
-        headingSizes.sort(Comparator.reverseOrder());
+        int[] levels = headingLevels(paragraphs, headings);
 
         StringJoiner out = new StringJoiner("\n\n");
         for (int i = 0; i < paragraphs.size(); i++) {
             List<Line> paragraph = paragraphs.get(i);
             if (headings[i]) {
-                int level = Math.min(MAX_HEADING_LEVEL, headingSizes.indexOf(sizeKey(paragraph.get(0))) + 1);
-                out.add("#".repeat(level) + " " + headingText(paragraph));
+                out.add("#".repeat(levels[i]) + " " + headingText(paragraph));
             } else {
                 out.add(paragraph.stream().map(Line::text).collect(Collectors.joining("\n")));
             }
@@ -106,9 +119,11 @@ final class PdfConverter {
     }
 
     /**
-     * A heading is a short paragraph in a font larger than the body font (the font of most characters)
-     * that is followed by body text or another heading. The last condition drops large text inside
-     * figures, which is followed by small figure text. Bold text of body size is not a heading yet.
+     * A heading is a short paragraph followed by body text or another heading, either in a font larger
+     * than the body font (the font of most characters), or bold, about body size and starting with
+     * a section number. Bold body-size text without a number is not a heading: in real documents that is
+     * mostly glossary terms, table headers and emphasized words. "Followed by body text" drops large
+     * text inside figures, which is followed by small figure text.
      */
     private static boolean[] headings(List<List<Line>> paragraphs) {
         Map<Integer, Integer> charsBySize = new HashMap<>();
@@ -126,10 +141,17 @@ final class PdfConverter {
         for (int i = paragraphs.size() - 1; i >= 0; i--) {
             List<Line> paragraph = paragraphs.get(i);
             String text = headingText(paragraph);
-            boolean candidate = sizeKey(paragraph.get(0)) > body
+            int size = sizeKey(paragraph.get(0));
+            boolean numbered = SECTION_NUMBER.matcher(text).find();
+            boolean boldNumbered = numbered
+                    && paragraph.stream().allMatch(Line::bold)
+                    && size >= body - BOLD_HEADING_MIN_SIZE_DIFF * 2;
+            // ponytail: a bold numbered list item of body size ("1. OPTIONAL") looks the same as a heading.
+            boolean candidate = (size > body || boldNumbered)
                     && paragraph.size() <= MAX_HEADING_LINES
                     && text.length() <= MAX_HEADING_LENGTH
-                    && WORD.matcher(text).find();
+                    && (numbered || WORD.matcher(text).find())
+                    && !DOT_LEADER.matcher(text).find();
             // ponytail: a heading that ends a page is followed by the running header/footer and is missed;
             // fixed by removing headers and footers before this step (iteration 4).
             boolean followedByText = i == paragraphs.size() - 1
@@ -138,6 +160,50 @@ final class PdfConverter {
             headings[i] = candidate && followedByText;
         }
         return headings;
+    }
+
+    /**
+     * Numbered heading: level = depth of the number + 1 ({@code 2} is {@code ##}, {@code 2.1} is {@code ###});
+     * {@code #} is left for the document title. A heading without a number takes the level of numbered
+     * headings in the same font (e.g. "Abstract" next to "1. Introduction"); otherwise headings in other
+     * fonts are ranked by size, largest first.
+     */
+    private static int[] headingLevels(List<List<Line>> paragraphs, boolean[] headings) {
+        int[] levels = new int[paragraphs.size()];
+        Map<Integer, Integer> numberedLevelByStyle = new HashMap<>();
+        for (int i = 0; i < paragraphs.size(); i++) {
+            int depth = headings[i] ? sectionDepth(headingText(paragraphs.get(i))) : 0;
+            if (depth > 0) {
+                levels[i] = Math.min(MAX_HEADING_LEVEL, depth + 1);
+                numberedLevelByStyle.merge(styleKey(paragraphs.get(i).get(0)), levels[i], Math::min);
+            }
+        }
+        List<Integer> otherSizes = new ArrayList<>(); // fonts of headings with no numbered heading, largest first
+        for (int i = 0; i < paragraphs.size(); i++) {
+            int style = styleKey(paragraphs.get(i).get(0));
+            if (headings[i] && levels[i] == 0 && !numberedLevelByStyle.containsKey(style) && !otherSizes.contains(style)) {
+                otherSizes.add(style);
+            }
+        }
+        otherSizes.sort(Comparator.reverseOrder());
+        for (int i = 0; i < paragraphs.size(); i++) {
+            if (headings[i] && levels[i] == 0) {
+                int style = styleKey(paragraphs.get(i).get(0));
+                levels[i] = numberedLevelByStyle.getOrDefault(style,
+                        Math.min(MAX_HEADING_LEVEL, otherSizes.indexOf(style) + 1));
+            }
+        }
+        return levels;
+    }
+
+    /** 0 when the text does not start with a section number, 1 for {@code 2} or {@code A.}, 2 for {@code 2.1}. */
+    private static int sectionDepth(String text) {
+        Matcher number = SECTION_NUMBER.matcher(text);
+        if (!number.find()) {
+            return 0;
+        }
+        String subsections = number.group(1) != null ? number.group(1) : number.group(2);
+        return 1 + (subsections == null ? 0 : (int) subsections.chars().filter(c -> c == '.').count());
     }
 
     private static String headingText(List<Line> paragraph) {
@@ -184,6 +250,11 @@ final class PdfConverter {
     }
 
     /** Font size rounded to 0.5 pt, so that tiny differences do not split a paragraph. */
+    /** Font size and boldness: bold sorts above regular text of the same size. */
+    private static int styleKey(Line line) {
+        return sizeKey(line) * 2 + (line.bold() ? 1 : 0);
+    }
+
     private static int sizeKey(Line line) {
         return Math.round(line.fontSize() * 2);
     }
@@ -195,6 +266,8 @@ final class PdfConverter {
         private final StringBuilder text = new StringBuilder();
         private TextPosition first;
         private float fontSize;
+        private int boldChars;
+        private int chars;
 
         @Override
         protected void writeString(String string, List<TextPosition> positions) {
@@ -203,6 +276,10 @@ final class PdfConverter {
                     first = position;
                 }
                 fontSize = Math.max(fontSize, position.getFontSizeInPt());
+                if (!position.getUnicode().isBlank()) {
+                    chars++;
+                    boldChars += isBold(position.getFont()) ? 1 : 0;
+                }
             }
             text.append(string);
         }
@@ -229,11 +306,23 @@ final class PdfConverter {
 
         private void endLine() {
             if (first != null && !text.toString().isBlank()) {
-                lines.add(new Line(getCurrentPageNo(), first.getXDirAdj(), first.getYDirAdj(), fontSize, text.toString()));
+                lines.add(new Line(getCurrentPageNo(), first.getXDirAdj(), first.getYDirAdj(), fontSize,
+                        boldChars * 2 > chars, text.toString()));
             }
             text.setLength(0);
             first = null;
             fontSize = 0;
+            boldChars = 0;
+            chars = 0;
+        }
+
+        /** By the font weight in the font descriptor, or by the font name when the weight is not set. */
+        private static boolean isBold(PDFont font) {
+            PDFontDescriptor descriptor = font.getFontDescriptor();
+            if (descriptor != null && (descriptor.isForceBold() || descriptor.getFontWeight() >= 600)) {
+                return true;
+            }
+            return font.getName() != null && BOLD_FONT_NAME.matcher(font.getName()).find();
         }
     }
 

@@ -84,7 +84,64 @@ class PdfConverterHeadingsTest {
         assertThat(PdfConverter.toMarkdown(lines)).doesNotContain("#");
     }
 
+    @Test
+    void boldNumberedBodySizeTextIsHeadingWithLevelFromNumber() {
+        // NIST SP 800-63-3 (Word): body 12 pt; sections bold 12 pt, subsections bold 11 pt.
+        List<Line> lines = List.of(
+                bold(80, 12, "2 Introduction"),
+                line(110, 12, BODY),
+                bold(140, 11, "2.5 Change History"),
+                bold(170, 11, "2.5.1 SP 800-63-1"),
+                line(200, 12, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo(String.join("\n\n",
+                "## 2 Introduction", BODY, "### 2.5 Change History", "#### 2.5.1 SP 800-63-1", BODY));
+    }
+
+    @Test
+    void boldBodySizeTextWithoutNumberIsNotHeading() {
+        // NIST glossary: bold 12 pt terms followed by their definitions.
+        List<Line> lines = List.of(
+                bold(80, 12, "Active Attack"),
+                line(110, 12, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines)).doesNotContain("#");
+    }
+
+    @Test
+    void tableOfContentsEntryIsNotHeading() {
+        List<Line> lines = List.of(
+                bold(80, 12, "1 Purpose ........................................ 1"),
+                line(110, 12, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines)).doesNotContain("#");
+    }
+
+    @Test
+    void unnumberedHeadingTakesLevelOfNumberedHeadingsInSameFont() {
+        // RFC 9562: "Abstract" and "1. Introduction" are both bold 19 pt, the title is bold 22 pt.
+        List<Line> lines = List.of(
+                bold(80, 22, "Universally Unique IDentifiers"),
+                line(120, 13, BODY),
+                bold(160, 19, "Abstract"),
+                line(200, 13, BODY),
+                bold(240, 19, "1. Introduction"),
+                line(280, 13, BODY),
+                bold(320, 16, "2.1. Update Motivation"),
+                line(360, 13, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo(String.join("\n\n",
+                "# Universally Unique IDentifiers", BODY,
+                "## Abstract", BODY,
+                "## 1. Introduction", BODY,
+                "### 2.1. Update Motivation", BODY));
+    }
+
     private static Line line(double y, double fontSize, String text) {
         return new Line(1, 72, (float) y, (float) fontSize, text);
+    }
+
+    private static Line bold(double y, double fontSize, String text) {
+        return new Line(1, 72, (float) y, (float) fontSize, true, text);
     }
 }
