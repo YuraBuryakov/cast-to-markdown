@@ -3,10 +3,13 @@ package io.github.yuraburyakov.casttomarkdown;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.StringJoiner;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
@@ -16,11 +19,13 @@ import org.apache.pdfbox.text.TextPosition;
 /**
  * Converts PDF to Markdown with Apache PDFBox.
  *
- * <p>Current output: plain text split into paragraphs; pages are separated by a blank line.
- * PDFBox gives the text lines in reading order; paragraphs are detected here, not by PDFBox,
- * because PDFBox compares line gaps with the glyph height it reports, and for some fonts that
- * height is about a third of the font size, which makes every line a separate paragraph.
- * Headings, lists and tables are not detected yet. Markdown special characters are not escaped yet.
+ * <p>Current output: paragraphs separated by a blank line, headings detected by font size
+ * ({@code #} for the largest heading font, {@code ##} for the next and so on); pages are separated
+ * by a blank line. PDFBox gives the text lines in reading order; paragraphs are detected here,
+ * not by PDFBox, because PDFBox compares line gaps with the glyph height it reports, and for some
+ * fonts that height is about a third of the font size, which makes every line a separate paragraph.
+ * Bold headings of body size, lists and tables are not detected yet.
+ * Markdown special characters are not escaped yet.
  *
  * <p>Stateless and thread-safe: a new {@link PDFTextStripper} is created for each call.
  */
@@ -34,13 +39,19 @@ final class PdfConverter {
     private static final float DEFAULT_PITCH = 1.2f;
     /** A horizontal shift larger than this many font sizes counts as an indent. */
     private static final float INDENT = 0.5f;
+    /** Longer paragraphs are not headings. */
+    private static final int MAX_HEADING_LINES = 2;
+    private static final int MAX_HEADING_LENGTH = 200;
+    private static final int MAX_HEADING_LEVEL = 6;
+    /** A heading has at least one real word; rotated or scattered text gives only fragments. */
+    private static final Pattern WORD = Pattern.compile("\\p{L}{3}");
     private static final Pattern LIST_ITEM = Pattern.compile("^\\s*([•◦▪‣*-]|\\d+[.)])\\s");
 
     String convert(Path path) {
         try (PDDocument document = Loader.loadPDF(path.toFile())) {
             LineCollector collector = new LineCollector();
             collector.getText(document);
-            return normalize(joinLines(collector.lines));
+            return normalize(toMarkdown(collector.lines));
         } catch (InvalidPasswordException e) {
             throw new DocumentConversionException("PDF is encrypted: " + path, e);
         } catch (IOException e) {
@@ -52,18 +63,85 @@ final class PdfConverter {
     record Line(int page, float x, float y, float fontSize, String text) {
     }
 
-    /** Joins lines with {@code \n} inside a paragraph and a blank line between paragraphs. */
-    static String joinLines(List<Line> lines) {
-        Map<Integer, Float> pitches = typicalPitches(lines);
-        StringBuilder out = new StringBuilder();
-        for (int i = 0; i < lines.size(); i++) {
-            if (i > 0) {
-                Line next = i + 1 < lines.size() ? lines.get(i + 1) : null;
-                out.append(startsParagraph(lines.get(i - 1), lines.get(i), next, pitches) ? "\n\n" : "\n");
+    /**
+     * Groups lines into paragraphs and renders them: lines of a paragraph joined with {@code \n},
+     * paragraphs separated by a blank line, headings as {@code #} lines.
+     */
+    static String toMarkdown(List<Line> lines) {
+        List<List<Line>> paragraphs = paragraphs(lines);
+        boolean[] headings = headings(paragraphs);
+        List<Integer> headingSizes = new ArrayList<>(); // distinct heading font sizes, largest first
+        for (int i = 0; i < paragraphs.size(); i++) {
+            int key = sizeKey(paragraphs.get(i).get(0));
+            if (headings[i] && !headingSizes.contains(key)) {
+                headingSizes.add(key);
             }
-            out.append(lines.get(i).text());
+        }
+        headingSizes.sort(Comparator.reverseOrder());
+
+        StringJoiner out = new StringJoiner("\n\n");
+        for (int i = 0; i < paragraphs.size(); i++) {
+            List<Line> paragraph = paragraphs.get(i);
+            if (headings[i]) {
+                int level = Math.min(MAX_HEADING_LEVEL, headingSizes.indexOf(sizeKey(paragraph.get(0))) + 1);
+                out.add("#".repeat(level) + " " + headingText(paragraph));
+            } else {
+                out.add(paragraph.stream().map(Line::text).collect(Collectors.joining("\n")));
+            }
         }
         return out.toString();
+    }
+
+    private static List<List<Line>> paragraphs(List<Line> lines) {
+        Map<Integer, Float> pitches = typicalPitches(lines);
+        List<List<Line>> paragraphs = new ArrayList<>();
+        for (int i = 0; i < lines.size(); i++) {
+            Line next = i + 1 < lines.size() ? lines.get(i + 1) : null;
+            if (i == 0 || startsParagraph(lines.get(i - 1), lines.get(i), next, pitches)) {
+                paragraphs.add(new ArrayList<>());
+            }
+            paragraphs.get(paragraphs.size() - 1).add(lines.get(i));
+        }
+        return paragraphs;
+    }
+
+    /**
+     * A heading is a short paragraph in a font larger than the body font (the font of most characters)
+     * that is followed by body text or another heading. The last condition drops large text inside
+     * figures, which is followed by small figure text. Bold text of body size is not a heading yet.
+     */
+    private static boolean[] headings(List<List<Line>> paragraphs) {
+        Map<Integer, Integer> charsBySize = new HashMap<>();
+        for (List<Line> paragraph : paragraphs) {
+            for (Line line : paragraph) {
+                charsBySize.merge(sizeKey(line), line.text().strip().length(), Integer::sum);
+            }
+        }
+        int body = charsBySize.entrySet().stream()
+                .max(Map.Entry.<Integer, Integer>comparingByValue().thenComparing(Map.Entry.comparingByKey()))
+                .map(Map.Entry::getKey)
+                .orElse(0);
+
+        boolean[] headings = new boolean[paragraphs.size()];
+        for (int i = paragraphs.size() - 1; i >= 0; i--) {
+            List<Line> paragraph = paragraphs.get(i);
+            String text = headingText(paragraph);
+            boolean candidate = sizeKey(paragraph.get(0)) > body
+                    && paragraph.size() <= MAX_HEADING_LINES
+                    && text.length() <= MAX_HEADING_LENGTH
+                    && WORD.matcher(text).find();
+            // ponytail: a heading that ends a page is followed by the running header/footer and is missed;
+            // fixed by removing headers and footers before this step (iteration 4).
+            boolean followedByText = i == paragraphs.size() - 1
+                    || headings[i + 1]
+                    || sizeKey(paragraphs.get(i + 1).get(0)) == body;
+            headings[i] = candidate && followedByText;
+        }
+        return headings;
+    }
+
+    private static String headingText(List<Line> paragraph) {
+        return paragraph.stream().map(line -> line.text().strip()).collect(Collectors.joining(" "));
     }
 
     private static boolean startsParagraph(Line previous, Line line, Line next, Map<Integer, Float> pitches) {

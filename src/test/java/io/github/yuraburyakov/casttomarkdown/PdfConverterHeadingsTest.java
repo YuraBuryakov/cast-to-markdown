@@ -1,0 +1,90 @@
+package io.github.yuraburyakov.casttomarkdown;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import io.github.yuraburyakov.casttomarkdown.PdfConverter.Line;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+
+/** Font sizes in these tests are taken from real PDFs (Obsidian: "CastToMarkdown - Experiment 01"). */
+class PdfConverterHeadingsTest {
+
+    private static final String BODY = "Body text in the most common font size of the document.";
+
+    @Test
+    void mapsHeadingFontSizesToLevelsLargestFirst() {
+        // RFC 9562: title 22 pt, sections 19 pt, subsections 16 pt, body 13 pt.
+        List<Line> lines = List.of(
+                line(80, 22, "Universally Unique IDentifiers"),
+                line(120, 13, BODY),
+                line(160, 19, "Abstract"),
+                line(200, 13, BODY),
+                line(240, 16, "2.1. Update Motivation"),
+                line(280, 13, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo(String.join("\n\n",
+                "# Universally Unique IDentifiers", BODY,
+                "## Abstract", BODY,
+                "### 2.1. Update Motivation", BODY));
+    }
+
+    @Test
+    void joinsTwoLineHeadingWithSpace() {
+        List<Line> lines = List.of(
+                line(80, 22, "RFC 9562"),
+                line(105, 22, "Universally Unique IDentifiers (UUIDs)"),
+                line(150, 13, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines))
+                .isEqualTo("# RFC 9562 Universally Unique IDentifiers (UUIDs)\n\n" + BODY);
+    }
+
+    @Test
+    void headingMayBeFollowedByAnotherHeading() {
+        // arXiv: title 14 pt, then "1. Introduction" 11 pt, then body 9 pt.
+        List<Line> lines = List.of(
+                line(80, 14, "Deep Residual Learning for Image Recognition"),
+                line(120, 11, "1. Introduction"),
+                line(140, 9, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo(String.join("\n\n",
+                "# Deep Residual Learning for Image Recognition", "## 1. Introduction", BODY));
+    }
+
+    @Test
+    void largeTextFollowedBySmallFigureTextIsNotHeading() {
+        // arXiv: a 12 pt axis label inside a plot, followed by 7 pt figure text.
+        List<Line> lines = List.of(
+                line(80, 9, BODY),
+                line(120, 12, "layer index (sorted by magnitude)"),
+                line(140, 7, "Figure 7. Standard deviations of layer responses."));
+
+        assertThat(PdfConverter.toMarkdown(lines)).doesNotContain("#");
+    }
+
+    @Test
+    void textFragmentsWithoutWordsAreNotHeadings() {
+        // arXiv: the rotated 20 pt "arXiv:1512.03385v1" watermark comes out as fragments.
+        List<Line> lines = List.of(
+                line(80, 20, "ar"),
+                line(120, 20, "X"),
+                line(160, 9, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines)).doesNotContain("#");
+    }
+
+    @Test
+    void longParagraphInLargeFontIsNotHeading() {
+        List<Line> lines = List.of(
+                line(80, 13, "Paul A. Grassi"),
+                line(96, 13, "Michael E. Garcia"),
+                line(112, 13, "James L. Fenton"),
+                line(150, 12, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines)).doesNotContain("#");
+    }
+
+    private static Line line(double y, double fontSize, String text) {
+        return new Line(1, 72, (float) y, (float) fontSize, text);
+    }
+}

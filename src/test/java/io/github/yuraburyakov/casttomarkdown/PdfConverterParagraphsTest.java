@@ -20,7 +20,7 @@ class PdfConverterParagraphsTest {
                 line(1, 72, 358.3, 13, "This specification is derived"),
                 line(1, 72, 371.9, 13, "from the OSF DCE specification."));
 
-        assertThat(PdfConverter.joinLines(lines)).isEqualTo("""
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo("""
                 This specification defines UUIDs
                 (Globally Unique IDentifiers) and
                 platforms.
@@ -38,7 +38,7 @@ class PdfConverterParagraphsTest {
                 line(1, 62.1, 213.7, 9, "In this paper, we address the degradation problem by"),
                 line(1, 50.1, 225.7, 9, "introducing a deep residual learning framework."));
 
-        assertThat(PdfConverter.joinLines(lines)).isEqualTo("""
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo("""
                 are comparably good or better than the constructed
                 (or unable to do so in feasible time).
 
@@ -53,7 +53,7 @@ class PdfConverterParagraphsTest {
                 line(1, 90, 114, 12, "communicate authentication information."),
                 line(1, 72, 128, 12, "• Next item."));
 
-        assertThat(PdfConverter.joinLines(lines)).isEqualTo("""
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo("""
                 • FAL refers to the strength of an assertion, used to
                 communicate authentication information.
                 • Next item.""");
@@ -62,10 +62,10 @@ class PdfConverterParagraphsTest {
     @Test
     void startsParagraphWhenFontSizeChanges() {
         List<Line> lines = List.of(
-                line(1, 72, 100, 19, "Abstract"),
-                line(1, 72, 118, 13, "This specification defines UUIDs."));
+                line(1, 72, 100, 13, "This specification defines UUIDs."),
+                line(1, 72, 114, 9, "1 A footnote."));
 
-        assertThat(PdfConverter.joinLines(lines)).isEqualTo("Abstract\n\nThis specification defines UUIDs.");
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo("This specification defines UUIDs.\n\n1 A footnote.");
     }
 
     @Test
@@ -75,7 +75,7 @@ class PdfConverterParagraphsTest {
                 line(1, 300, 80, 9, "top of the right column"),
                 line(2, 50, 80, 9, "next page"));
 
-        assertThat(PdfConverter.joinLines(lines)).isEqualTo("""
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo("""
                 end of the left column
 
                 top of the right column
@@ -85,7 +85,7 @@ class PdfConverterParagraphsTest {
 
     @Test
     void returnsEmptyStringForNoLines() {
-        assertThat(PdfConverter.joinLines(List.of())).isEmpty();
+        assertThat(PdfConverter.toMarkdown(List.of())).isEmpty();
     }
 
     private static Line line(int page, double x, double y, double fontSize, String text) {
