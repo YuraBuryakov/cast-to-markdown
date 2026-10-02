@@ -24,12 +24,20 @@ final class Headings {
     private static final Pattern DOT_LEADER = Pattern.compile("\\.{4,}|(\\. ){3,}");
     /**
      * Section number at the start of a heading: {@code 2}, {@code 2.1.}, {@code A.}, {@code A.1},
-     * {@code Appendix A}. Groups 1 and 2 hold the {@code .N} parts after the first number.
+     * {@code Appendix A}, {@code \u00a7 1} (statutes, laws). Groups 1 to 3 hold the {@code .N} parts after the first number.
      */
-    private static final Pattern SECTION_NUMBER = Pattern.compile(
-            "^(?:Appendix\\s+[A-Z]|\\d{1,2}((?:\\.\\d{1,2})*)\\.?|[A-Z]((?:\\.\\d{1,2})+)\\.?|[A-Z]\\.)(?=[\\s\u2014:])");
+    private static final Pattern SECTION_NUMBER = Pattern.compile("^(?:Appendix\\s+[A-Z]"
+            + "|\\d{1,2}((?:\\.\\d{1,2})*)\\.?"
+            + "|[A-Z]((?:\\.\\d{1,2})+)\\.?"
+            + "|[A-Z]\\."
+            + "|\u00a7\\s*\\d{1,3}((?:\\.\\d{1,2})*)\\.?)"
+            + "(?=[\\s\u2014:])");
 
     private Headings() {
+    }
+
+    static boolean startsWithSectionNumber(String text) {
+        return SECTION_NUMBER.matcher(text).find();
     }
 
     /** Heading level ({@code 1} for {@code #}) of each paragraph, {@code 0} for a paragraph that is not a heading. */
@@ -56,7 +64,7 @@ final class Headings {
             List<Line> paragraph = paragraphs.get(i);
             String text = text(paragraph);
             int size = paragraph.get(0).sizeKey();
-            boolean numbered = SECTION_NUMBER.matcher(text).find();
+            boolean numbered = startsWithSectionNumber(text);
             boolean boldNumbered = numbered
                     && paragraph.stream().allMatch(Line::bold)
                     && size >= body - BOLD_MAX_SIZE_BELOW_BODY * 2;
@@ -130,7 +138,10 @@ final class Headings {
         if (!number.find()) {
             return 0;
         }
-        String subsections = number.group(1) != null ? number.group(1) : number.group(2);
+        String subsections = null;
+        for (int group = 1; group <= number.groupCount() && subsections == null; group++) {
+            subsections = number.group(group);
+        }
         return 1 + (subsections == null ? 0 : (int) subsections.chars().filter(c -> c == '.').count());
     }
 }

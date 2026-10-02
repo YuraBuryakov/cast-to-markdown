@@ -28,7 +28,8 @@ final class Paragraphs {
 
     /**
      * A new paragraph starts on a new page, when the text moves up (next column), when the font size
-     * changes, after a gap larger than usual for that font size, and at a first-line indent.
+     * changes, after a bold numbered heading line, after a gap larger than usual for that font size,
+     * and at a first-line indent.
      */
     static List<List<Line>> group(List<Line> lines) {
         Map<Integer, Float> pitches = typicalPitches(lines);
@@ -45,6 +46,12 @@ final class Paragraphs {
 
     private static boolean startsParagraph(Line previous, Line line, Line next, Map<Integer, Float> pitches) {
         if (line.page() != previous.page() || line.y() <= previous.y() || line.sizeKey() != previous.sizeKey()) {
+            return true;
+        }
+        // A bold numbered heading of body size followed by regular text without extra space (LibreOffice
+        // statutes: "\u00a7 1 Name" then "(1) The name ..."). Not after any bold line: in Word glossaries the
+        // first line of a definition is mostly bold, and its paragraph must stay whole.
+        if (previous.bold() && !line.bold() && Headings.startsWithSectionNumber(previous.text().strip())) {
             return true;
         }
         float size = line.fontSize();

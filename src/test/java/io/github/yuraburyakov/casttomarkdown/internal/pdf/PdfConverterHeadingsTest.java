@@ -136,6 +136,33 @@ class PdfConverterHeadingsTest {
                 "### 2.1. Update Motivation", BODY));
     }
 
+    @Test
+    void boldParagraphSignHeadingIsSplitFromFollowingTextWithoutGap() {
+        // LibreOffice statutes: bold 10 pt "§ 1 ..." directly followed by regular 10 pt text, same line pitch.
+        List<Line> lines = List.of(
+                line(80, 10, BODY),
+                bold(110, 10, "§ 1 Name, Legal Form, Headquarters and Financial Year"),
+                line(122, 10, "(1) The name of the foundation is \"The Document Foundation\"."),
+                line(134, 10, "(2) It has its headquarters in Berlin."));
+
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo(String.join("\n\n",
+                BODY,
+                "## § 1 Name, Legal Form, Headquarters and Financial Year",
+                "(1) The name of the foundation is \"The Document Foundation\".\n(2) It has its headquarters in Berlin."));
+    }
+
+    @Test
+    void mostlyBoldFirstLineOfDefinitionStaysInItsParagraph() {
+        // Word glossary: the term makes the first line mostly bold; the definition continues in regular text.
+        List<Line> lines = List.of(
+                bold(80, 12, "'UK digital verification services trust Framework' (DVS Trust Framework) is a set of"),
+                line(94, 12, "rules and standards for digital identity services."));
+
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo(
+                "'UK digital verification services trust Framework' (DVS Trust Framework) is a set of\n"
+                        + "rules and standards for digital identity services.");
+    }
+
     private static Line line(double y, double fontSize, String text) {
         return new Line(1, 72, (float) y, (float) fontSize, text);
     }
