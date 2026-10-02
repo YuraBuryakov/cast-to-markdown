@@ -3,12 +3,12 @@ package io.github.yuraburyakov.casttomarkdown.pdf;
 import io.github.yuraburyakov.casttomarkdown.DocumentConversionException;
 import io.github.yuraburyakov.casttomarkdown.UnsupportedFormatException;
 import io.github.yuraburyakov.casttomarkdown.internal.DocumentConverter;
+import io.github.yuraburyakov.casttomarkdown.internal.Markdown;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.StringJoiner;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.cos.COSName;
@@ -23,7 +23,7 @@ import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
  * <p>Pipeline: {@link LineCollector} (text lines in reading order, from PDFBox) ->
  * {@link Lists} (list markers back on their lines) ->
  * {@link PageFurniture} (headers, footers, page numbers removed) -> {@link Paragraphs} -> {@link Headings}
- * -> Markdown -> {@link #normalize}.
+ * -> Markdown -> {@link Markdown#normalize}.
  *
  * <p>Current output: paragraphs separated by a blank line; headings: text larger than the body
  * font, or bold text starting with a section number; the level comes from the section number
@@ -40,8 +40,6 @@ public final class PdfConverter implements DocumentConverter {
     public List<String> extensions() {
         return List.of("pdf");
     }
-
-    private static final Pattern LEADING_HASH = Pattern.compile("^(\\s*)#");
 
     @Override
     public String convert(Path path) {
@@ -64,7 +62,7 @@ public final class PdfConverter implements DocumentConverter {
                 throw new UnsupportedFormatException("PDF has no text layer, only images (scanned document?); "
                         + "OCR is not supported, run OCR first: " + name);
             }
-            return normalize(toMarkdown(lines));
+            return Markdown.normalize(toMarkdown(lines));
         } catch (InvalidPasswordException e) {
             throw new DocumentConversionException("PDF is encrypted: " + name, e);
         } catch (IOException e) {
@@ -110,43 +108,11 @@ public final class PdfConverter implements DocumentConverter {
         for (int i = 0; i < paragraphs.size(); i++) {
             List<Line> paragraph = paragraphs.get(i);
             if (levels[i] > 0) {
-                out.add("#".repeat(levels[i]) + " " + escape(Headings.text(paragraph)));
+                out.add("#".repeat(levels[i]) + " " + Markdown.escape(Headings.text(paragraph)));
             } else {
-                out.add(paragraph.stream().map(line -> Lists.markdown(escape(line.text()))).collect(Collectors.joining("\n")));
+                out.add(paragraph.stream().map(line -> Lists.markdown(Markdown.escape(line.text()))).collect(Collectors.joining("\n")));
             }
         }
         return out.toString();
-    }
-
-    /**
-     * Escapes {@code #} at the start of a line, which Markdown reads as a heading.
-     * ponytail: other block markers ({@code >}, {@code -}, {@code *}, code fences) are not escaped yet (Q-API-02).
-     */
-    static String escape(String line) {
-        return LEADING_HASH.matcher(line).replaceFirst("$1\\\\#");
-    }
-
-    /**
-     * Unifies line endings, removes trailing spaces, collapses runs of blank lines into one
-     * and makes a non-empty result end with a single {@code \n}.
-     */
-    static String normalize(String text) {
-        String[] lines = text.replace("\r\n", "\n").replace('\r', '\n').split("\n", -1);
-
-        StringBuilder out = new StringBuilder(text.length());
-        boolean blankLineBefore = false;
-        for (String line : lines) {
-            String trimmed = line.stripTrailing();
-            if (trimmed.isEmpty()) {
-                blankLineBefore = out.length() > 0;
-                continue;
-            }
-            if (out.length() > 0) {
-                out.append(blankLineBefore ? "\n\n" : "\n");
-            }
-            out.append(trimmed);
-            blankLineBefore = false;
-        }
-        return out.length() == 0 ? "" : out.append('\n').toString();
     }
 }

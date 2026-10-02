@@ -7,7 +7,7 @@ import java.io.InputStream;
 /**
  * Lets at most {@code limit} bytes through and throws {@link DocumentTooLargeException} on the next one,
  * so a too large stream is stopped while it is read, not after it is in memory.
- * Never closed by the library: closing it would close the caller's stream.
+ * Closing it does not close the caller's stream.
  */
 final class LimitedInputStream extends FilterInputStream {
 
@@ -46,6 +46,14 @@ final class LimitedInputStream extends FilterInputStream {
         long skipped = super.skip(n);
         count(skipped);
         return skipped;
+    }
+
+    /**
+     * Does nothing: the stream belongs to the caller. A parser that closes the stream it was given
+     * must not close the caller's stream.
+     */
+    @Override
+    public void close() {
     }
 
     /** No mark/reset: bytes read again after a reset would be counted twice. */

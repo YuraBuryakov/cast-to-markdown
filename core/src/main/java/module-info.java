@@ -4,6 +4,8 @@
  * Only {@code io.github.yuraburyakov.casttomarkdown} is API; {@code internal} is exported only to the
  * format modules.
  */
+// "module" lint: the format modules are built after this one, so javac warns they are not found.
+@SuppressWarnings("module")
 module io.github.yuraburyakov.casttomarkdown {
     exports io.github.yuraburyakov.casttomarkdown;
     exports io.github.yuraburyakov.casttomarkdown.internal to io.github.yuraburyakov.casttomarkdown.pdf;
