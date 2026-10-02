@@ -14,6 +14,9 @@ final class Headings {
 
     /** Longer paragraphs are not headings. */
     private static final int MAX_LINES = 2;
+    /** A document title is often longer: up to this many lines when the font is much larger than the body font. */
+    private static final int MAX_TITLE_LINES = 4;
+    private static final float TITLE_SIZE_RATIO = 1.5f;
     private static final int MAX_LENGTH = 200;
     private static final int MAX_LEVEL = 6;
     /** Bold text may be up to this much smaller than the body font and still be a numbered heading. */
@@ -70,7 +73,7 @@ final class Headings {
                     && size >= body - BOLD_MAX_SIZE_BELOW_BODY * 2;
             // ponytail: a bold numbered list item of body size ("1. OPTIONAL") looks the same as a heading.
             boolean candidate = (size > body || boldNumbered)
-                    && paragraph.size() <= MAX_LINES
+                    && paragraph.size() <= (size >= TITLE_SIZE_RATIO * body ? MAX_TITLE_LINES : MAX_LINES)
                     && text.length() <= MAX_LENGTH
                     && (numbered || WORD.matcher(text).find())
                     && !DOT_LEADER.matcher(text).find();

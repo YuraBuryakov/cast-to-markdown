@@ -73,6 +73,22 @@ class PdfConverterHeadingsTest {
     }
 
     @Test
+    void titleInMuchLargerFontMayTakeUpToFourLines() {
+        // Word 365: a 26 pt title over three lines, body 12 pt.
+        List<Line> lines = List.of(
+                bold(80, 26, "Guidance for licensing authorities to"),
+                bold(110, 26, "prevent illegal working in the taxi and"),
+                bold(140, 26, "private hire sector in the UK"),
+                line(190, 12, BODY),
+                line(204, 12, BODY),
+                line(218, 12, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo(
+                "# Guidance for licensing authorities to prevent illegal working in the taxi and private hire sector in the UK"
+                        + "\n\n" + BODY + "\n" + BODY + "\n" + BODY);
+    }
+
+    @Test
     void longParagraphInLargeFontIsNotHeading() {
         List<Line> lines = List.of(
                 line(80, 13, "Paul A. Grassi"),
