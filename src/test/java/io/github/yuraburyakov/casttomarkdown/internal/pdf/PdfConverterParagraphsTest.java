@@ -1,8 +1,8 @@
-package io.github.yuraburyakov.casttomarkdown;
+package io.github.yuraburyakov.casttomarkdown.internal.pdf;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.yuraburyakov.casttomarkdown.PdfConverter.Line;
+import io.github.yuraburyakov.casttomarkdown.internal.pdf.PdfConverter.Line;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 

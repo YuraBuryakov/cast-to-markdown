@@ -1,5 +1,7 @@
-package io.github.yuraburyakov.casttomarkdown;
+package io.github.yuraburyakov.casttomarkdown.internal.pdf;
 
+import io.github.yuraburyakov.casttomarkdown.DocumentConversionException;
+import io.github.yuraburyakov.casttomarkdown.internal.DocumentConverter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -22,17 +24,17 @@ import org.apache.pdfbox.text.TextPosition;
 /**
  * Converts PDF to Markdown with Apache PDFBox.
  *
- * <p>Current output: paragraphs separated by a blank line, headings detected by font size
- * ({@code #} for the largest heading font, {@code ##} for the next and so on); pages are separated
- * by a blank line. PDFBox gives the text lines in reading order; paragraphs are detected here,
+ * <p>Current output: paragraphs separated by a blank line; headings: text larger than the body
+ * font, or bold text starting with a section number; the level comes from the section number
+ * ({@code 2.1} is {@code ###}) or from the font size. Pages are separated by a blank line. PDFBox gives the text lines in reading order; paragraphs are detected here,
  * not by PDFBox, because PDFBox compares line gaps with the glyph height it reports, and for some
  * fonts that height is about a third of the font size, which makes every line a separate paragraph.
- * Bold headings of body size, lists and tables are not detected yet.
+ * Lists and tables are not detected yet.
  * Markdown special characters are not escaped yet.
  *
  * <p>Stateless and thread-safe: a new {@link PDFTextStripper} is created for each call.
  */
-final class PdfConverter {
+public final class PdfConverter implements DocumentConverter {
 
     /** A gap larger than this many typical line pitches starts a new paragraph. */
     private static final float PARAGRAPH_GAP = 1.3f;
@@ -61,7 +63,8 @@ final class PdfConverter {
     private static final Pattern BOLD_FONT_NAME = Pattern.compile("(?i)bold|black|heavy|semibold|demibold");
     private static final Pattern LIST_ITEM = Pattern.compile("^\\s*([\u2022\u25e6\u25aa\u2023*-]|\\d+[.)])\\s");
 
-    String convert(Path path) {
+    @Override
+    public String convert(Path path) {
         try (PDDocument document = Loader.loadPDF(path.toFile())) {
             LineCollector collector = new LineCollector();
             collector.getText(document);

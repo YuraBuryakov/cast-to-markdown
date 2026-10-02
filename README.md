@@ -27,8 +27,8 @@ PDF, DOCX, HTML, TXT, CSV.
 
 ## Project structure
 
-A single Maven module and a single package `io.github.yuraburyakov.casttomarkdown` for now.
-Only `public` types are API; format converters (e.g. `PdfConverter`) are package-private, so they stay hidden from users.
+A single Maven module for now.
+`io.github.yuraburyakov.casttomarkdown` is the only API package. Format converters live in `internal.*` packages (one package per format), which the module descriptor does not export and which may change in any version.
 
 The project will be split into Maven modules when a second heavy format (DOCX via Apache POI) arrives, so users who need only PDF do not pull POI.
 

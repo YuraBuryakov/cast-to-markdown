@@ -1,4 +1,4 @@
-package io.github.yuraburyakov.casttomarkdown;
+package io.github.yuraburyakov.casttomarkdown.internal.pdf;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

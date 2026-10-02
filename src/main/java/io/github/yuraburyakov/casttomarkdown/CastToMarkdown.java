@@ -1,7 +1,10 @@
 package io.github.yuraburyakov.casttomarkdown;
 
+import io.github.yuraburyakov.casttomarkdown.internal.DocumentConverter;
+import io.github.yuraburyakov.casttomarkdown.internal.pdf.PdfConverter;
 import java.nio.file.Path;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -19,17 +22,18 @@ import java.util.Objects;
  */
 public final class CastToMarkdown {
 
-    private final PdfConverter pdfConverter;
+    /** Lower-case file extension without the dot to the converter for that format. */
+    private final Map<String, DocumentConverter> converters;
 
-    private CastToMarkdown(PdfConverter pdfConverter) {
-        this.pdfConverter = pdfConverter;
+    private CastToMarkdown(Map<String, DocumentConverter> converters) {
+        this.converters = converters;
     }
 
     /**
      * Creates a converter with the default settings.
      */
     public static CastToMarkdown create() {
-        return new CastToMarkdown(new PdfConverter());
+        return new CastToMarkdown(Map.of("pdf", new PdfConverter()));
     }
 
     /**
@@ -44,15 +48,18 @@ public final class CastToMarkdown {
     public PreparedDocument convert(Path path) {
         Objects.requireNonNull(path, "path");
 
-        if (!hasExtension(path, ".pdf")) {
+        DocumentConverter converter = converters.get(extension(path));
+        if (converter == null) {
             throw new UnsupportedFormatException("Unsupported file format: " + path);
         }
-        return new PreparedDocument(pdfConverter.convert(path));
+        return new PreparedDocument(converter.convert(path));
     }
 
-    private static boolean hasExtension(Path path, String extension) {
+    /** Lower-case extension without the dot, or an empty string when the file name has none. */
+    private static String extension(Path path) {
         Path fileName = path.getFileName();
-        return fileName != null
-                && fileName.toString().toLowerCase(Locale.ROOT).endsWith(extension);
+        String name = fileName == null ? "" : fileName.toString();
+        int dot = name.lastIndexOf('.');
+        return dot < 0 ? "" : name.substring(dot + 1).toLowerCase(Locale.ROOT);
     }
 }

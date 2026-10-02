@@ -58,7 +58,7 @@ If you can reach the vault, read the Project Context before proposing architectu
 | groupId | `io.github.yuraburyakov` |
 | Base package | `io.github.yuraburyakov.casttomarkdown` |
 | License | Apache 2.0 |
-| Structure | One Maven module `cast-to-markdown` for now; split into modules when DOCX/POI arrives |
+| Structure | One Maven module `cast-to-markdown` for now; split into modules (`core`, `pdf`, `docx`, converters found via `ServiceLoader`) when DOCX/POI arrives |
 
 ### Public API (iteration 1)
 
@@ -68,7 +68,7 @@ If you can reach the vault, read the Project Context before proposing architectu
 | Result | `public final class PreparedDocument` (not a record), package-private constructor, only `markdown()` for now |
 | Input | `Path` only. `InputStream` later, together with a resource-ownership contract |
 | Errors | Unchecked `DocumentConversionException`; subclass `UnsupportedFormatException` |
-| Converters | Package-private classes in the main package, chosen by file extension. No converter interface or SPI yet |
+| Converters | Internal interface `internal.DocumentConverter`; one package per format (`internal.pdf`, ...) with exactly one public class, the rest package-private. `CastToMarkdown` picks the converter by file extension. `module-info` exports only the root package. No public SPI |
 
 Not decided yet: metadata, warnings, configuration/builder, logging, Markdown escaping.
 
@@ -85,7 +85,7 @@ Not decided yet: metadata, warnings, configuration/builder, logging, Markdown es
 ## Library rules (short version)
 
 - Keep the public API small; everything else package-private where possible.
-- Public types do not expose parser types; converters are package-private in the main package. When the project is split into modules, this boundary is revisited.
+- Public types do not expose parser types. The root package is the only API; `internal.*` is not exported and may change in any version.
 - No framework dependencies (no Spring).
 - Do not leak PDFBox/POI types through the public API.
 - Every new dependency needs a reason: is it a capability or a convenience?

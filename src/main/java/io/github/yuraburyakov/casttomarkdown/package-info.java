@@ -3,7 +3,8 @@
  *
  * <p>Entry point: {@link io.github.yuraburyakov.casttomarkdown.CastToMarkdown}.
  *
- * <p>Only the {@code public} types of this package are API. Format converters are package-private
- * and may change at any time. Public types must not expose parser types (PDFBox, POI, jsoup).
+ * <p>This is the only API package. Format converters live in {@code internal.*} packages, which are
+ * not exported by the module and may change at any time. Public types must not expose parser types
+ * (PDFBox, POI, jsoup).
  */
 package io.github.yuraburyakov.casttomarkdown;
