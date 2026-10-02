@@ -8,7 +8,8 @@
 @SuppressWarnings("module")
 module io.github.yuraburyakov.casttomarkdown {
     exports io.github.yuraburyakov.casttomarkdown;
-    exports io.github.yuraburyakov.casttomarkdown.internal to io.github.yuraburyakov.casttomarkdown.pdf;
+    exports io.github.yuraburyakov.casttomarkdown.internal
+            to io.github.yuraburyakov.casttomarkdown.pdf, io.github.yuraburyakov.casttomarkdown.docx;
 
     uses io.github.yuraburyakov.casttomarkdown.internal.DocumentConverter;
 }

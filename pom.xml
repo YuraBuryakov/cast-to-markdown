@@ -16,6 +16,7 @@
     <modules>
         <module>core</module>
         <module>pdf</module>
+        <module>docx</module>
     </modules>
 
     <licenses>
@@ -33,6 +34,7 @@
 
         <!-- Runtime dependencies -->
         <pdfbox.version>3.0.5</pdfbox.version>
+        <poi.version>5.5.1</poi.version>
 
         <!-- Test dependencies -->
         <junit.version>5.13.4</junit.version>
@@ -55,6 +57,11 @@
                 <groupId>org.apache.pdfbox</groupId>
                 <artifactId>pdfbox</artifactId>
                 <version>${pdfbox.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.poi</groupId>
+                <artifactId>poi-ooxml</artifactId>
+                <version>${poi.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.junit</groupId>

@@ -1,0 +1,106 @@
+package io.github.yuraburyakov.casttomarkdown.docx;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.math.BigInteger;
+import org.apache.poi.xwpf.usermodel.XWPFAbstractNum;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFFootnote;
+import org.apache.poi.xwpf.usermodel.XWPFNumbering;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTAbstractNum;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTLvl;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.STNumberFormat;
+
+/** Builds small DOCX files in memory for tests, so tests do not depend on binary fixtures. */
+final class TestDocx {
+
+    private final XWPFDocument document = new XWPFDocument();
+    private BigInteger bulletList;
+    private BigInteger numberedList;
+
+    static TestDocx builder() {
+        return new TestDocx();
+    }
+
+    /** A paragraph with a built-in style id such as {@code "Title"} or {@code "Heading2"}. */
+    TestDocx styled(String styleId, String text) {
+        XWPFParagraph paragraph = document.createParagraph();
+        paragraph.setStyle(styleId);
+        paragraph.createRun().setText(text);
+        return this;
+    }
+
+    TestDocx paragraph(String text) {
+        document.createParagraph().createRun().setText(text);
+        return this;
+    }
+
+    TestDocx bullet(int level, String text) {
+        if (bulletList == null) {
+            bulletList = list(STNumberFormat.BULLET);
+        }
+        return item(bulletList, level, text);
+    }
+
+    TestDocx numbered(int level, String text) {
+        if (numberedList == null) {
+            numberedList = list(STNumberFormat.DECIMAL);
+        }
+        return item(numberedList, level, text);
+    }
+
+    /** The first row is the header. */
+    TestDocx table(String[]... rows) {
+        XWPFTable table = document.createTable(rows.length, rows[0].length);
+        for (int r = 0; r < rows.length; r++) {
+            XWPFTableRow row = table.getRow(r);
+            for (int c = 0; c < rows[r].length; c++) {
+                row.getCell(c).setText(rows[r][c]);
+            }
+        }
+        return this;
+    }
+
+    TestDocx paragraphWithFootnote(String text, String footnoteText) {
+        XWPFParagraph paragraph = document.createParagraph();
+        paragraph.createRun().setText(text);
+        XWPFFootnote footnote = document.createFootnote();
+        footnote.createParagraph().createRun().setText(footnoteText);
+        paragraph.addFootnoteReference(footnote);
+        return this;
+    }
+
+    byte[] bytes() throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        document.write(out);
+        document.close();
+        return out.toByteArray();
+    }
+
+    private TestDocx item(BigInteger list, int level, String text) {
+        XWPFParagraph paragraph = document.createParagraph();
+        paragraph.setNumID(list);
+        paragraph.setNumILvl(BigInteger.valueOf(level));
+        paragraph.createRun().setText(text);
+        return this;
+    }
+
+    /** A list definition with the same number format on three levels. */
+    private BigInteger list(STNumberFormat.Enum format) {
+        XWPFNumbering numbering = document.getNumbering() != null ? document.getNumbering() : document.createNumbering();
+        CTAbstractNum definition = CTAbstractNum.Factory.newInstance();
+        BigInteger abstractId = BigInteger.valueOf(format == STNumberFormat.BULLET ? 1 : 2);
+        definition.setAbstractNumId(abstractId);
+        for (int level = 0; level < 3; level++) {
+            CTLvl lvl = definition.addNewLvl();
+            lvl.setIlvl(BigInteger.valueOf(level));
+            lvl.addNewNumFmt().setVal(format);
+            lvl.addNewStart().setVal(BigInteger.ONE);
+        }
+        numbering.addAbstractNum(new XWPFAbstractNum(definition, numbering));
+        return numbering.addNum(abstractId);
+    }
+}
