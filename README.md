@@ -27,6 +27,14 @@ try (InputStream in = upload.getInputStream()) {
 }
 ```
 
+Settings: `create()` uses the defaults, `builder()` changes them. Documents larger than the limit (100 MiB by default) are rejected with `DocumentTooLargeException` before parsing; a stream is read only up to the limit. The whole document is in memory while it is converted, so with parallel calls plan for about *limit × threads*.
+
+```java
+CastToMarkdown converter = CastToMarkdown.builder()
+        .maxDocumentSize(20 * 1024 * 1024)   // 20 MiB
+        .build();
+```
+
 Errors are unchecked: `UnsupportedFormatException` for unsupported formats, `DocumentConversionException` for unreadable or damaged files (the original exception is the cause).
 
 Scanned PDFs (pages are images without a text layer) are not supported: the converter throws `UnsupportedFormatException` instead of returning empty Markdown. Run OCR first, for example with [OCRmyPDF](https://ocrmypdf.readthedocs.io/), which adds a text layer to the PDF; the result can then be converted.

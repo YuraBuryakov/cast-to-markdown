@@ -2,7 +2,9 @@ package io.github.yuraburyakov.casttomarkdown;
 
 import io.github.yuraburyakov.casttomarkdown.internal.DocumentConverter;
 import io.github.yuraburyakov.casttomarkdown.internal.pdf.PdfConverter;
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Map;
@@ -23,22 +25,78 @@ import java.util.Objects;
  * <p>Supported formats: PDF ({@code .pdf}) with a text layer. The format is detected by the file extension.
  * Scanned PDFs (pages are images, no text layer) are not supported: run OCR on them first.
  *
+ * <p>Settings: {@link #create()} uses the defaults; {@link #builder()} changes them.
+ * Documents larger than {@link Builder#maxDocumentSize(long)} (100 MiB by default) are rejected with
+ * {@link DocumentTooLargeException} before they are parsed.
+ *
  * <p>Instances are immutable and thread-safe. Create one instance and reuse it.
  */
 public final class CastToMarkdown {
 
+    private static final long DEFAULT_MAX_DOCUMENT_SIZE = 100L * 1024 * 1024;
+
     /** Lower-case file extension without the dot to the converter for that format. */
     private final Map<String, DocumentConverter> converters;
+    private final long maxDocumentSize;
 
-    private CastToMarkdown(Map<String, DocumentConverter> converters) {
-        this.converters = converters;
+    private CastToMarkdown(Builder builder) {
+        this.converters = Map.of("pdf", new PdfConverter());
+        this.maxDocumentSize = builder.maxDocumentSize;
     }
 
     /**
-     * Creates a converter with the default settings.
+     * Creates a converter with the default settings; the same as {@code builder().build()}.
      */
     public static CastToMarkdown create() {
-        return new CastToMarkdown(Map.of("pdf", new PdfConverter()));
+        return builder().build();
+    }
+
+    /**
+     * Starts building a converter with custom settings.
+     *
+     * <pre>{@code
+     * CastToMarkdown converter = CastToMarkdown.builder()
+     *         .maxDocumentSize(20 * 1024 * 1024)
+     *         .build();
+     * }</pre>
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /**
+     * Settings of a {@link CastToMarkdown}. Not thread-safe: configure it in one thread,
+     * then share the built converter.
+     */
+    public static final class Builder {
+
+        private long maxDocumentSize = DEFAULT_MAX_DOCUMENT_SIZE;
+
+        private Builder() {
+        }
+
+        /**
+         * Largest document, in bytes, that is converted. Default: 100 MiB.
+         * A larger file or stream is rejected with {@link DocumentTooLargeException}; a stream is read
+         * only up to the limit. The whole document is held in memory while it is converted, so with
+         * parallel calls the memory need is about the limit times the number of threads.
+         *
+         * @param bytes the limit; {@link Long#MAX_VALUE} for no limit
+         * @return this builder
+         * @throws IllegalArgumentException if {@code bytes} is not positive
+         */
+        public Builder maxDocumentSize(long bytes) {
+            if (bytes <= 0) {
+                throw new IllegalArgumentException("maxDocumentSize must be positive: " + bytes);
+            }
+            this.maxDocumentSize = bytes;
+            return this;
+        }
+
+        /** Creates an immutable, thread-safe converter with these settings. */
+        public CastToMarkdown build() {
+            return new CastToMarkdown(this);
+        }
     }
 
     /**
@@ -48,6 +106,7 @@ public final class CastToMarkdown {
      * @return the converted document
      * @throws UnsupportedFormatException if the file format is not supported, or the PDF is a scan
      *         without a text layer
+     * @throws DocumentTooLargeException if the file is larger than {@link Builder#maxDocumentSize(long)}
      * @throws DocumentConversionException if the file cannot be read or parsed
      * @throws NullPointerException if {@code path} is {@code null}
      */
@@ -56,6 +115,7 @@ public final class CastToMarkdown {
 
         Path fileName = path.getFileName();
         DocumentConverter converter = converter(fileName == null ? "" : fileName.toString(), path.toString());
+        checkSize(path);
         return new PreparedDocument(converter.convert(path));
     }
 
@@ -78,6 +138,8 @@ public final class CastToMarkdown {
      * @return the converted document
      * @throws UnsupportedFormatException if the format is not supported (the stream is not read then),
      *         or the PDF is a scan without a text layer
+     * @throws DocumentTooLargeException if the stream has more bytes than {@link Builder#maxDocumentSize(long)};
+     *         it is read only up to the limit
      * @throws DocumentConversionException if the stream cannot be read or the document cannot be parsed
      * @throws NullPointerException if {@code input} or {@code fileName} is {@code null}
      */
@@ -86,7 +148,20 @@ public final class CastToMarkdown {
         Objects.requireNonNull(fileName, "fileName");
 
         DocumentConverter converter = converter(fileName, fileName);
-        return new PreparedDocument(converter.convert(input, fileName));
+        return new PreparedDocument(converter.convert(new LimitedInputStream(input, maxDocumentSize, fileName), fileName));
+    }
+
+    private void checkSize(Path path) {
+        long size;
+        try {
+            size = Files.size(path);
+        } catch (IOException e) {
+            throw new DocumentConversionException("Cannot read file: " + path, e);
+        }
+        if (size > maxDocumentSize) {
+            throw new DocumentTooLargeException(
+                    "Document is larger than the limit of " + maxDocumentSize + " bytes (" + size + " bytes): " + path);
+        }
     }
 
     /** The converter for the extension of {@code fileName}; {@code source} names the document in the error. */
