@@ -16,7 +16,8 @@ import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
  * Converts PDF to Markdown with Apache PDFBox.
  *
  * <p>Pipeline: {@link LineCollector} (text lines in reading order, from PDFBox) ->
- * {@link Paragraphs} -> {@link Headings} -> Markdown -> {@link #normalize}.
+ * {@link PageFurniture} (headers, footers, page numbers removed) -> {@link Paragraphs} -> {@link Headings}
+ * -> Markdown -> {@link #normalize}.
  *
  * <p>Current output: paragraphs separated by a blank line; headings: text larger than the body
  * font, or bold text starting with a section number; the level comes from the section number
@@ -46,7 +47,7 @@ public final class PdfConverter implements DocumentConverter {
      * paragraphs separated by a blank line, headings as {@code #} lines.
      */
     static String toMarkdown(List<Line> lines) {
-        List<List<Line>> paragraphs = Paragraphs.group(lines);
+        List<List<Line>> paragraphs = Paragraphs.group(PageFurniture.remove(lines));
         int[] levels = Headings.levels(paragraphs);
 
         StringJoiner out = new StringJoiner("\n\n");

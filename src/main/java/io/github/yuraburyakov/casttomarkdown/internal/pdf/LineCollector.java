@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDFontDescriptor;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -72,8 +73,10 @@ final class LineCollector extends PDFTextStripper {
 
     private void endLine() {
         if (first != null && !text.toString().isBlank()) {
-            lines.add(new Line(getCurrentPageNo(), first.getXDirAdj(), first.getYDirAdj(), fontSize,
-                    boldChars * 2 > chars, text.toString()));
+            PDRectangle box = getCurrentPage().getCropBox();
+            float pageHeight = getCurrentPage().getRotation() % 180 == 0 ? box.getHeight() : box.getWidth();
+            lines.add(new Line(getCurrentPageNo(), pageHeight, first.getXDirAdj(), first.getYDirAdj(), fontSize,
+                    boldChars * 2 > chars, first.getDir() != 0, text.toString()));
         }
         text.setLength(0);
         first = null;

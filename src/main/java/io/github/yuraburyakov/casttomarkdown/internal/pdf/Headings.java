@@ -66,8 +66,8 @@ final class Headings {
                     && text.length() <= MAX_LENGTH
                     && (numbered || WORD.matcher(text).find())
                     && !DOT_LEADER.matcher(text).find();
-            // ponytail: a heading that ends a page is followed by the running header/footer and is missed;
-            // fixed by removing headers and footers before this step (iteration 4).
+            // A heading that ends a page relies on PageFurniture: if a running header or footer is not
+            // recognized, it follows the heading and the heading is missed.
             boolean followedByText = i == paragraphs.size() - 1
                     || headings[i + 1]
                     || paragraphs.get(i + 1).get(0).sizeKey() == body;
