@@ -1,0 +1,93 @@
+package io.github.yuraburyakov.casttomarkdown.internal.pdf;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDFontDescriptor;
+import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.pdfbox.text.TextPosition;
+
+/**
+ * Collects text lines with their position and font instead of writing text out.
+ * PDFBox decides the reading order and where lines end; its paragraph markers are ignored.
+ */
+final class LineCollector extends PDFTextStripper {
+
+    private static final Pattern BOLD_FONT_NAME = Pattern.compile("(?i)bold|black|heavy|semibold|demibold");
+
+    private final List<Line> lines = new ArrayList<>();
+    private final StringBuilder text = new StringBuilder();
+    private TextPosition first;
+    private float fontSize;
+    private int boldChars;
+    private int chars;
+
+    private LineCollector() {
+    }
+
+    /** Lines of all pages in reading order. */
+    static List<Line> collect(PDDocument document) throws IOException {
+        LineCollector collector = new LineCollector();
+        collector.getText(document);
+        return collector.lines;
+    }
+
+    @Override
+    protected void writeString(String string, List<TextPosition> positions) {
+        for (TextPosition position : positions) {
+            if (first == null) {
+                first = position;
+            }
+            fontSize = Math.max(fontSize, position.getFontSizeInPt());
+            if (!position.getUnicode().isBlank()) {
+                chars++;
+                boldChars += isBold(position.getFont()) ? 1 : 0;
+            }
+        }
+        text.append(string);
+    }
+
+    @Override
+    protected void writeWordSeparator() {
+        text.append(getWordSeparator());
+    }
+
+    @Override
+    protected void writeLineSeparator() {
+        endLine();
+    }
+
+    @Override
+    protected void writeParagraphEnd() {
+        endLine();
+    }
+
+    @Override
+    protected void writePageEnd() {
+        endLine();
+    }
+
+    private void endLine() {
+        if (first != null && !text.toString().isBlank()) {
+            lines.add(new Line(getCurrentPageNo(), first.getXDirAdj(), first.getYDirAdj(), fontSize,
+                    boldChars * 2 > chars, text.toString()));
+        }
+        text.setLength(0);
+        first = null;
+        fontSize = 0;
+        boldChars = 0;
+        chars = 0;
+    }
+
+    /** By the font weight in the font descriptor, or by the font name when the weight is not set. */
+    private static boolean isBold(PDFont font) {
+        PDFontDescriptor descriptor = font.getFontDescriptor();
+        if (descriptor != null && (descriptor.isForceBold() || descriptor.getFontWeight() >= 600)) {
+            return true;
+        }
+        return font.getName() != null && BOLD_FONT_NAME.matcher(font.getName()).find();
+    }
+}
