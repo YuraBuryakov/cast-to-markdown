@@ -18,9 +18,9 @@ Reply in the language the author writes in.
 
 ### Current next step
 
-PDF works: paragraphs, headings, bullet lists, headers/footers removed, scans rejected, `Path` and `InputStream` input, size limit. DOCX works: style headings, lists with numbering, tables, footnotes. Modules: `core`, `pdf`, `docx`. Before a first release: the `commons.math3` filename-based automatic module required by POI (compiler warning), see the Obsidian note on public API decisions.
+PDF works: paragraphs, headings, bullet lists, tables of tagged PDFs (structure tree + MCIDs), headers/footers removed, scans rejected, `Path` and `InputStream` input, size limit. DOCX works: style headings, lists with numbering, tables, footnotes. Modules: `core`, `pdf`, `docx`. Before a first release: the `commons.math3` filename-based automatic module required by POI (compiler warning), see the Obsidian note on public API decisions.
 
-Known limitations: Markdown escaping covers only `#` at line start; a paragraph that continues on the next page is split in two; tables are plain text. Findings and open questions are in the Obsidian notes "CastToMarkdown - Experiment 01/02".
+Known limitations: Markdown escaping covers only `#` at line start; a paragraph that continues on the next page is split in two; tables of untagged PDFs (LaTeX, WeasyPrint) are plain text; merged table cells are not spread over columns. Findings and open questions are in the Obsidian notes "CastToMarkdown - Experiment 01/02".
 
 ### During the session
 

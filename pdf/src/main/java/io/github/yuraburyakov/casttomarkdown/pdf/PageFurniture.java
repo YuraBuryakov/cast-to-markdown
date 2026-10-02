@@ -36,13 +36,13 @@ final class PageFurniture {
         Set<Integer> pages = new HashSet<>();
         for (Line line : lines) {
             pages.add(line.page());
-            if (atEdge(line)) {
+            if (!line.isTable() && atEdge(line)) {
                 pagesByKey.computeIfAbsent(key(line), k -> new HashSet<>()).add(line.page());
             }
         }
         int minPages = Math.max(MIN_PAGES, (int) Math.ceil(MIN_PAGE_SHARE * pages.size()));
         return lines.stream()
-                .filter(line -> !atEdge(line) || pagesByKey.get(key(line)).size() < minPages)
+                .filter(line -> line.isTable() || !atEdge(line) || pagesByKey.get(key(line)).size() < minPages)
                 .toList();
     }
 

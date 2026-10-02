@@ -7,6 +7,7 @@ import io.github.yuraburyakov.casttomarkdown.internal.Markdown;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
@@ -21,7 +22,7 @@ import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
  * Converts PDF to Markdown with Apache PDFBox.
  *
  * <p>Pipeline: {@link LineCollector} (text lines in reading order, from PDFBox) ->
- * {@link Lists} (list markers back on their lines) ->
+ * {@link TaggedTables} and {@link Lists} (list markers back on their lines) ->
  * {@link PageFurniture} (headers, footers, page numbers removed) -> {@link Paragraphs} -> {@link Headings}
  * -> Markdown -> {@link Markdown#normalize}.
  *
@@ -29,7 +30,8 @@ import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
  * font, or bold text starting with a section number; the level comes from the section number
  * ({@code 2.1} is {@code ###}) or from the font size. Pages are separated by a blank line.
  * A PDF with images but no text (a scan) is rejected: OCR is not supported.
- * Bullet items become Markdown {@code - } items; tables are not detected yet. Of Markdown special characters only {@code #} at the start
+ * Bullet items become Markdown {@code - } items. Tables of tagged PDFs become Markdown tables;
+ * in untagged PDFs (LaTeX, WeasyPrint) table text stays ordinary text. Of Markdown special characters only {@code #} at the start
  * of a line is escaped, so text such as {@code # layers} in a table does not turn into a heading.
  *
  * <p>Stateless and thread-safe: every call works on its own document and collector.
@@ -57,12 +59,18 @@ public final class PdfConverter implements DocumentConverter {
 
     private String convert(Source source, String name) {
         try (PDDocument document = source.load()) {
-            List<Line> lines = LineCollector.collect(document);
+            TaggedTables tables = TaggedTables.read(document);
+            LineCollector.Collected collected = LineCollector.collect(document, tables);
+            List<Line> lines = collected.lines();
             if (lines.isEmpty() && hasImages(document)) {
                 throw new UnsupportedFormatException("PDF has no text layer, only images (scanned document?); "
                         + "OCR is not supported, run OCR first: " + name);
             }
-            return Markdown.normalize(toMarkdown(lines));
+            List<String> tableMarkdown = new ArrayList<>();
+            for (int table = 0; table < tables.size(); table++) {
+                tableMarkdown.add(tables.markdown(table, collected.cellText()));
+            }
+            return Markdown.normalize(toMarkdown(lines, tableMarkdown));
         } catch (InvalidPasswordException e) {
             throw new DocumentConversionException("PDF is encrypted: " + name, e);
         } catch (IOException e) {
@@ -101,13 +109,20 @@ public final class PdfConverter implements DocumentConverter {
      * paragraphs separated by a blank line, headings as {@code #} lines.
      */
     static String toMarkdown(List<Line> lines) {
+        return toMarkdown(lines, List.of());
+    }
+
+    /** As {@link #toMarkdown(List)}; a table placeholder line is replaced by {@code tables.get(line.table())}. */
+    static String toMarkdown(List<Line> lines, List<String> tables) {
         List<List<Line>> paragraphs = Paragraphs.group(PageFurniture.remove(Lists.attachMarkers(lines)));
         int[] levels = Headings.levels(paragraphs);
 
         StringJoiner out = new StringJoiner("\n\n");
         for (int i = 0; i < paragraphs.size(); i++) {
             List<Line> paragraph = paragraphs.get(i);
-            if (levels[i] > 0) {
+            if (paragraph.get(0).isTable()) {
+                out.add(tables.get(paragraph.get(0).table()));
+            } else if (levels[i] > 0) {
                 out.add("#".repeat(levels[i]) + " " + Markdown.escape(Headings.text(paragraph)));
             } else {
                 out.add(paragraph.stream().map(line -> Lists.markdown(Markdown.escape(line.text()))).collect(Collectors.joining("\n")));

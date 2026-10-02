@@ -72,7 +72,8 @@ final class Headings {
                     && paragraph.stream().allMatch(Line::bold)
                     && size >= body - BOLD_MAX_SIZE_BELOW_BODY * 2;
             // ponytail: a bold numbered list item of body size ("1. OPTIONAL") looks the same as a heading.
-            boolean candidate = (size > body || boldNumbered)
+            boolean candidate = !paragraph.get(0).isTable()
+                    && (size > body || boldNumbered)
                     && paragraph.size() <= (size >= TITLE_SIZE_RATIO * body ? MAX_TITLE_LINES : MAX_LINES)
                     && text.length() <= MAX_LENGTH
                     && (numbered || WORD.matcher(text).find())

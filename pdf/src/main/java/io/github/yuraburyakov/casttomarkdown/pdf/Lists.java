@@ -42,6 +42,7 @@ final class Lists {
                         && line.x() > marker.x()
                         && Math.abs(line.y() - marker.y()) < SAME_LINE * marker.fontSize()
                         && !isMarkerOnly(line)
+                        && !line.isTable()
                         && (item < 0 || line.x() < result.get(item).x())) {
                     item = i;
                 }

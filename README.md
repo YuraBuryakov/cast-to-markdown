@@ -2,7 +2,7 @@
 
 Java-native library that converts common document formats into clean, LLM/RAG-friendly Markdown through one consistent API, using mature Java parsers under the hood.
 
-> **Status:** early development (`0.1.0-SNAPSHOT`), not published to Maven Central yet. PDF: paragraphs, headings, bullet lists, headers/footers removed (no tables yet). DOCX: headings, lists, tables, footnotes.
+> **Status:** early development (`0.1.0-SNAPSHOT`), not published to Maven Central yet. PDF: paragraphs, headings, bullet lists, headers/footers removed, tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports). DOCX: headings, lists, tables, footnotes.
 
 ## Goals
 

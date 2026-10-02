@@ -45,7 +45,8 @@ final class Paragraphs {
     }
 
     private static boolean startsParagraph(Line previous, Line line, Line next, Map<Integer, Float> pitches) {
-        if (line.page() != previous.page() || line.y() <= previous.y() || line.sizeKey() != previous.sizeKey()) {
+        if (line.isTable() || previous.isTable()
+                || line.page() != previous.page() || line.y() <= previous.y() || line.sizeKey() != previous.sizeKey()) {
             return true;
         }
         // A bold numbered heading of body size followed by regular text without extra space (LibreOffice
@@ -77,7 +78,8 @@ final class Paragraphs {
         for (int i = 1; i < lines.size(); i++) {
             Line previous = lines.get(i - 1);
             Line line = lines.get(i);
-            if (line.page() == previous.page() && line.y() > previous.y() && line.sizeKey() == previous.sizeKey()) {
+            if (!line.isTable() && !previous.isTable()
+                    && line.page() == previous.page() && line.y() > previous.y() && line.sizeKey() == previous.sizeKey()) {
                 samples.computeIfAbsent(line.sizeKey(), k -> new ArrayList<>()).add(line.y() - previous.y());
             }
         }
