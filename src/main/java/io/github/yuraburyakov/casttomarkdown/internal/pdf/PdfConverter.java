@@ -1,6 +1,7 @@
 package io.github.yuraburyakov.casttomarkdown.internal.pdf;
 
 import io.github.yuraburyakov.casttomarkdown.DocumentConversionException;
+import io.github.yuraburyakov.casttomarkdown.UnsupportedFormatException;
 import io.github.yuraburyakov.casttomarkdown.internal.DocumentConverter;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -9,7 +10,10 @@ import java.util.StringJoiner;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
 
 /**
@@ -22,6 +26,7 @@ import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
  * <p>Current output: paragraphs separated by a blank line; headings: text larger than the body
  * font, or bold text starting with a section number; the level comes from the section number
  * ({@code 2.1} is {@code ###}) or from the font size. Pages are separated by a blank line.
+ * A PDF with images but no text (a scan) is rejected: OCR is not supported.
  * Lists and tables are not detected yet. Of Markdown special characters only {@code #} at the start
  * of a line is escaped, so text such as {@code # layers} in a table does not turn into a heading.
  *
@@ -34,12 +39,37 @@ public final class PdfConverter implements DocumentConverter {
     @Override
     public String convert(Path path) {
         try (PDDocument document = Loader.loadPDF(path.toFile())) {
-            return normalize(toMarkdown(LineCollector.collect(document)));
+            List<Line> lines = LineCollector.collect(document);
+            if (lines.isEmpty() && hasImages(document)) {
+                throw new UnsupportedFormatException("PDF has no text layer, only images (scanned document?); "
+                        + "OCR is not supported, run OCR first: " + path);
+            }
+            return normalize(toMarkdown(lines));
         } catch (InvalidPasswordException e) {
             throw new DocumentConversionException("PDF is encrypted: " + path, e);
         } catch (IOException e) {
             throw new DocumentConversionException("Cannot read PDF: " + path, e);
         }
+    }
+
+    /**
+     * Whether any page draws an image. A PDF without text but with images is most likely scanned;
+     * one without either is just empty.
+     * ponytail: only images placed directly on the page are seen, not images inside form XObjects.
+     */
+    private static boolean hasImages(PDDocument document) throws IOException {
+        for (PDPage page : document.getPages()) {
+            PDResources resources = page.getResources();
+            if (resources == null) {
+                continue;
+            }
+            for (COSName name : resources.getXObjectNames()) {
+                if (resources.isImageXObject(name)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**

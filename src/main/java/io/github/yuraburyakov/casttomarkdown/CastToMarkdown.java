@@ -16,7 +16,8 @@ import java.util.Objects;
  * String markdown = document.markdown();
  * }</pre>
  *
- * <p>Supported formats: PDF ({@code .pdf}). The format is detected by the file extension.
+ * <p>Supported formats: PDF ({@code .pdf}) with a text layer. The format is detected by the file extension.
+ * Scanned PDFs (pages are images, no text layer) are not supported: run OCR on them first.
  *
  * <p>Instances are immutable and thread-safe. Create one instance and reuse it.
  */
@@ -41,7 +42,8 @@ public final class CastToMarkdown {
      *
      * @param path file to convert; must not be {@code null}
      * @return the converted document
-     * @throws UnsupportedFormatException if the file format is not supported
+     * @throws UnsupportedFormatException if the file format is not supported, or the PDF is a scan
+     *         without a text layer
      * @throws DocumentConversionException if the file cannot be read or parsed
      * @throws NullPointerException if {@code path} is {@code null}
      */

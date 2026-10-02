@@ -62,6 +62,29 @@ class CastToMarkdownTest {
     }
 
     @Test
+    void rejectsScannedPdfWithoutTextLayer() throws IOException {
+        Path pdf = TestPdf.builder()
+                .page().image()
+                .page().image()
+                .writeTo(dir.resolve("scan.pdf"));
+
+        assertThatThrownBy(() -> converter.convert(pdf))
+                .isInstanceOf(UnsupportedFormatException.class)
+                .hasMessageContaining("no text layer")
+                .hasMessageContaining("OCR")
+                .hasMessageContaining("scan.pdf");
+    }
+
+    @Test
+    void convertsPdfWithTextAndImages() throws IOException {
+        Path pdf = TestPdf.builder()
+                .page().image().line(720, "Text next to a picture.")
+                .writeTo(dir.resolve("illustrated.pdf"));
+
+        assertThat(converter.convert(pdf).markdown()).isEqualTo("Text next to a picture.\n");
+    }
+
+    @Test
     void detectsPdfExtensionIgnoringCase() throws IOException {
         Path pdf = TestPdf.builder()
                 .page()

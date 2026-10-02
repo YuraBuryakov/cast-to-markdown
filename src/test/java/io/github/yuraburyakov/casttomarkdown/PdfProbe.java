@@ -50,7 +50,14 @@ public final class PdfProbe {
         }
         for (Path pdf : pdfs) {
             String name = pdf.getFileName().toString().replaceFirst("\\.pdf$", "");
-            Files.writeString(out.resolve(name + ".current.md"), CastToMarkdown.create().convert(pdf).markdown());
+            String markdown;
+            try {
+                markdown = CastToMarkdown.create().convert(pdf).markdown();
+            } catch (DocumentConversionException e) {
+                markdown = "CONVERSION FAILED: " + e.getMessage() + "\n";
+                System.out.println(name + ": " + markdown.strip());
+            }
+            Files.writeString(out.resolve(name + ".current.md"), markdown);
             try (PDDocument document = Loader.loadPDF(pdf.toFile())) {
                 System.out.printf("%s: pages=%d tagged=%s producer=%s creator=%s%n",
                         name,

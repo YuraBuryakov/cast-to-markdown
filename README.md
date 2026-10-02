@@ -21,6 +21,8 @@ String markdown = document.markdown();
 
 Errors are unchecked: `UnsupportedFormatException` for unsupported formats, `DocumentConversionException` for unreadable or damaged files (the original exception is the cause).
 
+Scanned PDFs (pages are images without a text layer) are not supported: the converter throws `UnsupportedFormatException` instead of returning empty Markdown. Run OCR first, for example with [OCRmyPDF](https://ocrmypdf.readthedocs.io/), which adds a text layer to the PDF; the result can then be converted.
+
 ## Planned formats for v0.1
 
 PDF, DOCX, HTML, TXT, CSV.
