@@ -21,6 +21,7 @@ import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
  * Converts PDF to Markdown with Apache PDFBox.
  *
  * <p>Pipeline: {@link LineCollector} (text lines in reading order, from PDFBox) ->
+ * {@link Lists} (list markers back on their lines) ->
  * {@link PageFurniture} (headers, footers, page numbers removed) -> {@link Paragraphs} -> {@link Headings}
  * -> Markdown -> {@link #normalize}.
  *
@@ -28,7 +29,7 @@ import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
  * font, or bold text starting with a section number; the level comes from the section number
  * ({@code 2.1} is {@code ###}) or from the font size. Pages are separated by a blank line.
  * A PDF with images but no text (a scan) is rejected: OCR is not supported.
- * Lists and tables are not detected yet. Of Markdown special characters only {@code #} at the start
+ * Bullet items become Markdown {@code - } items; tables are not detected yet. Of Markdown special characters only {@code #} at the start
  * of a line is escaped, so text such as {@code # layers} in a table does not turn into a heading.
  *
  * <p>Stateless and thread-safe: every call works on its own document and collector.
@@ -97,7 +98,7 @@ public final class PdfConverter implements DocumentConverter {
      * paragraphs separated by a blank line, headings as {@code #} lines.
      */
     static String toMarkdown(List<Line> lines) {
-        List<List<Line>> paragraphs = Paragraphs.group(PageFurniture.remove(lines));
+        List<List<Line>> paragraphs = Paragraphs.group(PageFurniture.remove(Lists.attachMarkers(lines)));
         int[] levels = Headings.levels(paragraphs);
 
         StringJoiner out = new StringJoiner("\n\n");
@@ -106,7 +107,7 @@ public final class PdfConverter implements DocumentConverter {
             if (levels[i] > 0) {
                 out.add("#".repeat(levels[i]) + " " + escape(Headings.text(paragraph)));
             } else {
-                out.add(paragraph.stream().map(line -> escape(line.text())).collect(Collectors.joining("\n")));
+                out.add(paragraph.stream().map(line -> Lists.markdown(escape(line.text()))).collect(Collectors.joining("\n")));
             }
         }
         return out.toString();

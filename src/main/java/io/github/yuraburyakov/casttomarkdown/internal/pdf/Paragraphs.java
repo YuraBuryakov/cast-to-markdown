@@ -21,7 +21,7 @@ final class Paragraphs {
     private static final float DEFAULT_PITCH = 1.2f;
     /** A horizontal shift larger than this many font sizes counts as an indent. */
     private static final float INDENT = 0.5f;
-    private static final Pattern LIST_ITEM = Pattern.compile("^\\s*([\u2022\u25e6\u25aa\u2023*-]|\\d+[.)])\\s");
+    private static final Pattern LIST_ITEM = Pattern.compile("^\\s*([" + Lists.BULLETS + "*-]|\\d+[.)])\\s");
 
     private Paragraphs() {
     }

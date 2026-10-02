@@ -53,9 +53,9 @@ class PdfConverterParagraphsTest {
                 line(1, 72, 128, 12, "• Next item."));
 
         assertThat(PdfConverter.toMarkdown(lines)).isEqualTo("""
-                • FAL refers to the strength of an assertion, used to
+                - FAL refers to the strength of an assertion, used to
                 communicate authentication information.
-                • Next item.""");
+                - Next item.""");
     }
 
     @Test
