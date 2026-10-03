@@ -26,6 +26,21 @@ class MarkdownTest {
     }
 
     @Test
+    void escapesExactlyTheLinesCommonMarkReadsAsSyntax() {
+        // checked with commonmark-java 0.24: alone and right after a line of text
+        String[][] cases = {
+            {"-", "\\-"}, {"--", "\\--"}, {"---", "\\---"}, {"- - -", "\\- - -"},
+            {"*", "\\*"}, {"**", "**"}, {"***", "\\***"},
+            {"_", "_"}, {"__", "__"}, {"___", "\\___"},
+            {"=", "\\="}, {"==", "\\=="}, {"===", "\\==="},
+            {"> text", "\\> text"}, {"# text", "\\# text"}, {"```text", "\\```text"}, {"~~~text", "\\~~~text"},
+        };
+        for (String[] c : cases) {
+            assertThat(Markdown.escape(c[0])).as(c[0]).isEqualTo(c[1]);
+        }
+    }
+
+    @Test
     void keepsListMarkersAndInlineSyntax() {
         // PDFs write real lists as text, so these stay (Q-API-02, option A)
         assertThat(Markdown.escape("- item")).isEqualTo("- item");

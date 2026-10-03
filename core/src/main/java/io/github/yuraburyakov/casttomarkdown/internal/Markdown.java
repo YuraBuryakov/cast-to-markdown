@@ -7,8 +7,13 @@ import java.util.regex.Pattern;
 public final class Markdown {
 
     private static final Pattern BLOCK_MARKER = Pattern.compile("^(\\s*)(#|>|```|~~~)");
-    /** A line of one repeated character, spaces allowed: "---", "* * *", "===". */
-    private static final Pattern RULE_LINE = Pattern.compile("^(\\s*)([-=*_])(?:\\s*\\2)*\\s*$");
+    /**
+     * A line that CommonMark reads as a rule, a heading underline or an empty list item: any run of
+     * {@code -} or {@code =} ("-", "--", "==="), three or more {@code *} or {@code _} ("***", "_ _ _"),
+     * or a single {@code *}. "**", "_" and "__" are plain text and stay as they are.
+     */
+    private static final Pattern RULE_LINE =
+            Pattern.compile("^(\\s*)(?:([-=])(?:\\s*\\2)*|([*_])(?:\\s*\\3){2,}|\\*)\\s*$");
     private static final Pattern SAFE_URL = Pattern.compile("(?i)(https?|mailto):");
     /** A link target with these characters is written as {@code <url>}, which CommonMark reads as one target. */
     private static final Pattern NEEDS_ANGLE_BRACKETS = Pattern.compile("[\\s()<>]");
@@ -23,8 +28,8 @@ public final class Markdown {
     /**
      * Escapes what Markdown would read as block syntax at the start of a line of document text: a heading
      * ({@code #}), a quote ({@code >}), a code fence ({@code ```}, {@code ~~~}; an unclosed one turns the
-     * rest of the document into code), and a line of only {@code -}, {@code =}, {@code *} or {@code _},
-     * which is a horizontal rule or turns the line above it into a heading.
+     * rest of the document into code), and a line that is a horizontal rule, an empty list item or turns
+     * the line above it into a heading ({@link #RULE_LINE}).
      * List markers ({@code -}, {@code *}, {@code 1.}) and inline syntax stay: PDFs write real lists as
      * text, and backslashes everywhere would only add noise (Q-API-02, option A).
      *
