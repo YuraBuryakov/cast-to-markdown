@@ -14,6 +14,8 @@ import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.IRunElement;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFFootnote;
+import org.apache.poi.xwpf.usermodel.XWPFHyperlink;
+import org.apache.poi.xwpf.usermodel.XWPFHyperlinkRun;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFSDT;
@@ -21,6 +23,7 @@ import org.apache.poi.xwpf.usermodel.XWPFStyle;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTHyperlink;
 
 /** Renders one DOCX document; a new instance for every document. */
 final class DocxRenderer {
@@ -29,6 +32,10 @@ final class DocxRenderer {
     /** Built-in heading style: name "heading 1" (the same in every Word language), id "Heading1". */
     private static final Pattern HEADING_STYLE = Pattern.compile("(?i)^heading\\s*(\\d)$");
     private static final String TITLE_STYLE = "title";
+    private static final Pattern SAFE_URL = Pattern.compile("(?i)(https?|mailto):");
+    /** A link target with these characters is written as {@code <url>}, which CommonMark reads as one target. */
+    private static final Pattern NEEDS_ANGLE_BRACKETS = Pattern.compile("[\\s()<>]");
+    private static final Pattern TRAILING_SPACE = Pattern.compile("(\\s|%20)+$");
     /** Spaces per list nesting level: enough for both "- " and "10. " parents in CommonMark. */
     private static final String LIST_INDENT = "    ";
 
@@ -122,11 +129,27 @@ final class DocxRenderer {
         block(markdown.toString().stripTrailing(), false);
     }
 
-    /** Text of the runs; a footnote reference becomes {@code [^id]}. */
+    /**
+     * Text of the runs; a footnote reference becomes {@code [^id]}, an external link {@code [text](url)}.
+     * ponytail: links inside table cells and footnotes stay plain text, and so do HYPERLINK fields.
+     */
     private String text(XWPFParagraph paragraph) {
         StringBuilder text = new StringBuilder();
-        for (IRunElement element : paragraph.getIRuns()) {
-            if (element instanceof XWPFRun run) {
+        List<IRunElement> runs = paragraph.getIRuns();
+        for (int i = 0; i < runs.size(); i++) {
+            IRunElement element = runs.get(i);
+            String url = element instanceof XWPFHyperlinkRun linkRun ? url(linkRun) : null;
+            if (url != null) {
+                // all runs of one link share its XML element
+                CTHyperlink link = ((XWPFHyperlinkRun) element).getCTHyperlink();
+                StringBuilder label = new StringBuilder();
+                while (i < runs.size() && runs.get(i) instanceof XWPFHyperlinkRun run && run.getCTHyperlink() == link) {
+                    label.append(run.text());
+                    i++;
+                }
+                i--;
+                text.append(link(label.toString(), url));
+            } else if (element instanceof XWPFRun run) {
                 if (run.getCTR().sizeOfFootnoteReferenceArray() > 0) {
                     BigInteger id = run.getCTR().getFootnoteReferenceArray(0).getId();
                     if (!footnotes.contains(id)) {
@@ -141,6 +164,33 @@ final class DocxRenderer {
             }
         }
         return text.toString();
+    }
+
+    /**
+     * The target of an external link, or {@code null} for a link to a bookmark (Word's table of contents)
+     * and for schemes other than http, https and mailto: {@code javascript:} must not reach a renderer.
+     */
+    private String url(XWPFHyperlinkRun run) {
+        XWPFHyperlink link = run.getHyperlink(document);
+        String url = link == null ? null : link.getURL();
+        return url != null && SAFE_URL.matcher(url).lookingAt() ? url : null;
+    }
+
+    /**
+     * {@code [text](url)}; spaces around the text stay outside the brackets. A blank text, or a text that
+     * is the address itself, stays plain text: {@code [url](url)} only repeats it.
+     */
+    private static String link(String text, String url) {
+        String label = text.strip();
+        // a space typed after the address in Word ends up in the target as %20
+        url = TRAILING_SPACE.matcher(url).replaceFirst("");
+        if (label.isEmpty() || label.equals(url) || ("mailto:" + label).equalsIgnoreCase(url)) {
+            return text;
+        }
+        String target = NEEDS_ANGLE_BRACKETS.matcher(url).find() ?"<" + url.replace(">", "%3E") + ">" : url;
+        int start = text.indexOf(label);
+        return text.substring(0, start) + "[" + label.replace("[", "\\[").replace("]", "\\]") + "](" + target + ")"
+                + text.substring(start + label.length());
     }
 
     /** {@code 1} for Title and Heading 1, {@code 2} for Heading 2, ...; {@code 0} for other styles. */

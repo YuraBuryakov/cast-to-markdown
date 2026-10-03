@@ -6,12 +6,16 @@ import java.math.BigInteger;
 import org.apache.poi.xwpf.usermodel.XWPFAbstractNum;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFFootnote;
+import org.apache.poi.xwpf.usermodel.XWPFHyperlinkRun;
 import org.apache.poi.xwpf.usermodel.XWPFNumbering;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
+import org.apache.xmlbeans.impl.xb.xmlschema.SpaceAttribute;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTAbstractNum;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTHyperlink;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTLvl;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTText;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STNumberFormat;
 
 /** Builds small DOCX files in memory for tests, so tests do not depend on binary fixtures. */
@@ -70,6 +74,32 @@ final class TestDocx {
         XWPFFootnote footnote = document.createFootnote();
         footnote.createParagraph().createRun().setText(footnoteText);
         paragraph.addFootnoteReference(footnote);
+        return this;
+    }
+
+    /**
+     * A paragraph {@code before + link + after}; the link text is split into one run per part, as Word does
+     * when the formatting changes inside a link. A {@code null} url makes an internal link to a bookmark.
+     */
+    TestDocx paragraphWithLink(String before, String url, String after, String... linkParts) {
+        XWPFParagraph paragraph = document.createParagraph();
+        paragraph.createRun().setText(before);
+        CTHyperlink link;
+        if (url != null) {
+            XWPFHyperlinkRun first = paragraph.createHyperlinkRun(url);
+            first.setText(linkParts[0]);
+            link = first.getCTHyperlink();
+        } else {
+            link = paragraph.getCTP().addNewHyperlink();
+            link.setAnchor("_Toc1");
+            link.addNewR().addNewT().setStringValue(linkParts[0]);
+        }
+        for (int i = 1; i < linkParts.length; i++) {
+            CTText text = link.addNewR().addNewT();
+            text.setStringValue(linkParts[i]);
+            text.setSpace(SpaceAttribute.Space.PRESERVE);
+        }
+        paragraph.createRun().setText(after);
         return this;
     }
 

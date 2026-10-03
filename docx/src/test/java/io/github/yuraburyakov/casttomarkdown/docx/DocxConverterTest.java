@@ -121,6 +121,64 @@ class DocxConverterTest {
     }
 
     @Test
+    void externalLinkBecomesMarkdownLink() throws IOException {
+        byte[] docx = TestDocx.builder()
+                .paragraphWithLink("See ", "https://example.org/guide", " for details.", "the guide")
+                .bytes();
+
+        assertThat(convert(docx)).isEqualTo("See [the guide](https://example.org/guide) for details.\n");
+    }
+
+    @Test
+    void linkSplitOverRunsIsOneLink() throws IOException {
+        // Word starts a new run inside a link when the formatting changes; a trailing space stays outside
+        byte[] docx = TestDocx.builder()
+                .paragraphWithLink("Read ", "https://example.org/", "now.", "the ", "full ", "text ")
+                .bytes();
+
+        assertThat(convert(docx)).isEqualTo("Read [the full text](https://example.org/) now.\n");
+    }
+
+    @Test
+    void internalAndUnsafeLinksStayText() throws IOException {
+        // Word's table of contents links to bookmarks; javascript: must not reach a Markdown renderer
+        byte[] docx = TestDocx.builder()
+                .paragraphWithLink("", null, "", "Introduction")
+                .paragraphWithLink("Click ", "javascript:alert(1)", ".", "here")
+                .bytes();
+
+        assertThat(convert(docx)).isEqualTo("Introduction\n\nClick here.\n");
+    }
+
+    @Test
+    void addressShownAsLinkTextStaysPlainText() throws IOException {
+        // real form: the URL was typed with a trailing space, so the target ends with %20
+        byte[] docx = TestDocx.builder()
+                .paragraphWithLink("Use ", "https://example.org/form%20", ".", "https://example.org/form")
+                .paragraphWithLink("Email ", "mailto:team@example.org", ".", "team@example.org")
+                .paragraphWithLink("", "https://example.org/a%20", "", "Form")
+                .bytes();
+
+        assertThat(convert(docx)).isEqualTo("""
+                Use https://example.org/form.
+
+                Email team@example.org.
+
+                [Form](https://example.org/a)
+                """);
+    }
+
+    @Test
+    void escapesBracketsInLinkTextAndParenthesesInUrl() throws IOException {
+        byte[] docx = TestDocx.builder()
+                .paragraphWithLink("", "https://en.wikipedia.org/wiki/Java_(programming_language)", "", "Java [language]")
+                .bytes();
+
+        assertThat(convert(docx))
+                .isEqualTo("[Java \\[language\\]](<https://en.wikipedia.org/wiki/Java_(programming_language)>)\n");
+    }
+
+    @Test
     void readsFromPathToo() throws IOException {
         Path docx = Files.write(dir.resolve("letter.docx"), TestDocx.builder().paragraph("Dear Doctor").bytes());
 
