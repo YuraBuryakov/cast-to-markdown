@@ -22,12 +22,21 @@ final class Paragraphs {
     /** A horizontal shift larger than this many font sizes counts as an indent. */
     private static final float INDENT = 0.5f;
     private static final Pattern LIST_ITEM = Pattern.compile("^\\s*([" + Lists.BULLETS + "*-]|\\d+[.)])\\s");
+    /** End of a sentence or of a heading, list lead-in or quotation. */
+    private static final Pattern SENTENCE_END = Pattern.compile("[.!?:;\"”’)\\]]$");
+    /**
+     * A sentence cut by the page end fills its last line; shorter lines are labels, dates and the like
+     * ("Note", "August 2026") that only happen to lack a full stop.
+     */
+    private static final int FULL_LINE = 40;
+    /** A table of contents line: "Introduction ........ 32". */
+    private static final Pattern TOC_ENTRY = Pattern.compile("(\\.\\s?){4,}\\s*\\d+\\s*$");
 
     private Paragraphs() {
     }
 
     /**
-     * A new paragraph starts on a new page, when the text moves up (next column), when the font size
+     * A new paragraph starts on a new page (unless a sentence goes on there), when the text moves up (next column), when the font size
      * changes, after a bold numbered heading line, after a gap larger than usual for that font size,
      * and at a first-line indent.
      */
@@ -45,8 +54,13 @@ final class Paragraphs {
     }
 
     private static boolean startsParagraph(Line previous, Line line, Line next, Map<Integer, Float> pitches) {
-        if (line.isTable() || previous.isTable()
-                || line.page() != previous.page() || line.y() <= previous.y() || line.sizeKey() != previous.sizeKey()) {
+        if (line.isTable() || previous.isTable()) {
+            return true;
+        }
+        if (line.page() != previous.page()) {
+            return !continuesOnNextPage(previous, line);
+        }
+        if (line.y() <= previous.y() || line.sizeKey() != previous.sizeKey()) {
             return true;
         }
         // A bold numbered heading of body size followed by regular text without extra space (LibreOffice
@@ -70,6 +84,23 @@ final class Paragraphs {
                 && line.x() > previous.x() + indent
                 && Math.abs(next.x() - previous.x()) < indent
                 && !LIST_ITEM.matcher(previous.text()).find();
+    }
+
+    /**
+     * A sentence cut by the page end: the first line of the next page goes on in the same style from the
+     * same left edge, and the last line of the page does not end a sentence. Page headers and footers
+     * are removed before, so the two lines follow each other.
+     * ponytail: a footnote at the bottom of the page sits between them and keeps them apart.
+     */
+    private static boolean continuesOnNextPage(Line previous, Line line) {
+        return line.page() == previous.page() + 1
+                && line.sizeKey() == previous.sizeKey()
+                && line.bold() == previous.bold()
+                && Math.abs(line.x() - previous.x()) < INDENT * line.fontSize()
+                && previous.text().strip().length() >= FULL_LINE
+                && !SENTENCE_END.matcher(previous.text().strip()).find()
+                && !TOC_ENTRY.matcher(previous.text()).find()
+                && !LIST_ITEM.matcher(line.text()).find();
     }
 
     /** Median distance between consecutive lines of the same font size, per font size. */

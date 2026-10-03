@@ -83,6 +83,48 @@ class PdfConverterParagraphsTest {
     }
 
     @Test
+    void sentenceCutByThePageEndStaysOneParagraph() {
+        List<Line> lines = List.of(
+                line(1, 72, 700, 11, "In analyzing risks, the agency SHALL consider all of the"),
+                line(1, 72, 714, 11, "expected direct and indirect results of an authentication"),
+                line(2, 72, 90, 11, "failure, including the impact of the failure."),
+                line(2, 72, 104, 11, "This continues the same paragraph."));
+
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo("""
+                In analyzing risks, the agency SHALL consider all of the
+                expected direct and indirect results of an authentication
+                failure, including the impact of the failure.
+                This continues the same paragraph.""");
+    }
+
+    @Test
+    void finishedSentenceOrListItemOnTheNextPageStartsAParagraph() {
+        List<Line> lines = List.of(
+                line(1, 72, 714, 11, "The page ends with a full sentence."),
+                line(2, 72, 90, 11, "A new paragraph starts the page"),
+                line(2, 72, 104, 11, "and ends without punctuation"),
+                line(3, 72, 90, 11, "- but the next page starts with a list item"),
+                line(3, 72, 104, 11, "Right to work checks for licence holders ............ 32"),
+                line(4, 72, 90, 11, "EU Settlement Scheme status granted and pending ..... 33"),
+                line(4, 72, 104, 11, "Note"),
+                line(5, 72, 90, 11, "Step Instruction Screen example"));
+
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo("""
+                The page ends with a full sentence.
+
+                A new paragraph starts the page
+                and ends without punctuation
+
+                - but the next page starts with a list item
+                Right to work checks for licence holders ............ 32
+
+                EU Settlement Scheme status granted and pending ..... 33
+                Note
+
+                Step Instruction Screen example""");
+    }
+
+    @Test
     void returnsEmptyStringForNoLines() {
         assertThat(PdfConverter.toMarkdown(List.of())).isEmpty();
     }
