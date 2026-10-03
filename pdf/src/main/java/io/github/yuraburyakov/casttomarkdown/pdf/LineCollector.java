@@ -68,7 +68,7 @@ final class LineCollector extends PDFTextStripper {
     private final Deque<Integer> mcids = new ArrayDeque<>();
     private final Map<TextPosition, Integer> cellOfPosition = new IdentityHashMap<>();
     private final Map<Integer, StringBuilder> cellText = new HashMap<>();
-    private final Map<Integer, TextPosition> lastCellPosition = new HashMap<>();
+    private final Map<Integer, LastPosition> lastCellPosition = new HashMap<>();
     /** URI links of the current page; empty on rotated pages. */
     private final List<LinkArea> links = new ArrayList<>();
     /** Target of the link the text is in now, {@code null} outside links; its text goes to {@link #linkText}. */
@@ -280,9 +280,10 @@ final class LineCollector extends PDFTextStripper {
     /** Characters come in reading order; a gap or a new line inside the cell becomes a space. */
     private void appendCellText(int cellId, TextPosition position) {
         StringBuilder cell = cellText.computeIfAbsent(cellId, k -> new StringBuilder());
-        TextPosition last = lastCellPosition.put(cellId, position);
-        if (last != null && (Math.abs(position.getYDirAdj() - last.getYDirAdj()) > last.getHeightDir()
-                || position.getXDirAdj() - (last.getXDirAdj() + last.getWidthDirAdj())
+        LastPosition last = lastCellPosition.put(cellId, new LastPosition(position.getXDirAdj(),
+                position.getYDirAdj(), position.getWidthDirAdj(), position.getHeightDir()));
+        if (last != null && (Math.abs(position.getYDirAdj() - last.y()) > last.height()
+                || position.getXDirAdj() - (last.x() + last.width())
                         > WORD_GAP * position.getFontSizeInPt())) {
             cell.append(' ');
         }
@@ -332,6 +333,13 @@ final class LineCollector extends PDFTextStripper {
         otherChars = 0;
         otherText.setLength(0);
         severalTables = false;
+    }
+
+    /**
+     * Where the previous character of a cell is: enough to decide on a space, without keeping the PDFBox
+     * {@link TextPosition} (and its font and text matrix) of every cell until the end of the document.
+     */
+    private record LastPosition(float x, float y, float width, float height) {
     }
 
     /** A link rectangle in the coordinates of {@link TextPosition}: y grows downwards. */
