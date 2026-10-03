@@ -1,10 +1,12 @@
 package io.github.yuraburyakov.casttomarkdown.pdf;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import io.github.yuraburyakov.casttomarkdown.CastToMarkdown;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -13,7 +15,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 
 /** One shared instance used from many threads, as in a Spring singleton bean. */
@@ -26,7 +27,6 @@ class CastToMarkdownConcurrencyTest {
     Path dir;
 
     @Test
-    @Timeout(60)
     void sharedInstanceGivesSameResultFromManyThreads() throws Exception {
         Path first = pdf("first.pdf", "Alpha");
         Path second = pdf("second.pdf", "Beta");
@@ -35,6 +35,14 @@ class CastToMarkdownConcurrencyTest {
         String expectedSecond = converter.convert(second).markdown();
         assertThat(expectedFirst).contains("Alpha page 3, paragraph two.").contains("\n\n");
 
+        // only the threads are timed: the first conversions above may build PDFBox's font cache, which
+        // takes about a minute on a fresh Windows machine with many system fonts
+        assertTimeoutPreemptively(Duration.ofSeconds(60),
+                () -> convertFromManyThreads(converter, first, second, expectedFirst, expectedSecond));
+    }
+
+    private static void convertFromManyThreads(CastToMarkdown converter, Path first, Path second,
+            String expectedFirst, String expectedSecond) throws Exception {
         ExecutorService pool = Executors.newFixedThreadPool(THREADS);
         try {
             CountDownLatch start = new CountDownLatch(1);
