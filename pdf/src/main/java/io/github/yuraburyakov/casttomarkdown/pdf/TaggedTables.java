@@ -44,6 +44,12 @@ final class TaggedTables {
     private final Set<COSBase> visited = Collections.newSetFromMap(new IdentityHashMap<>());
     /** Custom structure types of the document mapped to standard ones ({@code /RoleMap}). */
     private final Map<String, Object> roleMap;
+    /**
+     * Page number (from 1) by page dictionary. {@code PDPageTree.indexOf} walks the page tree on every
+     * call, a quarter of the conversion time of a 1000-page PDF with 1000 tables. Keyed by the
+     * dictionary: {@code getPage()} of a structure element returns a new {@code PDPage} every time.
+     */
+    private final Map<COSBase, Integer> pageNumbers = new IdentityHashMap<>();
 
     private TaggedTables(Map<String, Object> roleMap) {
         this.roleMap = roleMap;
@@ -55,8 +61,17 @@ final class TaggedTables {
             return new TaggedTables(Map.of());
         }
         TaggedTables result = new TaggedTables(root.getRoleMap());
-        result.findTables(document, root, null, 0);
+        int number = 1;
+        for (PDPage page : document.getPages()) {
+            result.pageNumbers.put(page.getCOSObject(), number++);
+        }
+        result.findTables(root, null, 0);
         return result;
+    }
+
+    /** Number of the page from 1, or 0 for a page that is not in the document. */
+    private int pageNumber(PDPage page) {
+        return pageNumbers.getOrDefault(page.getCOSObject(), 0);
     }
 
     /** Key of a piece of marked content: page number (from 1) and MCID. */
@@ -136,22 +151,22 @@ final class TaggedTables {
         return depth < MAX_DEPTH && visited.add(element.getCOSObject());
     }
 
-    private void findTables(PDDocument document, PDStructureNode node, PDPage inheritedPage, int depth) {
+    private void findTables(PDStructureNode node, PDPage inheritedPage, int depth) {
         for (Object kid : node.getKids()) {
             if (kid instanceof PDStructureElement element && enter(element, depth)) {
                 PDPage page = element.getPage() != null ? element.getPage() : inheritedPage;
                 if ("Table".equals(type(element))) {
-                    addTable(document, element, page, depth + 1);
+                    addTable(element, page, depth + 1);
                 } else {
-                    findTables(document, element, page, depth + 1);
+                    findTables(element, page, depth + 1);
                 }
             }
         }
     }
 
-    private void addTable(PDDocument document, PDStructureElement table, PDPage page, int depth) {
+    private void addTable(PDStructureElement table, PDPage page, int depth) {
         List<List<List<Long>>> rows = new ArrayList<>();
-        collectRows(document, table, page, rows, depth);
+        collectRows(table, page, rows, depth);
         int columns = rows.stream().mapToInt(List::size).max().orElse(0);
         if (rows.size() < MIN_ROWS || columns < MIN_COLUMNS) {
             return;
@@ -174,7 +189,7 @@ final class TaggedTables {
     }
 
     /** Rows can sit directly in the table or in {@code THead} / {@code TBody} / {@code TFoot}. */
-    private void collectRows(PDDocument document, PDStructureElement element, PDPage page,
+    private void collectRows(PDStructureElement element, PDPage page,
             List<List<List<Long>>> rows, int depth) {
         for (Object kid : element.getKids()) {
             if (kid instanceof PDStructureElement child && enter(child, depth)) {
@@ -185,31 +200,31 @@ final class TaggedTables {
                         if (cell instanceof PDStructureElement cellElement && enter(cellElement, depth + 1)) {
                             List<Long> keys = new ArrayList<>();
                             PDPage cellPage = cellElement.getPage() != null ? cellElement.getPage() : childPage;
-                            collectKeys(document, cellElement, cellPage, keys, depth + 2);
+                            collectKeys(cellElement, cellPage, keys, depth + 2);
                             cells.add(keys);
                         }
                     }
                     rows.add(cells);
                 } else {
-                    collectRows(document, child, childPage, rows, depth + 1);
+                    collectRows(child, childPage, rows, depth + 1);
                 }
             }
         }
     }
 
     /** All marked content of the element and its descendants, in structure order. */
-    private void collectKeys(PDDocument document, PDStructureElement element, PDPage page, List<Long> keys,
+    private void collectKeys(PDStructureElement element, PDPage page, List<Long> keys,
             int depth) {
         for (Object kid : element.getKids()) {
             if (kid instanceof Integer mcid && page != null) {
-                keys.add(key(document.getPages().indexOf(page) + 1, mcid));
+                keys.add(key(pageNumber(page), mcid));
             } else if (kid instanceof PDMarkedContentReference reference) {
                 PDPage referencePage = reference.getPage() != null ? reference.getPage() : page;
                 if (referencePage != null) {
-                    keys.add(key(document.getPages().indexOf(referencePage) + 1, reference.getMCID()));
+                    keys.add(key(pageNumber(referencePage), reference.getMCID()));
                 }
             } else if (kid instanceof PDStructureElement child && enter(child, depth)) {
-                collectKeys(document, child, child.getPage() != null ? child.getPage() : page, keys, depth + 1);
+                collectKeys(child, child.getPage() != null ? child.getPage() : page, keys, depth + 1);
             }
         }
     }
