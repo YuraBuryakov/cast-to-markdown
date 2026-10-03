@@ -64,10 +64,15 @@ final class TestPdf {
     }
 
     TestPdf line(float y, String text) {
+        return line(LEFT_MARGIN, y, text);
+    }
+
+    /** Untagged text starting at {@code x}, e.g. next to a table row on the same baseline. */
+    TestPdf line(float x, float y, String text) {
         if (pages.isEmpty()) {
             throw new IllegalStateException("Call page() before line()");
         }
-        pages.get(pages.size() - 1).add(new Line(y, text));
+        pages.get(pages.size() - 1).add(new Line(x, y, text));
         return this;
     }
 
@@ -131,7 +136,7 @@ final class TestPdf {
                         } else if (item instanceof Line line) {
                             content.beginText();
                             content.setFont(font, FONT_SIZE);
-                            content.newLineAtOffset(LEFT_MARGIN, line.y());
+                            content.newLineAtOffset(line.x(), line.y());
                             content.showText(line.text());
                             content.endText();
                         }
@@ -213,7 +218,7 @@ final class TestPdf {
     private record LinkLine(float y, String before, String linkText, String url, String after) implements Item {
     }
 
-    private record Line(float y, String text) implements Item {
+    private record Line(float x, float y, String text) implements Item {
     }
 
     private record Table(float y, String[][] rows) implements Item {

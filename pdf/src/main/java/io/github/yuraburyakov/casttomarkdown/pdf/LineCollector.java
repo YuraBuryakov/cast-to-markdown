@@ -77,6 +77,12 @@ final class LineCollector extends PDFTextStripper {
     private int lineTable = -1;
     private int tableChars;
     private int otherChars;
+    /**
+     * The line without the characters of table cells. Used for a line that mixes both: the cell text is
+     * already in the table, and the line would repeat it after the table (Chrome prints the address of
+     * a link inside a cell as untagged text).
+     */
+    private final StringBuilder otherText = new StringBuilder();
     private boolean severalTables;
 
     private LineCollector(TaggedTables tables) {
@@ -187,8 +193,9 @@ final class LineCollector extends PDFTextStripper {
                 severalTables |= lineTable >= 0 && lineTable != table;
                 lineTable = table;
                 tableChars++;
-            } else if (!position.getUnicode().isBlank()) {
-                otherChars++;
+            } else {
+                otherText.append(position.getUnicode());
+                otherChars += position.getUnicode().isBlank() ? 0 : 1;
             }
         }
         appendText(string, positions);
@@ -285,6 +292,7 @@ final class LineCollector extends PDFTextStripper {
     @Override
     protected void writeWordSeparator() {
         currentText().append(getWordSeparator());
+        otherText.append(getWordSeparator());
     }
 
     @Override
@@ -304,7 +312,8 @@ final class LineCollector extends PDFTextStripper {
 
     private void endLine() {
         closeLink();
-        String lineText = text.toString();
+        // strip: the separators of the left-out cell words would indent the line
+        String lineText = tableChars > 0 && otherChars > 0 ? otherText.toString().strip() : text.toString();
         if (first != null && !lineText.isBlank()) {
             PDRectangle box = getCurrentPage().getCropBox();
             float pageHeight = getCurrentPage().getRotation() % 180 == 0 ? box.getHeight() : box.getWidth();
@@ -321,6 +330,7 @@ final class LineCollector extends PDFTextStripper {
         lineTable = -1;
         tableChars = 0;
         otherChars = 0;
+        otherText.setLength(0);
         severalTables = false;
     }
 

@@ -65,6 +65,26 @@ class PdfTablesTest {
     }
 
     @Test
+    void untaggedTextOnARowLineDoesNotRepeatTheRow() throws IOException {
+        // Chrome prints the address of a link inside a cell as untagged text on the same line
+        Path pdf = TestPdf.builder()
+                .page()
+                .table(700,
+                        new String[] {"Acronym", "UUID"},
+                        new String[] {"Website", "RFC 9562"})
+                .line(400, 684, "(https://www.rfc-editor.org)")
+                .writeTo(dir.resolve("mixed-line.pdf"));
+
+        assertThat(converter.convert(pdf).markdown()).isEqualTo("""
+                | Acronym | UUID |
+                | --- | --- |
+                | Website | RFC 9562 |
+
+                (https://www.rfc-editor.org)
+                """);
+    }
+
+    @Test
     void dropsEmptyColumnsAndEscapesPipes() throws IOException {
         // NIST (Word): every row starts with an empty cell.
         Path pdf = TestPdf.builder()
