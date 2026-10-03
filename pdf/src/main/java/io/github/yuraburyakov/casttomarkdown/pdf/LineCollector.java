@@ -50,6 +50,13 @@ final class LineCollector extends PDFTextStripper {
     private final Map<Float, Integer> charsBySize = new HashMap<>();
     private int boldChars;
     private int chars;
+    /**
+     * Boldness of the font of the previous character: characters come in runs of one font.
+     * Only the last font, not a map of all fonts: PDFBox caches fonts softly, and holding all of them
+     * strongly raised the peak heap of a 76-page Word PDF from 25 to 31 MB.
+     */
+    private PDFont lastFont;
+    private boolean lastFontBold;
 
     private final TaggedTables tables;
     /** MCIDs of the open marked-content sequences; {@code -1} for a sequence without one. */
@@ -134,7 +141,11 @@ final class LineCollector extends PDFTextStripper {
             if (!position.getUnicode().isBlank()) {
                 charsBySize.merge(position.getFontSizeInPt(), 1, Integer::sum);
                 chars++;
-                boldChars += isBold(position.getFont()) ? 1 : 0;
+                if (position.getFont() != lastFont) {
+                    lastFont = position.getFont();
+                    lastFontBold = isBold(lastFont);
+                }
+                boldChars += lastFontBold ? 1 : 0;
             }
             Integer cell = cellOfPosition.get(position);
             if (cell != null) {

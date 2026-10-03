@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.documentinterchange.logicalstructure.PDMarkedContentReference;
@@ -22,6 +23,7 @@ final class TaggedTables {
     /** Smaller "tables" are mostly layout, not data; their text stays ordinary text. */
     private static final int MIN_ROWS = 2;
     private static final int MIN_COLUMNS = 2;
+    private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
     /** Cell ids of each table, row by row. */
     private final List<List<List<Integer>>> tables = new ArrayList<>();
@@ -76,7 +78,7 @@ final class TaggedTables {
             List<String> cells = new ArrayList<>();
             for (int cell : row) {
                 StringBuilder text = textByCell.get(cell);
-                cells.add(text == null ? "" : text.toString().strip().replaceAll("\\s+", " ").replace("|", "\\|"));
+                cells.add(text == null ? "" : WHITESPACE.matcher(text.toString().strip()).replaceAll(" ").replace("|", "\\|"));
             }
             columns = Math.max(columns, cells.size());
             rows.add(cells);
