@@ -23,3 +23,6 @@ desktop.ini
 
 # Logs
 *.log
+
+# Local sample documents and their Markdown (third-party files, not for the repository)
+/samples/
