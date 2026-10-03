@@ -2,7 +2,7 @@
 
 Java-native library that converts common document formats into clean, LLM/RAG-friendly Markdown through one consistent API, using mature Java parsers under the hood.
 
-> **Status:** early development (`0.1.0-SNAPSHOT`), not published to Maven Central yet. PDF: paragraphs, headings, bullet lists, headers/footers removed, tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports). DOCX: headings, lists, tables, footnotes.
+> **Status:** early development (`0.1.0-SNAPSHOT`), preparing the first release `0.1.0`; the API may still change before `1.0`. PDF: paragraphs, headings, bullet lists, headers/footers removed, tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports), web links. DOCX: headings, lists, tables, footnotes, links.
 
 ## Goals
 
@@ -10,6 +10,25 @@ Java-native library that converts common document formats into clean, LLM/RAG-fr
 - Runs embedded in the JVM: no Python, Docker or external service for the basic formats.
 - Markdown that keeps useful structure (headings, lists, links, simple tables) and drops obvious extraction noise.
 - Built on mature libraries (Apache PDFBox, Apache POI, jsoup) instead of custom parsers.
+
+## Installation
+
+After the first release, add `core` and the format modules you need (Java 17+):
+
+```xml
+<dependency>
+    <groupId>io.github.yuraburyakov</groupId>
+    <artifactId>cast-to-markdown-pdf</artifactId>
+    <version>0.1.0</version>
+</dependency>
+<dependency>
+    <groupId>io.github.yuraburyakov</groupId>
+    <artifactId>cast-to-markdown-docx</artifactId>
+    <version>0.1.0</version>
+</dependency>
+```
+
+Gradle: `implementation("io.github.yuraburyakov:cast-to-markdown-pdf:0.1.0")`. Each format module brings `cast-to-markdown-core` with it. It works on the class path and on the module path (module `io.github.yuraburyakov.casttomarkdown`).
 
 ## Usage
 
@@ -41,9 +60,13 @@ Errors are unchecked: `UnsupportedFormatException` for unsupported formats, `Doc
 
 Scanned PDFs (pages are images without a text layer) are not supported: the converter throws `UnsupportedFormatException` instead of returning empty Markdown. Run OCR first, for example with [OCRmyPDF](https://ocrmypdf.readthedocs.io/), which adds a text layer to the PDF; the result can then be converted.
 
-## Planned formats for v0.1
+## Formats
 
-PDF, DOCX, HTML, TXT, CSV.
+| Format | Version | Module |
+|---|---|---|
+| PDF (with a text layer) | 0.1 | `cast-to-markdown-pdf` |
+| DOCX (Word 2007+) | 0.1 | `cast-to-markdown-docx` |
+| HTML, TXT, CSV | planned | |
 
 ## Project structure
 

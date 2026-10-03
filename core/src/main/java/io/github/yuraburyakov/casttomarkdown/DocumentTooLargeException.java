@@ -8,6 +8,11 @@ public class DocumentTooLargeException extends DocumentConversionException {
 
     private static final long serialVersionUID = 1L;
 
+    /**
+     * Creates the exception.
+     *
+     * @param message what went wrong, with the document name
+     */
     public DocumentTooLargeException(String message) {
         super(message);
     }

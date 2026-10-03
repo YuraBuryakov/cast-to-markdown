@@ -26,6 +26,10 @@ import org.apache.poi.xwpf.usermodel.XWPFDocument;
  */
 public final class DocxConverter implements DocumentConverter {
 
+    /** Creates the converter; {@link java.util.ServiceLoader} calls it. */
+    public DocxConverter() {
+    }
+
     @Override
     public List<String> extensions() {
         return List.of("docx");

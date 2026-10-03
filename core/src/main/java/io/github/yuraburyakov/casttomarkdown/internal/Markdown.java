@@ -20,6 +20,9 @@ public final class Markdown {
     /**
      * Escapes {@code #} at the start of a line, which Markdown reads as a heading.
      * ponytail: other block markers ({@code >}, {@code -}, {@code *}, code fences) are not escaped yet (Q-API-02).
+     *
+     * @param line one line of text
+     * @return the line with a leading {@code #} escaped
      */
     public static String escape(String line) {
         return LEADING_HASH.matcher(line).replaceFirst("$1\\\\#");
@@ -29,6 +32,10 @@ public final class Markdown {
      * {@code [text](url)}; spaces around the text stay outside the brackets. Stays plain text when the
      * text is blank or is the address itself ({@code [url](url)} only repeats it), and for schemes other
      * than http, https and mailto: documents are untrusted, {@code javascript:} must not reach a renderer.
+     *
+     * @param text the link text
+     * @param url the link target; may be {@code null}
+     * @return the Markdown link, or {@code text} unchanged
      */
     public static String link(String text, String url) {
         String label = text.strip();
@@ -64,6 +71,9 @@ public final class Markdown {
     /**
      * Unifies line endings, removes trailing spaces, collapses runs of blank lines into one
      * and makes a non-empty result end with a single {@code \n}.
+     *
+     * @param text Markdown text
+     * @return the normalized text
      */
     public static String normalize(String text) {
         String[] lines = text.replace("\r\n", "\n").replace('\r', '\n').split("\n", -1);

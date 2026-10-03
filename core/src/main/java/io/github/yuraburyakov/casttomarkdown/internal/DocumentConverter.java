@@ -17,12 +17,18 @@ import java.util.List;
  */
 public interface DocumentConverter {
 
-    /** File extensions this converter handles: lower case, without the dot, e.g. {@code "pdf"}. */
+    /**
+     * File extensions this converter handles.
+     *
+     * @return lower case extensions without the dot, e.g. {@code "pdf"}
+     */
     List<String> extensions();
 
     /**
      * Converts the file into Markdown.
      *
+     * @param path the file
+     * @return the normalized Markdown
      * @throws DocumentConversionException if the file cannot be read or parsed
      */
     String convert(Path path);
@@ -31,7 +37,9 @@ public interface DocumentConverter {
      * Converts the document read from {@code input} into Markdown. Reads the stream to the end
      * and does not close it.
      *
+     * @param input the document content; read, not closed
      * @param name document name for error messages
+     * @return the normalized Markdown
      * @throws DocumentConversionException if the stream cannot be read or the document cannot be parsed
      */
     String convert(InputStream input, String name);

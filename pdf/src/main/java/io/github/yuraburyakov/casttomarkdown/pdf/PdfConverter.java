@@ -38,6 +38,10 @@ import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
  */
 public final class PdfConverter implements DocumentConverter {
 
+    /** Creates the converter; {@link java.util.ServiceLoader} calls it. */
+    public PdfConverter() {
+    }
+
     @Override
     public List<String> extensions() {
         return List.of("pdf");

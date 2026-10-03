@@ -50,6 +50,8 @@ public final class CastToMarkdown {
 
     /**
      * Creates a converter with the default settings; the same as {@code builder().build()}.
+     *
+     * @return an immutable, thread-safe converter
      */
     public static CastToMarkdown create() {
         return builder().build();
@@ -63,6 +65,8 @@ public final class CastToMarkdown {
      *         .maxDocumentSize(20 * 1024 * 1024)
      *         .build();
      * }</pre>
+     *
+     * @return a new builder with the default settings
      */
     public static Builder builder() {
         return new Builder();
@@ -102,7 +106,11 @@ public final class CastToMarkdown {
             return this;
         }
 
-        /** Creates an immutable, thread-safe converter with these settings. */
+        /**
+         * Creates a converter with these settings.
+         *
+         * @return an immutable, thread-safe converter
+         */
         public CastToMarkdown build() {
             return new CastToMarkdown(this);
         }

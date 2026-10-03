@@ -17,6 +17,8 @@ public final class PreparedDocument {
     /**
      * Returns the document as Markdown. Never {@code null}; empty if the document has no text.
      * Lines are separated by {@code \n}; a non-empty result ends with a single {@code \n}.
+     *
+     * @return the Markdown text
      */
     public String markdown() {
         return markdown;
