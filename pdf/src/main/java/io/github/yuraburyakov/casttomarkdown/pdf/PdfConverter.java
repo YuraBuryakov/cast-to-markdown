@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 import org.apache.pdfbox.Loader;
@@ -120,6 +121,7 @@ public final class PdfConverter implements DocumentConverter {
     static String toMarkdown(List<Line> lines, List<String> tables) {
         List<List<Line>> paragraphs = Paragraphs.group(PageFurniture.remove(Lists.attachMarkers(lines)));
         int[] levels = Headings.levels(paragraphs);
+        Set<String> words = Hyphens.words(lines);
 
         StringJoiner out = new StringJoiner("\n\n");
         for (int i = 0; i < paragraphs.size(); i++) {
@@ -129,7 +131,8 @@ public final class PdfConverter implements DocumentConverter {
             } else if (levels[i] > 0) {
                 out.add("#".repeat(levels[i]) + " " + Markdown.escape(Headings.text(paragraph)));
             } else {
-                out.add(paragraph.stream().map(line -> Lists.markdown(Markdown.escape(line.text()))).collect(Collectors.joining("\n")));
+                List<String> texts = Hyphens.join(paragraph.stream().map(Line::text).toList(), words);
+                out.add(texts.stream().map(text -> Lists.markdown(Markdown.escape(text))).collect(Collectors.joining("\n")));
             }
         }
         return out.toString();
