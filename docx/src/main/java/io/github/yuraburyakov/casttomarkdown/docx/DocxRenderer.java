@@ -3,19 +3,24 @@ package io.github.yuraburyakov.casttomarkdown.docx;
 import io.github.yuraburyakov.casttomarkdown.internal.Markdown;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.IRunElement;
+import org.apache.poi.xwpf.usermodel.XWPFAbstractNum;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFFootnote;
 import org.apache.poi.xwpf.usermodel.XWPFHyperlink;
 import org.apache.poi.xwpf.usermodel.XWPFHyperlinkRun;
+import org.apache.poi.xwpf.usermodel.XWPFNumbering;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.apache.poi.xwpf.usermodel.XWPFSDT;
@@ -24,6 +29,7 @@ import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTHyperlink;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTLvl;
 
 /** Renders one DOCX document; a new instance for every document. */
 final class DocxRenderer {
@@ -34,13 +40,20 @@ final class DocxRenderer {
     private static final Pattern LINE_BREAKS = Pattern.compile("\\s*\\n\\s*");
     private static final Pattern HEADING_STYLE = Pattern.compile("(?i)^heading\\s*(\\d)$");
     private static final String TITLE_STYLE = "title";
+    private static final int NOT_STARTED = Integer.MIN_VALUE;
     /** Spaces per list nesting level: enough for both "- " and "10. " parents in CommonMark. */
     private static final String LIST_INDENT = "    ";
 
     private final XWPFDocument document;
     private final StringBuilder out = new StringBuilder();
-    /** Current item number per list ({@code numId}) and nesting level. */
+    /**
+     * Last item number per list definition ({@code abstractNumId}) and nesting level. By definition, not
+     * by list instance ({@code numId}): instances of one definition go on numbering one list, unless an
+     * instance restarts it with a start override.
+     */
     private final Map<BigInteger, int[]> listCounters = new HashMap<>();
+    /** List instances already seen: a start override applies to the first item of an instance. */
+    private final Set<BigInteger> startedLists = new HashSet<>();
     /** Footnote ids in order of first reference. */
     private final List<BigInteger> footnotes = new ArrayList<>();
     private boolean lastWasListItem;
@@ -77,6 +90,30 @@ final class DocxRenderer {
         }
     }
 
+    /** The list definition ({@code abstractNumId}) of a list instance; the instance itself if it has none. */
+    private BigInteger definitionOf(BigInteger numId) {
+        XWPFNumbering numbering = document.getNumbering();
+        BigInteger definition = numbering == null ? null : numbering.getAbstractNumID(numId);
+        return definition != null ? definition : numId;
+    }
+
+    /**
+     * The first number of a level ({@code w:start}), 1 when not set.
+     * ponytail: a whole level redefined in a {@code w:lvlOverride} is not read, only its start override.
+     */
+    private int start(BigInteger definition, int level) {
+        XWPFNumbering numbering = document.getNumbering();
+        XWPFAbstractNum abstractNum = numbering == null ? null : numbering.getAbstractNum(definition);
+        if (abstractNum != null) {
+            for (CTLvl lvl : abstractNum.getCTAbstractNum().getLvlList()) {
+                if (lvl.getIlvl() != null && lvl.getIlvl().intValue() == level && lvl.getStart() != null) {
+                    return lvl.getStart().getVal().intValue();
+                }
+            }
+        }
+        return 1;
+    }
+
     private void listItem(XWPFParagraph paragraph, String text) {
         BigInteger ilvl = paragraph.getNumIlvl();
         int level = ilvl == null ? 0 : Math.min(ilvl.intValue(), 8);
@@ -86,10 +123,21 @@ final class DocxRenderer {
         } else {
             // Markdown numbers a list from its first number, so the document's own numbering is kept
             // even when the list continues after a heading.
-            int[] counters = listCounters.computeIfAbsent(paragraph.getNumID(), id -> new int[9]);
+            BigInteger list = definitionOf(paragraph.getNumID());
+            int[] counters = listCounters.computeIfAbsent(list, id -> {
+                int[] fresh = new int[9];
+                Arrays.fill(fresh, NOT_STARTED);
+                return fresh;
+            });
+            BigInteger override = startedLists.add(paragraph.getNumID()) ? paragraph.getNumStartOverride() : null;
+            if (override != null) {
+                counters[level] = override.intValue() - 1;
+            } else if (counters[level] == NOT_STARTED) {
+                counters[level] = start(list, level) - 1;
+            }
             counters[level]++;
             for (int deeper = level + 1; deeper < counters.length; deeper++) {
-                counters[deeper] = 0;
+                counters[deeper] = NOT_STARTED;
             }
             marker = counters[level] + ".";
         }

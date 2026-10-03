@@ -16,6 +16,7 @@ import org.apache.xmlbeans.impl.xb.xmlschema.SpaceAttribute;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTAbstractNum;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTHyperlink;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTLvl;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTNumLvl;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTText;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STNumberFormat;
 
@@ -55,6 +56,27 @@ final class TestDocx {
             numberedList = list(STNumberFormat.DECIMAL);
         }
         return item(numberedList, level, text);
+    }
+
+    /** Numbered items from now on belong to a new list whose levels start at {@code start}. */
+    TestDocx newNumberedList(int start) {
+        numberedList = list(STNumberFormat.DECIMAL, BigInteger.valueOf(10 + start), start);
+        return this;
+    }
+
+    /**
+     * Numbered items from now on belong to a new list instance ({@code w:num}) of the same definition,
+     * as Word writes "Restart numbering" ({@code startOverride}) or a pasted list ({@code null}: no override).
+     */
+    TestDocx newNumberedInstance(Integer startOverride) {
+        XWPFNumbering numbering = document.getNumbering();
+        numberedList = numbering.addNum(numbering.getAbstractNumID(numberedList));
+        if (startOverride != null) {
+            CTNumLvl override = numbering.getNum(numberedList).getCTNum().addNewLvlOverride();
+            override.setIlvl(BigInteger.ZERO);
+            override.addNewStartOverride().setVal(BigInteger.valueOf(startOverride));
+        }
+        return this;
     }
 
     /** The first row is the header. */
@@ -133,15 +155,18 @@ final class TestDocx {
 
     /** A list definition with the same number format on three levels. */
     private BigInteger list(STNumberFormat.Enum format) {
+        return list(format, BigInteger.valueOf(format == STNumberFormat.BULLET ? 1 : 2), 1);
+    }
+
+    private BigInteger list(STNumberFormat.Enum format, BigInteger abstractId, int start) {
         XWPFNumbering numbering = document.getNumbering() != null ? document.getNumbering() : document.createNumbering();
         CTAbstractNum definition = CTAbstractNum.Factory.newInstance();
-        BigInteger abstractId = BigInteger.valueOf(format == STNumberFormat.BULLET ? 1 : 2);
         definition.setAbstractNumId(abstractId);
         for (int level = 0; level < 3; level++) {
             CTLvl lvl = definition.addNewLvl();
             lvl.setIlvl(BigInteger.valueOf(level));
             lvl.addNewNumFmt().setVal(format);
-            lvl.addNewStart().setVal(BigInteger.ONE);
+            lvl.addNewStart().setVal(BigInteger.valueOf(start));
         }
         numbering.addAbstractNum(new XWPFAbstractNum(definition, numbering));
         return numbering.addNum(abstractId);

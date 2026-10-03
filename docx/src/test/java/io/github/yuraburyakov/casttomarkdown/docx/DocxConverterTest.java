@@ -92,6 +92,38 @@ class DocxConverterTest {
     }
 
     @Test
+    void numberingFollowsStartValuesOverridesAndSharedDefinitions() throws IOException {
+        byte[] docx = TestDocx.builder()
+                .newNumberedList(5)
+                .numbered(0, "Starts at five")
+                .numbered(1, "nested starts at five too")
+                .numbered(0, "Six")
+                .paragraph("Text between.")
+                .newNumberedInstance(null)
+                .numbered(0, "Another w:num of the same list goes on")
+                .paragraph("Restart numbering:")
+                .newNumberedInstance(3)
+                .numbered(0, "Override starts at three")
+                .numbered(0, "Four")
+                .bytes();
+
+        assertThat(convert(docx)).isEqualTo("""
+                5. Starts at five
+                    5. nested starts at five too
+                6. Six
+
+                Text between.
+
+                7. Another w:num of the same list goes on
+
+                Restart numbering:
+
+                3. Override starts at three
+                4. Four
+                """);
+    }
+
+    @Test
     void tableBecomesMarkdownTable() throws IOException {
         byte[] docx = TestDocx.builder()
                 .table(new String[] {"Level", "Impact"},
