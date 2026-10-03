@@ -14,6 +14,8 @@ import java.util.StringJoiner;
 import java.util.stream.Collectors;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.io.RandomAccessRead;
+import org.apache.pdfbox.io.RandomAccessReadBufferedFile;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDResources;
@@ -50,9 +52,17 @@ public final class PdfConverter implements DocumentConverter {
         return List.of("pdf");
     }
 
+    /**
+     * The file is opened here, not by {@code Loader.loadPDF(File)}: that closes it only on an
+     * {@code IOException}, and damaged PDFs also fail with unchecked exceptions while loading.
+     */
     @Override
     public String convert(Path path) {
-        return convert(() -> Loader.loadPDF(path.toFile()), path.toString());
+        try (RandomAccessRead file = new RandomAccessReadBufferedFile(path.toFile())) {
+            return convert(() -> Loader.loadPDF(file), path.toString());
+        } catch (IOException e) {
+            throw new DocumentConversionException("Cannot read PDF: " + path, e);
+        }
     }
 
     /**
@@ -81,6 +91,12 @@ public final class PdfConverter implements DocumentConverter {
         } catch (InvalidPasswordException e) {
             throw new DocumentConversionException("PDF is encrypted: " + name, e);
         } catch (IOException e) {
+            throw new DocumentConversionException("Cannot read PDF: " + name, e);
+        } catch (DocumentConversionException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            // damaged files make PDFBox fail with unchecked exceptions too: 30 of 750 randomly damaged
+            // copies of real PDFs gave IllegalArgumentException ("illegal values" of a matrix) or NPE
             throw new DocumentConversionException("Cannot read PDF: " + name, e);
         }
     }
