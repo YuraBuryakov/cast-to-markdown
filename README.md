@@ -27,7 +27,7 @@ try (InputStream in = upload.getInputStream()) {
 }
 ```
 
-Settings: `create()` uses the defaults, `builder()` changes them. Documents larger than the limit (100 MiB by default) are rejected with `DocumentTooLargeException` before parsing; a stream is read only up to the limit. The whole document is in memory while it is converted, so with parallel calls plan for about *limit × threads*.
+Settings: `create()` uses the defaults, `builder()` changes them. Documents larger than the limit (100 MiB by default) are rejected with `DocumentTooLargeException` before parsing; a stream is read only up to the limit. The limit is on the source size, not on memory: parsers build an object model of the document, so the heap a conversion needs depends on the format and content and may be many times the file size (a 1.7 MB DOCX with 7.6 MB of text XML needed about 100 MB). A file is read from disk as needed; a stream is read into memory in full first.
 
 ```java
 CastToMarkdown converter = CastToMarkdown.builder()

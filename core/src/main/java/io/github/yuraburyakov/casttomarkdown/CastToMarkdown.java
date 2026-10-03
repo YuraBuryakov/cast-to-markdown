@@ -78,10 +78,15 @@ public final class CastToMarkdown {
         }
 
         /**
-         * Largest document, in bytes, that is converted. Default: 100 MiB.
+         * Largest source document, in bytes, that is accepted. Default: 100 MiB.
          * A larger file or stream is rejected with {@link DocumentTooLargeException}; a stream is read
-         * only up to the limit. The whole document is held in memory while it is converted, so with
-         * parallel calls the memory need is about the limit times the number of threads.
+         * only up to the limit.
+         *
+         * <p>This limits the size of the source, not the heap a conversion uses. Memory use depends on
+         * the format and the content and may be many times the source size: the parsers build an object
+         * model of the document. For example, a 1.7 MB DOCX with 7.6 MB of text XML needed about 100 MB
+         * of heap. A file ({@link CastToMarkdown#convert(Path)}) is read from disk as the parser needs it;
+         * a stream ({@link CastToMarkdown#convert(InputStream, String)}) is first read into memory in full.
          *
          * @param bytes the limit; {@link Long#MAX_VALUE} for no limit
          * @return this builder
@@ -126,7 +131,8 @@ public final class CastToMarkdown {
      * ({@code MultipartFile.getInputStream()} and {@code getOriginalFilename()} in Spring).
      *
      * <p>The stream is read to the end but <b>not closed</b>: the caller owns it and closes it,
-     * also when this method throws. The whole document is held in memory while it is converted.
+     * also when this method throws. The content is read into memory in full before it is parsed;
+     * see {@link Builder#maxDocumentSize(long)} for memory use.
      *
      * <pre>{@code
      * try (InputStream in = upload.getInputStream()) {
