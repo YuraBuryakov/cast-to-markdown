@@ -1,10 +1,14 @@
 package io.github.yuraburyakov.casttomarkdown.pdf;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
+import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.documentinterchange.logicalstructure.PDMarkedContentReference;
@@ -23,6 +27,11 @@ final class TaggedTables {
     /** Smaller "tables" are mostly layout, not data; their text stays ordinary text. */
     private static final int MIN_ROWS = 2;
     private static final int MIN_COLUMNS = 2;
+    /**
+     * Structure trees of real documents are 10-20 levels deep. The limit keeps a hostile tree from
+     * overflowing the stack; deeper content is not searched for tables.
+     */
+    private static final int MAX_DEPTH = 100;
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
     /** Cell ids of each table, row by row. */
@@ -31,16 +40,22 @@ final class TaggedTables {
     private final Map<Long, Integer> cellByKey = new HashMap<>();
     /** Table index of each cell id. */
     private final List<Integer> tableByCell = new ArrayList<>();
+    /** Elements already walked: a hostile tree can share or loop back to elements. */
+    private final Set<COSBase> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+    /** Custom structure types of the document mapped to standard ones ({@code /RoleMap}). */
+    private final Map<String, Object> roleMap;
 
-    private TaggedTables() {
+    private TaggedTables(Map<String, Object> roleMap) {
+        this.roleMap = roleMap;
     }
 
     static TaggedTables read(PDDocument document) {
-        TaggedTables result = new TaggedTables();
         var root = document.getDocumentCatalog().getStructureTreeRoot();
-        if (root != null) {
-            result.findTables(document, root, null);
+        if (root == null) {
+            return new TaggedTables(Map.of());
         }
+        TaggedTables result = new TaggedTables(root.getRoleMap());
+        result.findTables(document, root, null, 0);
         return result;
     }
 
@@ -106,22 +121,37 @@ final class TaggedTables {
         return markdown.toString().stripTrailing();
     }
 
-    private void findTables(PDDocument document, PDStructureNode node, PDPage inheritedPage) {
+    /**
+     * The standard structure type, one step through the role map as PDFBox does. Not
+     * {@link PDStructureElement#getStandardStructureType()}: it climbs the parent links to the root
+     * on every call, and loops forever when a hostile file makes them a cycle.
+     */
+    private String type(PDStructureElement element) {
+        String type = element.getStructureType();
+        return roleMap.get(type) instanceof String standard ? standard : type;
+    }
+
+    /** Whether to walk into the element: not too deep and not walked before. */
+    private boolean enter(PDStructureElement element, int depth) {
+        return depth < MAX_DEPTH && visited.add(element.getCOSObject());
+    }
+
+    private void findTables(PDDocument document, PDStructureNode node, PDPage inheritedPage, int depth) {
         for (Object kid : node.getKids()) {
-            if (kid instanceof PDStructureElement element) {
+            if (kid instanceof PDStructureElement element && enter(element, depth)) {
                 PDPage page = element.getPage() != null ? element.getPage() : inheritedPage;
-                if ("Table".equals(element.getStandardStructureType())) {
-                    addTable(document, element, page);
+                if ("Table".equals(type(element))) {
+                    addTable(document, element, page, depth + 1);
                 } else {
-                    findTables(document, element, page);
+                    findTables(document, element, page, depth + 1);
                 }
             }
         }
     }
 
-    private void addTable(PDDocument document, PDStructureElement table, PDPage page) {
+    private void addTable(PDDocument document, PDStructureElement table, PDPage page, int depth) {
         List<List<List<Long>>> rows = new ArrayList<>();
-        collectRows(document, table, page, rows);
+        collectRows(document, table, page, rows, depth);
         int columns = rows.stream().mapToInt(List::size).max().orElse(0);
         if (rows.size() < MIN_ROWS || columns < MIN_COLUMNS) {
             return;
@@ -144,31 +174,32 @@ final class TaggedTables {
     }
 
     /** Rows can sit directly in the table or in {@code THead} / {@code TBody} / {@code TFoot}. */
-    private static void collectRows(PDDocument document, PDStructureElement element, PDPage page,
-            List<List<List<Long>>> rows) {
+    private void collectRows(PDDocument document, PDStructureElement element, PDPage page,
+            List<List<List<Long>>> rows, int depth) {
         for (Object kid : element.getKids()) {
-            if (kid instanceof PDStructureElement child) {
+            if (kid instanceof PDStructureElement child && enter(child, depth)) {
                 PDPage childPage = child.getPage() != null ? child.getPage() : page;
-                if ("TR".equals(child.getStandardStructureType())) {
+                if ("TR".equals(type(child))) {
                     List<List<Long>> cells = new ArrayList<>();
                     for (Object cell : child.getKids()) {
-                        if (cell instanceof PDStructureElement cellElement) {
+                        if (cell instanceof PDStructureElement cellElement && enter(cellElement, depth + 1)) {
                             List<Long> keys = new ArrayList<>();
                             PDPage cellPage = cellElement.getPage() != null ? cellElement.getPage() : childPage;
-                            collectKeys(document, cellElement, cellPage, keys);
+                            collectKeys(document, cellElement, cellPage, keys, depth + 2);
                             cells.add(keys);
                         }
                     }
                     rows.add(cells);
                 } else {
-                    collectRows(document, child, childPage, rows);
+                    collectRows(document, child, childPage, rows, depth + 1);
                 }
             }
         }
     }
 
     /** All marked content of the element and its descendants, in structure order. */
-    private static void collectKeys(PDDocument document, PDStructureElement element, PDPage page, List<Long> keys) {
+    private void collectKeys(PDDocument document, PDStructureElement element, PDPage page, List<Long> keys,
+            int depth) {
         for (Object kid : element.getKids()) {
             if (kid instanceof Integer mcid && page != null) {
                 keys.add(key(document.getPages().indexOf(page) + 1, mcid));
@@ -177,8 +208,8 @@ final class TaggedTables {
                 if (referencePage != null) {
                     keys.add(key(document.getPages().indexOf(referencePage) + 1, reference.getMCID()));
                 }
-            } else if (kid instanceof PDStructureElement child) {
-                collectKeys(document, child, child.getPage() != null ? child.getPage() : page, keys);
+            } else if (kid instanceof PDStructureElement child && enter(child, depth)) {
+                collectKeys(document, child, child.getPage() != null ? child.getPage() : page, keys, depth + 1);
             }
         }
     }
