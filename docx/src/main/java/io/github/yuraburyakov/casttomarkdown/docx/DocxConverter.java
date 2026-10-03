@@ -19,7 +19,8 @@ import org.apache.poi.xwpf.usermodel.XWPFDocument;
  *
  * <p>Output: headings from the paragraph styles ({@code Title}, {@code Heading 1..6}), paragraphs,
  * bullet and numbered lists with nesting and the document's numbering, tables as Markdown tables,
- * footnotes as Markdown footnotes. Running headers and footers are not part of the body and are left out.
+ * footnotes as Markdown footnotes, external links as {@code [text](url)}. Running headers and footers are
+ * not part of the body and are left out.
  * Bold text without a heading style is not a heading: in real documents that is often form labels.
  *
  * <p>Stateless and thread-safe: every call works on its own document.

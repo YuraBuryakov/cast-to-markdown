@@ -85,7 +85,7 @@ Scanned PDFs (pages are images without a text layer) are not supported: the conv
 - PDF: a paragraph split by a footnote at the bottom of the page stays split in two; a word split by a hyphen at a line end is joined only when the document writes it elsewhere, with or without the hyphen; nested lists are not detected; tables of untagged PDFs (LaTeX, many web-to-PDF tools) stay plain text.
 - PDF: running headers and footers are recognized when they repeat on at least three pages; in one- or two-page documents they stay in the text.
 - Tables: merged cells are not spread over the columns they span; links inside PDF tables stay plain text.
-- Markdown escaping covers block syntax at the start of a line (`#`, `>`, code fences, lines of only `-`, `=`, `*`, `_`). List markers (`-`, `*`, `1.`) and inline syntax (`*`, `_`, `` ` ``, `[`, `<`) are kept as they are: PDFs write real lists as plain text.
+- Markdown escaping covers block syntax at the start of a line (`#`, `>`, code fences, rule and heading-underline lines such as `---`, `***`, `===`, a lone `-` or `*`). List markers (`-`, `*`, `1.`) and inline syntax (`*`, `_`, `` ` ``, `[`, `<`) are kept as they are: PDFs write real lists as plain text.
 - The first PDF that uses fonts it does not embed makes PDFBox scan the system fonts once and save a font cache (`.pdfbox.cache` in the user home); with hundreds of fonts, as on Windows, that takes about a minute. Later conversions and later runs reuse the cache.
 - A conversion has no time limit. For untrusted uploads run it in your own executor with a timeout, as with any parser.
 
