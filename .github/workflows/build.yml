@@ -8,6 +8,10 @@ jobs:
   verify:
     name: mvn verify (${{ matrix.os }}, JDK ${{ matrix.java }})
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        # PowerShell, the Windows default, splits -Dgpg.skip into -Dgpg and .skip
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
