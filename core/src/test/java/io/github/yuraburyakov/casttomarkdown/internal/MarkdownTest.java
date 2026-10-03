@@ -75,6 +75,16 @@ class MarkdownTest {
     }
 
     @Test
+    void controlCharactersInAHostileAddressCannotBreakTheDocument() {
+        // a PDF link annotation is any string: "\n\n# heading" in it added a heading to the Markdown
+        assertThat(Markdown.link("text", "https://example.com/a\n\n# injected heading"))
+                .isEqualTo("[text](<https://example.com/a%0A%0A# injected heading>)");
+        assertThat(Markdown.link("text", "https://example.com/a\rb\u0000c\td"))
+                .isEqualTo("[text](https://example.com/a%0Db%00c%09d)");
+        assertThat(Markdown.link("two\nlines", "https://example.com/")).isEqualTo("[two lines](https://example.com/)");
+    }
+
+    @Test
     void pieceOfAnAddressSplitOverLinesStaysText() {
         // RFC 9562 and Chrome print long addresses over two lines, each line with its own link box
         assertThat(Markdown.link("https://", "https://github.com/chilts/sid")).isEqualTo("https://");

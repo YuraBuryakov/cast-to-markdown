@@ -1,5 +1,6 @@
 package io.github.yuraburyakov.casttomarkdown.internal;
 
+import java.nio.charset.StandardCharsets;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -18,6 +19,8 @@ public final class Markdown {
     /** A link target with these characters is written as {@code <url>}, which CommonMark reads as one target. */
     private static final Pattern NEEDS_ANGLE_BRACKETS = Pattern.compile("[\\s()<>]");
     private static final Pattern TRAILING_SPACE = Pattern.compile("(\\s|%20)+$");
+    /** Line breaks inside link text: a blank line there would end the paragraph. */
+    private static final Pattern LINE_BREAKS = Pattern.compile("[\\r\\n]+");
     private static final Pattern ADDRESS_LIKE = Pattern.compile("/|^www\\.|://");
     /** Sentence punctuation after an address in running text: "see https://example.org/x." */
     private static final Pattern ADDRESS_END_PUNCTUATION = Pattern.compile("[.,;:)]+$");
@@ -61,12 +64,31 @@ public final class Markdown {
                 || ("mailto:" + label).equalsIgnoreCase(target) || isPartOfAddress(label, target)) {
             return text;
         }
+        target = encodeControlCharacters(target);
         if (NEEDS_ANGLE_BRACKETS.matcher(target).find()) {
             target = "<" + target.replace("<", "%3C").replace(">", "%3E") + ">";
         }
         int start = text.indexOf(label);
-        return text.substring(0, start) + "[" + label.replace("[", "\\[").replace("]", "\\]") + "](" + target + ")"
-                + text.substring(start + label.length());
+        String shown = LINE_BREAKS.matcher(label).replaceAll(" ").replace("[", "\\[").replace("]", "\\]");
+        return text.substring(0, start) + "[" + shown + "](" + target + ")" + text.substring(start + label.length());
+    }
+
+    /**
+     * Percent-encodes control characters of a link target. A line break in an address taken from an
+     * untrusted document ended the link, and "\n\n# heading" in it added a heading to the Markdown.
+     */
+    private static String encodeControlCharacters(String target) {
+        StringBuilder encoded = new StringBuilder(target.length());
+        for (char c : target.toCharArray()) {
+            if (Character.isISOControl(c)) {
+                for (byte b : String.valueOf(c).getBytes(StandardCharsets.UTF_8)) {
+                    encoded.append('%').append(String.format("%02X", b & 0xFF));
+                }
+            } else {
+                encoded.append(c);
+            }
+        }
+        return encoded.toString();
     }
 
     /**
