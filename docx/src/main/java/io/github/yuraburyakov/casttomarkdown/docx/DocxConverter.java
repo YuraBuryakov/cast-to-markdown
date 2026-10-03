@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.List;
 import org.apache.poi.EncryptedDocumentException;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.openxml4j.exceptions.OLE2NotOfficeXmlFileException;
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.openxml4j.opc.PackageAccess;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
@@ -76,8 +77,10 @@ public final class DocxConverter implements DocumentConverter {
     private static String render(Source source, String name) {
         try (XWPFDocument document = source.open()) {
             return new DocxRenderer(document).render();
-        } catch (EncryptedDocumentException e) {
-            throw new DocumentConversionException("DOCX is encrypted: " + name, e);
+        } catch (EncryptedDocumentException | OLE2NotOfficeXmlFileException e) {
+            // a password-protected DOCX is an OLE2 container, like an old .doc renamed to .docx
+            throw new DocumentConversionException(
+                    "DOCX is password-protected, or is an old Word .doc file, which is not supported: " + name, e);
         } catch (IOException | InvalidFormatException | RuntimeException e) {
             throw new DocumentConversionException("Cannot read DOCX: " + name, e);
         }

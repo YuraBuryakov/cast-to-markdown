@@ -9,11 +9,16 @@ import io.github.yuraburyakov.casttomarkdown.UnsupportedFormatException;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import org.apache.poi.poifs.crypt.EncryptionInfo;
+import org.apache.poi.poifs.crypt.EncryptionMode;
+import org.apache.poi.poifs.crypt.Encryptor;
+import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -249,6 +254,30 @@ class DocxConverterTest {
         Path docx = Files.write(dir.resolve("letter.docx"), TestDocx.builder().paragraph("Dear Doctor").bytes());
 
         assertThat(converter.convert(docx).markdown()).isEqualTo("Dear Doctor\n");
+    }
+
+    @Test
+    void passwordProtectedDocxGetsAClearMessage() throws Exception {
+        // Word encrypts a DOCX into an OLE2 container; POI then reports "OLE2 Format", not encryption
+        byte[] plain = TestDocx.builder().paragraph("secret").bytes();
+        Path docx = dir.resolve("protected.docx");
+        try (POIFSFileSystem fs = new POIFSFileSystem()) {
+            Encryptor encryptor = new EncryptionInfo(EncryptionMode.agile).getEncryptor();
+            encryptor.confirmPassword("password");
+            try (OutputStream out = encryptor.getDataStream(fs)) {
+                out.write(plain);
+            }
+            try (OutputStream out = Files.newOutputStream(docx)) {
+                fs.writeFilesystem(out);
+            }
+        }
+
+        assertThatThrownBy(() -> converter.convert(docx))
+                .isInstanceOf(DocumentConversionException.class)
+                .hasMessageContaining("password-protected");
+        assertThatThrownBy(() -> converter.convert(new ByteArrayInputStream(Files.readAllBytes(docx)), "protected.docx"))
+                .isInstanceOf(DocumentConversionException.class)
+                .hasMessageContaining("password-protected");
     }
 
     @Test
