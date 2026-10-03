@@ -6,11 +6,13 @@ on:
 
 jobs:
   verify:
-    name: mvn verify (JDK ${{ matrix.java }})
-    runs-on: ubuntu-latest
+    name: mvn verify (${{ matrix.os }}, JDK ${{ matrix.java }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        # Windows too: file handling and line endings differ, and the project is developed there
+        os: [ ubuntu-latest, windows-latest ]
         # 17 is the minimum the library supports, 21 the current LTS
         java: [ '17', '21' ]
     steps:
