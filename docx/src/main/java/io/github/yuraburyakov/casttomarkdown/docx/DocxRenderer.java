@@ -143,7 +143,7 @@ final class DocxRenderer {
         }
         String indent = LIST_INDENT.repeat(level);
         String continuation = "\n" + indent + " ".repeat(marker.length() + 1);
-        block(indent + marker + " " + text.replace("\n", continuation), true);
+        block(indent + marker + " " + escapeLines(text).replace("\n", continuation), true);
     }
 
     private void table(XWPFTable table) {

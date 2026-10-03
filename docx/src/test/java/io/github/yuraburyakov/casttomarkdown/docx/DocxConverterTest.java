@@ -50,6 +50,26 @@ class DocxConverterTest {
     }
 
     @Test
+    void escapesBlockSyntaxInParagraphsAndListItems() throws IOException {
+        byte[] docx = TestDocx.builder()
+                .paragraph("```not code")
+                .paragraph("> not a quote")
+                .paragraph("***")
+                .bullet(0, "# not a heading inside the item")
+                .bytes();
+
+        assertThat(convert(docx)).isEqualTo("""
+                \\```not code
+
+                \\> not a quote
+
+                \\***
+
+                - \\# not a heading inside the item
+                """);
+    }
+
+    @Test
     void bulletListWithNesting() throws IOException {
         byte[] docx = TestDocx.builder()
                 .paragraph("Licensing authorities should:")

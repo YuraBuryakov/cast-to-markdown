@@ -1,11 +1,14 @@
 package io.github.yuraburyakov.casttomarkdown.internal;
 
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /** Markdown text helpers shared by the format modules. */
 public final class Markdown {
 
-    private static final Pattern LEADING_HASH = Pattern.compile("^(\\s*)#");
+    private static final Pattern BLOCK_MARKER = Pattern.compile("^(\\s*)(#|>|```|~~~)");
+    /** A line of one repeated character, spaces allowed: "---", "* * *", "===". */
+    private static final Pattern RULE_LINE = Pattern.compile("^(\\s*)([-=*_])(?:\\s*\\2)*\\s*$");
     private static final Pattern SAFE_URL = Pattern.compile("(?i)(https?|mailto):");
     /** A link target with these characters is written as {@code <url>}, which CommonMark reads as one target. */
     private static final Pattern NEEDS_ANGLE_BRACKETS = Pattern.compile("[\\s()<>]");
@@ -18,14 +21,22 @@ public final class Markdown {
     }
 
     /**
-     * Escapes {@code #} at the start of a line, which Markdown reads as a heading.
-     * ponytail: other block markers ({@code >}, {@code -}, {@code *}, code fences) are not escaped yet (Q-API-02).
+     * Escapes what Markdown would read as block syntax at the start of a line of document text: a heading
+     * ({@code #}), a quote ({@code >}), a code fence ({@code ```}, {@code ~~~}; an unclosed one turns the
+     * rest of the document into code), and a line of only {@code -}, {@code =}, {@code *} or {@code _},
+     * which is a horizontal rule or turns the line above it into a heading.
+     * List markers ({@code -}, {@code *}, {@code 1.}) and inline syntax stay: PDFs write real lists as
+     * text, and backslashes everywhere would only add noise (Q-API-02, option A).
      *
      * @param line one line of text
-     * @return the line with a leading {@code #} escaped
+     * @return the line with its leading block syntax escaped
      */
     public static String escape(String line) {
-        return LEADING_HASH.matcher(line).replaceFirst("$1\\\\#");
+        Matcher rule = RULE_LINE.matcher(line);
+        if (rule.find()) {
+            return line.substring(0, rule.end(1)) + "\\" + line.substring(rule.end(1));
+        }
+        return BLOCK_MARKER.matcher(line).replaceFirst("$1\\\\$2");
     }
 
     /**

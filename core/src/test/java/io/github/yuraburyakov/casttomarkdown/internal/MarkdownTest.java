@@ -15,6 +15,27 @@ class MarkdownTest {
     }
 
     @Test
+    void escapesBlockSyntaxThatWouldSwallowOrRestyleText() {
+        assertThat(Markdown.escape("> not a quote")).isEqualTo("\\> not a quote");
+        assertThat(Markdown.escape("```not code")).isEqualTo("\\```not code");
+        assertThat(Markdown.escape("~~~ not code")).isEqualTo("\\~~~ not code");
+        assertThat(Markdown.escape("---")).isEqualTo("\\---");
+        assertThat(Markdown.escape("===")).isEqualTo("\\===");
+        assertThat(Markdown.escape(" * * *")).isEqualTo(" \\* * *");
+        assertThat(Markdown.escape("-")).isEqualTo("\\-");
+    }
+
+    @Test
+    void keepsListMarkersAndInlineSyntax() {
+        // PDFs write real lists as text, so these stay (Q-API-02, option A)
+        assertThat(Markdown.escape("- item")).isEqualTo("- item");
+        assertThat(Markdown.escape("* item")).isEqualTo("* item");
+        assertThat(Markdown.escape("1. item")).isEqualTo("1. item");
+        assertThat(Markdown.escape("--- text after the dashes")).isEqualTo("--- text after the dashes");
+        assertThat(Markdown.escape("Price *special* offer, a > b")).isEqualTo("Price *special* offer, a > b");
+    }
+
+    @Test
     void keepsHashInsideLine() {
         assertThat(Markdown.escape("C# and F#")).isEqualTo("C# and F#");
         assertThat(Markdown.escape("issue #42")).isEqualTo("issue #42");
