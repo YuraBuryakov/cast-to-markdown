@@ -106,7 +106,16 @@ final class TestPdf {
         if (pages.isEmpty()) {
             throw new IllegalStateException("Call page() before table()");
         }
-        pages.get(pages.size() - 1).add(new Table(y, rows));
+        pages.get(pages.size() - 1).add(new Table(y, false, rows));
+        return this;
+    }
+
+    /** As {@link #table}, but {@code TH} is the first cell of every row: a key-value table like a Wikipedia infobox. */
+    TestPdf keyValueTable(float y, String[]... rows) {
+        if (pages.isEmpty()) {
+            throw new IllegalStateException("Call page() before keyValueTable()");
+        }
+        pages.get(pages.size() - 1).add(new Table(y, true, rows));
         return this;
     }
 
@@ -158,7 +167,7 @@ final class TestPdf {
             PDStructureElement row = new PDStructureElement(StandardStructureTypes.TR, tableElement);
             tableElement.appendKid(row);
             for (int c = 0; c < table.rows()[r].length; c++) {
-                String type = r == 0 ? StandardStructureTypes.TH : StandardStructureTypes.TD;
+                String type = (table.keys() ? c == 0 : r == 0) ? StandardStructureTypes.TH : StandardStructureTypes.TD;
                 PDStructureElement cell = new PDStructureElement(type, row);
                 cell.setPage(page);
                 row.appendKid(cell);
@@ -221,6 +230,6 @@ final class TestPdf {
     private record Line(float x, float y, String text) implements Item {
     }
 
-    private record Table(float y, String[][] rows) implements Item {
+    private record Table(float y, boolean keys, String[][] rows) implements Item {
     }
 }

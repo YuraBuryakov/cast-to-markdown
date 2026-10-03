@@ -85,6 +85,24 @@ class PdfTablesTest {
     }
 
     @Test
+    void keyValueTableGetsAnEmptyHeaderRow() throws IOException {
+        // Wikipedia infobox: TH is the first cell of each row, so the first row is data, not a header
+        Path pdf = TestPdf.builder()
+                .page()
+                .keyValueTable(700,
+                        new String[] {"Acronym", "UUID"},
+                        new String[] {"No. of digits", "32"})
+                .writeTo(dir.resolve("key-value.pdf"));
+
+        assertThat(converter.convert(pdf).markdown()).isEqualTo("""
+                |  |  |
+                | --- | --- |
+                | Acronym | UUID |
+                | No. of digits | 32 |
+                """);
+    }
+
+    @Test
     void dropsEmptyColumnsAndEscapesPipes() throws IOException {
         // NIST (Word): every row starts with an empty cell.
         Path pdf = TestPdf.builder()

@@ -3,6 +3,7 @@ package io.github.yuraburyakov.casttomarkdown.pdf;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,10 @@ final class TaggedTables {
      * overflowing the stack; deeper content is not searched for tables.
      */
     private static final int MAX_DEPTH = 100;
+    /** Header cells in a row: none, some next to {@code TD}, or only {@code TH} (a header row). */
+    private static final int NO_TH = 0;
+    private static final int SOME_TH = 1;
+    private static final int ONLY_TH = 2;
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
     /** Cell ids of each table, row by row. */
@@ -40,6 +45,13 @@ final class TaggedTables {
     private final Map<Long, Integer> cellByKey = new HashMap<>();
     /** Table index of each cell id. */
     private final List<Integer> tableByCell = new ArrayList<>();
+    /**
+     * Tables with header cells ({@code TH}) whose first row is not made of them: key-value tables such
+     * as a Wikipedia infobox, with {@code TH} in the first column. Their first row is data, so Markdown
+     * gets an empty header row. Tables without any {@code TH} keep their first row as the header:
+     * generators often tag a visible header row as {@code TD}.
+     */
+    private final Set<Integer> withoutHeaderRow = new HashSet<>();
     /** Elements already walked: a hostile tree can share or loop back to elements. */
     private final Set<COSBase> visited = Collections.newSetFromMap(new IdentityHashMap<>());
     /** Custom structure types of the document mapped to standard ones ({@code /RoleMap}). */
@@ -97,7 +109,8 @@ final class TaggedTables {
     }
 
     /**
-     * The table as Markdown: the first row is the header, a cell is its text on one line with {@code |}
+     * The table as Markdown: the first row is the header (an empty one for a key-value table, see
+     * {@link #withoutHeaderRow}), a cell is its text on one line with {@code |}
      * escaped, short rows are padded, columns that are empty in every row are left out.
      * ponytail: merged cells are not spread over the columns they span.
      */
@@ -124,6 +137,11 @@ final class TaggedTables {
                 rows.forEach(cells -> cells.remove(c));
                 columns--;
             }
+        }
+        if (withoutHeaderRow.contains(table)) {
+            // the picture row of an infobox has no text
+            rows.removeIf(cells -> cells.stream().allMatch(String::isEmpty));
+            rows.add(0, Collections.nCopies(columns, ""));
         }
         StringBuilder markdown = new StringBuilder();
         for (int r = 0; r < rows.size(); r++) {
@@ -166,7 +184,8 @@ final class TaggedTables {
 
     private void addTable(PDStructureElement table, PDPage page, int depth) {
         List<List<List<Long>>> rows = new ArrayList<>();
-        collectRows(table, page, rows, depth);
+        List<Integer> headerCellsByRow = new ArrayList<>();
+        collectRows(table, page, rows, headerCellsByRow, depth);
         int columns = rows.stream().mapToInt(List::size).max().orElse(0);
         if (rows.size() < MIN_ROWS || columns < MIN_COLUMNS) {
             return;
@@ -186,18 +205,25 @@ final class TaggedTables {
             cellIds.add(ids);
         }
         tables.add(cellIds);
+        if (headerCellsByRow.stream().anyMatch(kind -> kind != NO_TH) && headerCellsByRow.get(0) != ONLY_TH) {
+            withoutHeaderRow.add(index);
+        }
     }
 
     /** Rows can sit directly in the table or in {@code THead} / {@code TBody} / {@code TFoot}. */
-    private void collectRows(PDStructureElement element, PDPage page,
-            List<List<List<Long>>> rows, int depth) {
+    private void collectRows(PDStructureElement element, PDPage page, List<List<List<Long>>> rows,
+            List<Integer> headerCellsByRow, int depth) {
         for (Object kid : element.getKids()) {
             if (kid instanceof PDStructureElement child && enter(child, depth)) {
                 PDPage childPage = child.getPage() != null ? child.getPage() : page;
                 if ("TR".equals(type(child))) {
                     List<List<Long>> cells = new ArrayList<>();
+                    boolean th = false;
+                    boolean td = false;
                     for (Object cell : child.getKids()) {
                         if (cell instanceof PDStructureElement cellElement && enter(cellElement, depth + 1)) {
+                            th |= "TH".equals(type(cellElement));
+                            td |= "TD".equals(type(cellElement));
                             List<Long> keys = new ArrayList<>();
                             PDPage cellPage = cellElement.getPage() != null ? cellElement.getPage() : childPage;
                             collectKeys(cellElement, cellPage, keys, depth + 2);
@@ -205,8 +231,9 @@ final class TaggedTables {
                         }
                     }
                     rows.add(cells);
+                    headerCellsByRow.add(!th ? NO_TH : td ? SOME_TH : ONLY_TH);
                 } else {
-                    collectRows(child, childPage, rows, depth + 1);
+                    collectRows(child, childPage, rows, headerCellsByRow, depth + 1);
                 }
             }
         }
