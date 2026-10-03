@@ -12,6 +12,7 @@ import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.apache.pdfbox.pdmodel.documentinterchange.logicalstructure.PDStructureElement;
 import org.apache.pdfbox.pdmodel.documentinterchange.logicalstructure.PDStructureTreeRoot;
@@ -22,6 +23,9 @@ import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceGray;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.apache.pdfbox.pdmodel.interactive.action.PDActionURI;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageFitDestination;
 
 /**
  * Builds small PDFs for tests, so tests do not depend on binary fixtures.
@@ -64,6 +68,18 @@ final class TestPdf {
             throw new IllegalStateException("Call page() before line()");
         }
         pages.get(pages.size() - 1).add(new Line(y, text));
+        return this;
+    }
+
+    /**
+     * A line {@code before + linkText + after} with a link annotation over {@code linkText}, like Word,
+     * Chrome or LaTeX write it. A {@code null} url makes a link to the first page (table of contents).
+     */
+    TestPdf link(float y, String before, String linkText, String url, String after) {
+        if (pages.isEmpty()) {
+            throw new IllegalStateException("Call page() before link()");
+        }
+        pages.get(pages.size() - 1).add(new LinkLine(y, before, linkText, url, after));
         return this;
     }
 
@@ -110,6 +126,8 @@ final class TestPdf {
                     for (Item item : pages.get(i)) {
                         if (item instanceof Table table) {
                             mcid = drawTable(content, font, page, documentElement, table, mcid);
+                        } else if (item instanceof LinkLine link) {
+                            drawLink(document, content, font, page, link);
                         } else if (item instanceof Line line) {
                             content.beginText();
                             content.setFont(font, FONT_SIZE);
@@ -165,7 +183,34 @@ final class TestPdf {
         return picture;
     }
 
-    private sealed interface Item permits Line, Table {
+    private static void drawLink(PDDocument document, PDPageContentStream content, PDType1Font font, PDPage page,
+            LinkLine link) throws IOException {
+        content.beginText();
+        content.setFont(font, FONT_SIZE);
+        content.newLineAtOffset(LEFT_MARGIN, link.y());
+        content.showText(link.before() + link.linkText() + link.after());
+        content.endText();
+        float left = LEFT_MARGIN + font.getStringWidth(link.before()) / 1000 * FONT_SIZE;
+        float right = left + font.getStringWidth(link.linkText()) / 1000 * FONT_SIZE;
+        PDAnnotationLink annotation = new PDAnnotationLink();
+        // a little larger than the text, as real generators draw it
+        annotation.setRectangle(new PDRectangle(left - 1, link.y() - 3, right - left + 2, FONT_SIZE + 4));
+        if (link.url() != null) {
+            PDActionURI action = new PDActionURI();
+            action.setURI(link.url());
+            annotation.setAction(action);
+        } else {
+            PDPageFitDestination destination = new PDPageFitDestination();
+            destination.setPage(document.getPage(0));
+            annotation.setDestination(destination);
+        }
+        page.getAnnotations().add(annotation);
+    }
+
+    private sealed interface Item permits Line, LinkLine, Table {
+    }
+
+    private record LinkLine(float y, String before, String linkText, String url, String after) implements Item {
     }
 
     private record Line(float y, String text) implements Item {

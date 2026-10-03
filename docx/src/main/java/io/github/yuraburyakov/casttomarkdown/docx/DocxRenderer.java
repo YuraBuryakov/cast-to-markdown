@@ -32,10 +32,6 @@ final class DocxRenderer {
     /** Built-in heading style: name "heading 1" (the same in every Word language), id "Heading1". */
     private static final Pattern HEADING_STYLE = Pattern.compile("(?i)^heading\\s*(\\d)$");
     private static final String TITLE_STYLE = "title";
-    private static final Pattern SAFE_URL = Pattern.compile("(?i)(https?|mailto):");
-    /** A link target with these characters is written as {@code <url>}, which CommonMark reads as one target. */
-    private static final Pattern NEEDS_ANGLE_BRACKETS = Pattern.compile("[\\s()<>]");
-    private static final Pattern TRAILING_SPACE = Pattern.compile("(\\s|%20)+$");
     /** Spaces per list nesting level: enough for both "- " and "10. " parents in CommonMark. */
     private static final String LIST_INDENT = "    ";
 
@@ -148,7 +144,7 @@ final class DocxRenderer {
                     i++;
                 }
                 i--;
-                text.append(link(label.toString(), url));
+                text.append(Markdown.link(label.toString(), url));
             } else if (element instanceof XWPFRun run) {
                 if (run.getCTR().sizeOfFootnoteReferenceArray() > 0) {
                     BigInteger id = run.getCTR().getFootnoteReferenceArray(0).getId();
@@ -166,31 +162,10 @@ final class DocxRenderer {
         return text.toString();
     }
 
-    /**
-     * The target of an external link, or {@code null} for a link to a bookmark (Word's table of contents)
-     * and for schemes other than http, https and mailto: {@code javascript:} must not reach a renderer.
-     */
+    /** The target of an external link, or {@code null} for a link to a bookmark (Word's table of contents). */
     private String url(XWPFHyperlinkRun run) {
         XWPFHyperlink link = run.getHyperlink(document);
-        String url = link == null ? null : link.getURL();
-        return url != null && SAFE_URL.matcher(url).lookingAt() ? url : null;
-    }
-
-    /**
-     * {@code [text](url)}; spaces around the text stay outside the brackets. A blank text, or a text that
-     * is the address itself, stays plain text: {@code [url](url)} only repeats it.
-     */
-    private static String link(String text, String url) {
-        String label = text.strip();
-        // a space typed after the address in Word ends up in the target as %20
-        url = TRAILING_SPACE.matcher(url).replaceFirst("");
-        if (label.isEmpty() || label.equals(url) || ("mailto:" + label).equalsIgnoreCase(url)) {
-            return text;
-        }
-        String target = NEEDS_ANGLE_BRACKETS.matcher(url).find() ?"<" + url.replace(">", "%3E") + ">" : url;
-        int start = text.indexOf(label);
-        return text.substring(0, start) + "[" + label.replace("[", "\\[").replace("]", "\\]") + "](" + target + ")"
-                + text.substring(start + label.length());
+        return link == null ? null : link.getURL();
     }
 
     /** {@code 1} for Title and Heading 1, {@code 2} for Heading 2, ...; {@code 0} for other styles. */

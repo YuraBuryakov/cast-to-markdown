@@ -1,5 +1,6 @@
 package io.github.yuraburyakov.casttomarkdown.pdf;
 
+import io.github.yuraburyakov.casttomarkdown.internal.Markdown;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -10,6 +11,7 @@ import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.apache.pdfbox.contentstream.operator.markedcontent.BeginMarkedContentSequence;
@@ -22,6 +24,9 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDFontDescriptor;
+import org.apache.pdfbox.pdmodel.interactive.action.PDActionURI;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
+import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
 
@@ -64,6 +69,11 @@ final class LineCollector extends PDFTextStripper {
     private final Map<TextPosition, Integer> cellOfPosition = new IdentityHashMap<>();
     private final Map<Integer, StringBuilder> cellText = new HashMap<>();
     private final Map<Integer, TextPosition> lastCellPosition = new HashMap<>();
+    /** URI links of the current page; empty on rotated pages. */
+    private final List<LinkArea> links = new ArrayList<>();
+    /** Target of the link the text is in now, {@code null} outside links; its text goes to {@link #linkText}. */
+    private String linkUrl;
+    private final StringBuilder linkText = new StringBuilder();
     private int lineTable = -1;
     private int tableChars;
     private int otherChars;
@@ -105,7 +115,30 @@ final class LineCollector extends PDFTextStripper {
         mcids.clear();
         // the previous page is written out already; keep only this page's positions
         cellOfPosition.clear();
+        readLinks(page);
         super.startPage(page);
+    }
+
+    /**
+     * Rectangles of the links to web addresses, in the coordinates of {@link TextPosition} (from the top left
+     * of the crop box). Links inside the document (table of contents, "see section 3") are left out.
+     * ponytail: rotated pages get no links; every character is tested against every link of its page.
+     */
+    private void readLinks(PDPage page) throws IOException {
+        links.clear();
+        if (page.getRotation() % 360 != 0) {
+            return;
+        }
+        PDRectangle crop = page.getCropBox();
+        for (PDAnnotation annotation : page.getAnnotations()) {
+            if (annotation instanceof PDAnnotationLink link && link.getAction() instanceof PDActionURI action
+                    && action.getURI() != null && link.getRectangle() != null) {
+                PDRectangle box = link.getRectangle();
+                links.add(new LinkArea(box.getLowerLeftX() - crop.getLowerLeftX(),
+                        crop.getUpperRightY() - box.getUpperRightY(), box.getUpperRightX() - crop.getLowerLeftX(),
+                        crop.getUpperRightY() - box.getLowerLeftY(), action.getURI()));
+            }
+        }
     }
 
     @Override
@@ -158,7 +191,83 @@ final class LineCollector extends PDFTextStripper {
                 otherChars++;
             }
         }
-        text.append(string);
+        appendText(string, positions);
+    }
+
+    /**
+     * Appends the text, inside {@code [...](url)} where its characters lie in a link. The link is decided per
+     * character when the string is exactly the characters' text, else (ligatures PDFBox split) by the first one.
+     */
+    private void appendText(String string, List<TextPosition> positions) {
+        if (links.isEmpty()) {
+            text.append(string);
+            return;
+        }
+        int end = 0;
+        for (TextPosition position : positions) {
+            String unicode = position.getUnicode();
+            end = end >= 0 && string.startsWith(unicode, end) ? end + unicode.length() : -1;
+        }
+        if (end != string.length()) {
+            switchLink(positions.isEmpty() ? null : urlAt(positions.get(0)));
+            currentText().append(string);
+            return;
+        }
+        String previous = "";
+        for (TextPosition position : positions) {
+            String unicode = position.getUnicode();
+            // the string is one word: a link box that ends inside it ("[Scheme t](url)o") does not split it
+            if (!(endsWithLetterOrDigit(previous) && startsWithLetterOrDigit(unicode))) {
+                switchLink(urlAt(position));
+            }
+            currentText().append(unicode);
+            previous = unicode;
+        }
+    }
+
+    private static boolean endsWithLetterOrDigit(String text) {
+        return !text.isEmpty() && Character.isLetterOrDigit(text.codePointBefore(text.length()));
+    }
+
+    private static boolean startsWithLetterOrDigit(String text) {
+        return !text.isEmpty() && Character.isLetterOrDigit(text.codePointAt(0));
+    }
+
+    /**
+     * The link the centre of the character lies in. Only horizontal text: a link box touching the vertical
+     * margin text of NIST PDFs changed it on one page, so it was no longer removed as page furniture.
+     */
+    private String urlAt(TextPosition position) {
+        if (position.getDir() != 0) {
+            return null;
+        }
+        float x = position.getXDirAdj() + position.getWidthDirAdj() / 2;
+        float y = position.getYDirAdj() - position.getHeightDir() / 2;
+        for (LinkArea link : links) {
+            if (x >= link.left() && x <= link.right() && y >= link.top() && y <= link.bottom()) {
+                return link.url();
+            }
+        }
+        return null;
+    }
+
+    private StringBuilder currentText() {
+        return linkUrl == null ? text : linkText;
+    }
+
+    private void switchLink(String url) {
+        if (!Objects.equals(url, linkUrl)) {
+            closeLink();
+            linkUrl = url;
+        }
+    }
+
+    private void closeLink() {
+        if (linkUrl != null) {
+            text.append(Markdown.link(linkText.toString(), linkUrl));
+            linkText.setLength(0);
+            linkUrl = null;
+        }
     }
 
     /** Characters come in reading order; a gap or a new line inside the cell becomes a space. */
@@ -175,7 +284,7 @@ final class LineCollector extends PDFTextStripper {
 
     @Override
     protected void writeWordSeparator() {
-        text.append(getWordSeparator());
+        currentText().append(getWordSeparator());
     }
 
     @Override
@@ -194,6 +303,7 @@ final class LineCollector extends PDFTextStripper {
     }
 
     private void endLine() {
+        closeLink();
         String lineText = text.toString();
         if (first != null && !lineText.isBlank()) {
             PDRectangle box = getCurrentPage().getCropBox();
@@ -212,6 +322,10 @@ final class LineCollector extends PDFTextStripper {
         tableChars = 0;
         otherChars = 0;
         severalTables = false;
+    }
+
+    /** A link rectangle in the coordinates of {@link TextPosition}: y grows downwards. */
+    private record LinkArea(float left, float top, float right, float bottom, String url) {
     }
 
     /**
