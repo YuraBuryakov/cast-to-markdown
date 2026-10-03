@@ -28,6 +28,29 @@ class PdfConverterHeadingsTest {
     }
 
     @Test
+    void boldNumberedListItemOutOfSectionSequenceIsNotHeading() {
+        // RFC 9562 section 5.7: a bold numbered list "1. OPTIONAL", "2. OPTIONAL" inside the section
+        List<Line> lines = List.of(
+                bold(80, 13, "5.7. UUID Version 7"),
+                line(120, 13, BODY),
+                bold(160, 13, "1. OPTIONAL"),
+                line(180, 13, BODY),
+                bold(220, 13, "2. OPTIONAL"),
+                line(240, 13, BODY),
+                bold(280, 13, "5.8. UUID Version 8"),
+                line(320, 13, BODY),
+                bold(360, 13, "6. UUID Best Practices"),
+                line(400, 13, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo(String.join("\n\n",
+                "### 5.7. UUID Version 7", BODY,
+                "1. OPTIONAL", BODY,
+                "2. OPTIONAL", BODY,
+                "### 5.8. UUID Version 8", BODY,
+                "## 6. UUID Best Practices", BODY));
+    }
+
+    @Test
     void headingIsAtMostOneLevelDeeperThanTheOneBefore() {
         // InDesign: the 16 pt font only appears in one section, so 14 pt ranks third everywhere
         List<Line> lines = List.of(

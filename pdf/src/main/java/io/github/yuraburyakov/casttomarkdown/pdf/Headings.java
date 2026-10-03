@@ -36,6 +36,9 @@ final class Headings {
             + "|\u00a7\\s*\\d{1,3}((?:\\.\\d{1,2})*)\\.?)"
             + "(?=[\\s\u2014:])");
 
+    /** Arabic section number; group 1 is the top-level number. */
+    private static final Pattern TOP_NUMBER = Pattern.compile("^(\\d{1,2})(?:\\.\\d{1,2})*\\.?(?=[\\s\\u2014:])");
+
     private Headings() {
     }
 
@@ -71,7 +74,8 @@ final class Headings {
             boolean boldNumbered = numbered
                     && paragraph.stream().allMatch(Line::bold)
                     && size >= body - BOLD_MAX_SIZE_BELOW_BODY * 2;
-            // ponytail: a bold numbered list item of body size ("1. OPTIONAL") looks the same as a heading.
+            // ponytail: a bold numbered list item whose number still fits the section sequence ("2. Foo" right
+            // after "1. Introduction") passes as a heading; out-of-sequence ones are dropped below.
             boolean candidate = !paragraph.get(0).isTable()
                     && (size > body || boldNumbered)
                     && paragraph.size() <= (size >= TITLE_SIZE_RATIO * body ? MAX_TITLE_LINES : MAX_LINES)
@@ -85,7 +89,36 @@ final class Headings {
                     || paragraphs.get(i + 1).get(0).sizeKey() == body;
             headings[i] = candidate && followedByText;
         }
+        dropNumbersOutOfSequence(paragraphs, headings);
         return headings;
+    }
+
+    /**
+     * A bold numbered list item looks like a heading ("1. OPTIONAL" inside section 5.7 of RFC 9562), but
+     * top-level numbers of real headings do not go down: a {@code 1.} after {@code 5.7} is not a heading.
+     * The same number again is allowed: gov.uk guidance numbers the steps "1. Obtain", "2. Check" inside
+     * its section "1. Conducting a check". A heading without a number ("Appendix", "Part II") starts the
+     * count again.
+     */
+    private static void dropNumbersOutOfSequence(List<List<Line>> paragraphs, boolean[] headings) {
+        int lastTop = 0;
+        for (int i = 0; i < paragraphs.size(); i++) {
+            if (!headings[i]) {
+                continue;
+            }
+            String text = text(paragraphs.get(i));
+            Matcher number = TOP_NUMBER.matcher(text);
+            if (!number.find()) {
+                lastTop = startsWithSectionNumber(text) ? lastTop : 0;
+                continue;
+            }
+            int top = Integer.parseInt(number.group(1));
+            if (top < lastTop) {
+                headings[i] = false;
+            } else {
+                lastTop = top;
+            }
+        }
     }
 
     /** Size key of the font with the most characters. */
