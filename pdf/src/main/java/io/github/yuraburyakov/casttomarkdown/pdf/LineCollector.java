@@ -96,6 +96,8 @@ final class LineCollector extends PDFTextStripper {
     @Override
     protected void startPage(PDPage page) throws IOException {
         mcids.clear();
+        // the previous page is written out already; keep only this page's positions
+        cellOfPosition.clear();
         super.startPage(page);
     }
 

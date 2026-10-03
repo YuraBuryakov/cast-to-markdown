@@ -41,6 +41,30 @@ class PdfTablesTest {
     }
 
     @Test
+    void tablesOnSeveralPages() throws IOException {
+        Path pdf = TestPdf.builder()
+                .page()
+                .table(700,
+                        new String[] {"Name", "Value"},
+                        new String[] {"Alpha", "1"})
+                .page()
+                .table(700,
+                        new String[] {"Code", "Meaning"},
+                        new String[] {"B2", "Second"})
+                .writeTo(dir.resolve("two-pages.pdf"));
+
+        assertThat(converter.convert(pdf).markdown()).isEqualTo("""
+                | Name | Value |
+                | --- | --- |
+                | Alpha | 1 |
+
+                | Code | Meaning |
+                | --- | --- |
+                | B2 | Second |
+                """);
+    }
+
+    @Test
     void dropsEmptyColumnsAndEscapesPipes() throws IOException {
         // NIST (Word): every row starts with an empty cell.
         Path pdf = TestPdf.builder()
