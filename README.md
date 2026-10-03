@@ -13,7 +13,7 @@ Java-native library that converts common document formats into clean, LLM/RAG-fr
 
 ## Installation
 
-After the first release, add `core` and the format modules you need (Java 17+):
+After the first release, add the format modules you need (Java 17+); each brings `cast-to-markdown-core` with it:
 
 ```xml
 <dependency>
@@ -28,7 +28,7 @@ After the first release, add `core` and the format modules you need (Java 17+):
 </dependency>
 ```
 
-Gradle: `implementation("io.github.yuraburyakov:cast-to-markdown-pdf:0.1.0")`. Each format module brings `cast-to-markdown-core` with it. It works on the class path and on the module path (module `io.github.yuraburyakov.casttomarkdown`).
+Gradle: `implementation("io.github.yuraburyakov:cast-to-markdown-pdf:0.1.0")`. It works on the class path and on the module path: `requires io.github.yuraburyakov.casttomarkdown;` is enough, the format modules are found as services.
 
 ## Usage
 
@@ -46,6 +46,23 @@ try (InputStream in = upload.getInputStream()) {
 }
 ```
 
+The result looks like this (real output for a DOCX with a heading, a bullet list, a table and a link):
+
+```markdown
+# Who can apply
+
+You can apply if you:
+
+- served in the armed forces
+- were dismissed before 2000
+
+| Impact category | Level 1 | Level 2 |
+| --- | --- | --- |
+| Financial loss | Low | Moderate |
+
+See [the full guidance](https://www.gov.uk/guidance) for details.
+```
+
 Settings: `create()` uses the defaults, `builder()` changes them. Documents larger than the limit (100 MiB by default) are rejected with `DocumentTooLargeException` before parsing; a stream is read only up to the limit. The limit is on the source size, not on memory: parsers build an object model of the document, so the heap a conversion needs depends on the format and content and may be many times the file size (a 1.7 MB DOCX with 7.6 MB of text XML needed about 100 MB). A file is read from disk as needed; a stream is read into memory in full first.
 
 ```java
@@ -54,11 +71,21 @@ CastToMarkdown converter = CastToMarkdown.builder()
         .build();
 ```
 
-DOCX: headings come from the paragraph styles (`Title`, `Heading 1..6`); bold text without a heading style stays a paragraph. Lists keep their nesting and numbering, tables become Markdown tables, footnotes become Markdown footnotes; running headers and footers are left out. Apache POI logs through Log4j API: without a Log4j provider (or the `log4j-to-slf4j` bridge that Spring Boot includes) it prints one `Log4j API could not find a logging provider` line to stderr.
+PDF: headings are found by font size and boldness and by section numbers (`2.1 Scope`), paragraphs by line spacing; bullet lists become `-` items; running headers, footers and page numbers are removed; tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports) become Markdown tables; links to web addresses become `[text](url)`. Password-protected PDFs are rejected with `DocumentConversionException`; PDFs that only restrict printing or copying are converted.
+
+DOCX: headings come from the paragraph styles (`Title`, `Heading 1..6`); bold text without a heading style stays a paragraph. Lists keep their nesting and numbering, tables become Markdown tables, footnotes become Markdown footnotes, external links become `[text](url)`; running headers and footers are left out. Apache POI logs through Log4j API: without a Log4j provider (or the `log4j-to-slf4j` bridge that Spring Boot includes) it prints one `Log4j API could not find a logging provider` line to stderr.
 
 Errors are unchecked: `UnsupportedFormatException` for unsupported formats, `DocumentConversionException` for unreadable or damaged files (the original exception is the cause).
 
 Scanned PDFs (pages are images without a text layer) are not supported: the converter throws `UnsupportedFormatException` instead of returning empty Markdown. Run OCR first, for example with [OCRmyPDF](https://ocrmypdf.readthedocs.io/), which adds a text layer to the PDF; the result can then be converted.
+
+## Limitations
+
+- Scanned PDFs need OCR first (see above); a PDF where only some pages are scans is not detected.
+- PDF: a paragraph that continues on the next page is split in two; hyphenated words at line ends stay hyphenated; nested lists are not detected; tables of untagged PDFs (LaTeX, many web-to-PDF tools) stay plain text.
+- Tables: merged cells are not spread over the columns they span; links inside tables stay plain text.
+- Markdown escaping covers only `#` at the start of a line: text that starts with `-`, `>` or `1.` can read as Markdown syntax.
+- A conversion has no time limit. For untrusted uploads run it in your own executor with a timeout, as with any parser.
 
 ## Formats
 
