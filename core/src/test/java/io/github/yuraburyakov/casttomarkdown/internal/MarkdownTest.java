@@ -49,4 +49,23 @@ class MarkdownTest {
     void returnsEmptyStringForBlankText() {
         assertThat(Markdown.normalize(" \n\n \n")).isEmpty();
     }
+
+    @Test
+    void edgeCasesOfLineEndings() {
+        assertThat(Markdown.normalize("")).isEmpty();
+        assertThat(Markdown.normalize("\n")).isEmpty();
+        assertThat(Markdown.normalize("\r")).isEmpty();
+        assertThat(Markdown.normalize("\r\n")).isEmpty();
+        assertThat(Markdown.normalize("a")).isEqualTo("a\n");
+        assertThat(Markdown.normalize("a\n")).isEqualTo("a\n");
+        assertThat(Markdown.normalize("a\n\n")).isEqualTo("a\n");
+        assertThat(Markdown.normalize("a\r\n")).isEqualTo("a\n");
+        assertThat(Markdown.normalize("a\r")).isEqualTo("a\n");
+        assertThat(Markdown.normalize("a \t\n\n\n")).isEqualTo("a\n");
+        assertThat(Markdown.normalize("a\r\n\r\n\r\nb")).isEqualTo("a\n\nb\n");
+        assertThat(Markdown.normalize("a\r\r\rb")).isEqualTo("a\n\nb\n");
+        // "\n\r" is two line ends, "\r\n" is one
+        assertThat(Markdown.normalize("a\n\rb")).isEqualTo("a\n\nb\n");
+        assertThat(Markdown.normalize("a\r\nb")).isEqualTo("a\nb\n");
+    }
 }

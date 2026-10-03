@@ -194,13 +194,14 @@ final class LineCollector extends PDFTextStripper {
     }
 
     private void endLine() {
-        if (first != null && !text.toString().isBlank()) {
+        String lineText = text.toString();
+        if (first != null && !lineText.isBlank()) {
             PDRectangle box = getCurrentPage().getCropBox();
             float pageHeight = getCurrentPage().getRotation() % 180 == 0 ? box.getHeight() : box.getWidth();
             float fontSize = charsBySize.isEmpty() ? first.getFontSizeInPt() : dominantSize(charsBySize);
             int table = tableChars > 0 && otherChars == 0 && !severalTables ? lineTable : -1;
             lines.add(new Line(getCurrentPageNo(), pageHeight, first.getXDirAdj(), first.getYDirAdj(), fontSize,
-                    boldChars * 2 > chars, first.getDir() != 0, text.toString(), table));
+                    boldChars * 2 > chars, first.getDir() != 0, lineText, table));
         }
         text.setLength(0);
         first = null;
