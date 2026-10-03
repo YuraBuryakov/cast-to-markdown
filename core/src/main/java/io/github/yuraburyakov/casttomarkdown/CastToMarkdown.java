@@ -24,7 +24,9 @@ import java.util.TreeMap;
  * <p>Input is a file {@link Path}, or an {@link InputStream} with the file name; a stream is never
  * closed by this class.
  *
- * <p>Supported formats: PDF ({@code .pdf}) with a text layer. The format is detected by the file extension.
+ * <p>Supported formats are those of the format modules on the class or module path: PDF ({@code .pdf})
+ * with a text layer from {@code cast-to-markdown-pdf}, DOCX ({@code .docx}) from {@code cast-to-markdown-docx}.
+ * The format is detected by the file extension.
  * Scanned PDFs (pages are images, no text layer) are not supported: run OCR on them first.
  *
  * <p>Settings: {@link #create()} uses the defaults; {@link #builder()} changes them.
