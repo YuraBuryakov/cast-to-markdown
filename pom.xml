@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
+<!-- child.project.url.inherit.append.path: modules keep the repository URL, without their name appended -->
+<project child.project.url.inherit.append.path="false" xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
@@ -11,7 +12,7 @@
 
     <name>CastToMarkdown (parent)</name>
     <description>Java-native library that converts common document formats into clean, LLM/RAG-friendly Markdown.</description>
-    <url>https://github.com/yuraburyakov/cast-to-markdown</url>
+    <url>https://github.com/YuraBuryakov/cast-to-markdown</url>
 
     <modules>
         <module>core</module>
@@ -27,10 +28,34 @@
         </license>
     </licenses>
 
+    <developers>
+        <developer>
+            <id>yuraburyakov</id>
+            <name>Yura Buryakov</name>
+            <url>https://github.com/YuraBuryakov</url>
+        </developer>
+    </developers>
+
+    <scm child.scm.connection.inherit.append.path="false"
+         child.scm.developerConnection.inherit.append.path="false"
+         child.scm.url.inherit.append.path="false">
+        <connection>scm:git:https://github.com/YuraBuryakov/cast-to-markdown.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/YuraBuryakov/cast-to-markdown.git</developerConnection>
+        <url>https://github.com/YuraBuryakov/cast-to-markdown</url>
+        <tag>HEAD</tag>
+    </scm>
+
+    <issueManagement>
+        <system>GitHub</system>
+        <url>https://github.com/YuraBuryakov/cast-to-markdown/issues</url>
+    </issueManagement>
+
     <properties>
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <!-- Reproducible jars: fixed entry timestamps; set to the release time when releasing -->
+        <project.build.outputTimestamp>2026-10-03T00:00:00Z</project.build.outputTimestamp>
 
         <!-- Runtime dependencies -->
         <pdfbox.version>3.0.5</pdfbox.version>
@@ -44,6 +69,11 @@
         <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.5.3</maven-surefire-plugin.version>
         <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
+        <maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
+        <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
+        <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
+        <maven-gpg-plugin.version>3.2.8</maven-gpg-plugin.version>
+        <central-publishing-maven-plugin.version>0.11.0</central-publishing-maven-plugin.version>
     </properties>
 
     <dependencyManagement>
@@ -106,6 +136,11 @@
                     <artifactId>maven-enforcer-plugin</artifactId>
                     <version>${maven-enforcer-plugin.version}</version>
                 </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>${maven-jar-plugin.version}</version>
+                </plugin>
             </plugins>
         </pluginManagement>
 
@@ -134,4 +169,70 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!--
+            Everything Maven Central needs: sources and Javadoc jars, GPG signatures, upload to the
+            Central Portal. Run: mvn -Prelease deploy (see RELEASING.md).
+        -->
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>${maven-source-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>${maven-javadoc-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>${maven-gpg-plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>${central-publishing-maven-plugin.version}</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <!-- credentials: <server><id>central</id> in ~/.m2/settings.xml -->
+                            <publishingServerId>central</publishingServerId>
+                            <!-- the upload is checked by Central, then published by hand in the Portal -->
+                            <autoPublish>false</autoPublish>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
