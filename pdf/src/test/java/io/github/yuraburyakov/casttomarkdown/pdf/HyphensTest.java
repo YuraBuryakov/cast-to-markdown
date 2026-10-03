@@ -33,6 +33,29 @@ class HyphensTest {
     }
 
     @Test
+    void bothFormsExistDoesNotGuess() {
+        List<String> lines = List.of("the foo-", "bar values");
+
+        assertThat(Hyphens.join(lines, Set.of("foobar", "foo-bar"))).isEqualTo(lines);
+    }
+
+    @Test
+    void capitalAfterTheHyphenIsLeftAlone() {
+        // a name or a new sentence, not the rest of a word: "Jean-" / "Paul"
+        List<String> lines = List.of("written by Jean-", "Paul Sartre");
+
+        assertThat(Hyphens.join(lines, Set.of("jeanpaul", "jean-paul"))).isEqualTo(lines);
+    }
+
+    @Test
+    void chainedBreaksAreJoinedOneAfterAnother() {
+        List<String> lines = List.of("learn-", "ing deep-", "er models.");
+
+        assertThat(Hyphens.join(lines, Set.of("learning", "deeper")))
+                .containsExactly("learning", "deeper", "models.");
+    }
+
+    @Test
     void aMovedWordCanEmptyTheNextLine() {
         List<String> lines = List.of("com-", "prehensive", "results");
 

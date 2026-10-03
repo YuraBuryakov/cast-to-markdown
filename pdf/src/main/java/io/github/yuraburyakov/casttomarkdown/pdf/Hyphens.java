@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
  * <ul>
  *   <li>the word without the hyphen is elsewhere in the document: join it ("learning");</li>
  *   <li>the word with the hyphen is elsewhere: a compound, keep the hyphen ("multi-layer");</li>
- *   <li>neither: leave both lines as they are ("high-" / "level" may be either).</li>
+ *   <li>neither, or both: leave both lines as they are ("high-" / "level" may be either).</li>
  * </ul>
  * The rest of the word moves up to the line with the hyphen.
  */
@@ -53,13 +53,13 @@ final class Hyphens {
             String head = end.group(1);
             String tail = start.group(1);
             String line = result.get(i);
-            if (words.contains((head + tail).toLowerCase(Locale.ROOT))) {
-                line = line.substring(0, line.length() - 1) + tail + start.group(2);
-            } else if (words.contains((head + "-" + tail).toLowerCase(Locale.ROOT))) {
-                line = line + tail + start.group(2);
-            } else {
-                continue;
+            boolean joined = words.contains((head + tail).toLowerCase(Locale.ROOT));
+            boolean hyphenated = words.contains((head + "-" + tail).toLowerCase(Locale.ROOT));
+            if (joined == hyphenated) {
+                continue; // the document shows neither form, or both: nothing to go by
             }
+            line = joined ? line.substring(0, line.length() - 1) + tail + start.group(2)
+                    : line + tail + start.group(2);
             result.set(i, line);
             String rest = start.group(3).strip();
             if (rest.isEmpty()) {
