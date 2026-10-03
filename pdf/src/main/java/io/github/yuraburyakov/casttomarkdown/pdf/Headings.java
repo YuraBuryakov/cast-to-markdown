@@ -133,6 +133,24 @@ final class Headings {
                         Math.min(MAX_LEVEL, otherStyles.indexOf(style) + 1));
             }
         }
+        return withoutSkippedLevels(levels);
+    }
+
+    /**
+     * A heading goes at most one level deeper than the heading before it: fonts are ranked over the whole
+     * document, and a font that never meets the deeper one in the same section left a gap
+     * ({@code ##} then {@code ####} in an InDesign PDF). The first heading keeps its level.
+     */
+    private static int[] withoutSkippedLevels(int[] levels) {
+        int previous = 0;
+        for (int i = 0; i < levels.length; i++) {
+            if (levels[i] > 0) {
+                if (previous > 0) {
+                    levels[i] = Math.min(levels[i], previous + 1);
+                }
+                previous = levels[i];
+            }
+        }
         return levels;
     }
 

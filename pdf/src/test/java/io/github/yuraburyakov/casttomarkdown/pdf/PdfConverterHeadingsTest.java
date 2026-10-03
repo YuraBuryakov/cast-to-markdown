@@ -28,6 +28,28 @@ class PdfConverterHeadingsTest {
     }
 
     @Test
+    void headingIsAtMostOneLevelDeeperThanTheOneBefore() {
+        // InDesign: the 16 pt font only appears in one section, so 14 pt ranks third everywhere
+        List<Line> lines = List.of(
+                line(80, 20, "Application window"),
+                line(120, 11, BODY),
+                line(160, 14, "Changing your application"),
+                line(200, 11, BODY),
+                line(240, 20, "Help to complete your application"),
+                line(280, 16, "Charity signposting"),
+                line(320, 11, BODY),
+                line(360, 14, "Veterans Welfare Service"),
+                line(400, 11, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo(String.join("\n\n",
+                "# Application window", BODY,
+                "## Changing your application", BODY,
+                "# Help to complete your application",
+                "## Charity signposting", BODY,
+                "### Veterans Welfare Service", BODY));
+    }
+
+    @Test
     void joinsTwoLineHeadingWithSpace() {
         List<Line> lines = List.of(
                 line(80, 22, "RFC 9562"),
