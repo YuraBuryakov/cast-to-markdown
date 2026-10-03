@@ -108,6 +108,20 @@ class DocxConverterTest {
     }
 
     @Test
+    void cellParagraphsAreSeparatedAndCellLinksKept() throws IOException {
+        // POI's XWPFTableCell.getText() glues paragraphs: "Low riskSee" and drops the link
+        byte[] docx = TestDocx.builder()
+                .tableWithTwoParagraphCell("Notes", "Low risk.", "See ", "the guide", "https://example.org/guide")
+                .bytes();
+
+        assertThat(convert(docx)).isEqualTo("""
+                | Notes |
+                | --- |
+                | Low risk. See [the guide](https://example.org/guide) |
+                """);
+    }
+
+    @Test
     void footnotesBecomeMarkdownFootnotes() throws IOException {
         byte[] docx = TestDocx.builder()
                 .paragraphWithFootnote("Order for an account", "Often made with directions to be given later.")

@@ -82,8 +82,8 @@ Scanned PDFs (pages are images without a text layer) are not supported: the conv
 ## Limitations
 
 - Scanned PDFs need OCR first (see above); a PDF where only some pages are scans is not detected.
-- PDF: a paragraph that continues on the next page is split in two; hyphenated words at line ends stay hyphenated; nested lists are not detected; tables of untagged PDFs (LaTeX, many web-to-PDF tools) stay plain text.
-- Tables: merged cells are not spread over the columns they span; links inside tables stay plain text.
+- PDF: a paragraph split by a footnote at the bottom of the page stays split in two; hyphenated words at line ends stay hyphenated; nested lists are not detected; tables of untagged PDFs (LaTeX, many web-to-PDF tools) stay plain text.
+- Tables: merged cells are not spread over the columns they span; links inside PDF tables stay plain text.
 - Markdown escaping covers only `#` at the start of a line: text that starts with `-`, `>` or `1.` can read as Markdown syntax.
 - A conversion has no time limit. For untrusted uploads run it in your own executor with a timeout, as with any parser.
 

@@ -10,6 +10,7 @@ import org.apache.poi.xwpf.usermodel.XWPFHyperlinkRun;
 import org.apache.poi.xwpf.usermodel.XWPFNumbering;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
 import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 import org.apache.xmlbeans.impl.xb.xmlschema.SpaceAttribute;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTAbstractNum;
@@ -65,6 +66,18 @@ final class TestDocx {
                 row.getCell(c).setText(rows[r][c]);
             }
         }
+        return this;
+    }
+
+    /** A one-column table: a header, then one cell with two paragraphs, the second ending in a link. */
+    TestDocx tableWithTwoParagraphCell(String header, String first, String second, String linkText, String url) {
+        XWPFTable table = document.createTable(2, 1);
+        table.getRow(0).getCell(0).setText(header);
+        XWPFTableCell cell = table.getRow(1).getCell(0);
+        cell.setText(first);
+        XWPFParagraph paragraph = cell.addParagraph();
+        paragraph.createRun().setText(second);
+        paragraph.createHyperlinkRun(url).setText(linkText);
         return this;
     }
 

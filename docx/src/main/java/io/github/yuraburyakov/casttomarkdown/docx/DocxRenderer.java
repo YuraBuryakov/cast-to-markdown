@@ -30,6 +30,8 @@ final class DocxRenderer {
 
     private static final int MAX_HEADING_LEVEL = 6;
     /** Built-in heading style: name "heading 1" (the same in every Word language), id "Heading1". */
+    /** A line break inside a paragraph (Shift+Enter) with the spaces around it. */
+    private static final Pattern LINE_BREAKS = Pattern.compile("\\s*\\n\\s*");
     private static final Pattern HEADING_STYLE = Pattern.compile("(?i)^heading\\s*(\\d)$");
     private static final String TITLE_STYLE = "title";
     /** Spaces per list nesting level: enough for both "- " and "10. " parents in CommonMark. */
@@ -67,7 +69,7 @@ final class DocxRenderer {
         }
         int level = headingLevel(paragraph);
         if (level > 0) {
-            block("#".repeat(level) + " " + Markdown.escape(text.replaceAll("\\s*\\n\\s*", " ")), false);
+            block("#".repeat(level) + " " + Markdown.escape(LINE_BREAKS.matcher(text).replaceAll(" ")), false);
         } else if (paragraph.getNumID() != null && !"none".equals(paragraph.getNumFmt())) {
             listItem(paragraph, text);
         } else {
@@ -102,7 +104,12 @@ final class DocxRenderer {
         for (XWPFTableRow row : table.getRows()) {
             List<String> cells = new ArrayList<>();
             for (XWPFTableCell cell : row.getTableCells()) {
-                cells.add(cell.getText().strip().replaceAll("\\s*\\n\\s*", " ").replace("|", "\\|"));
+                // paragraph by paragraph: XWPFTableCell.getText() glues them without a space, and skips links
+                String text = cell.getParagraphs().stream()
+                        .map(paragraph -> text(paragraph).strip())
+                        .filter(line -> !line.isEmpty())
+                        .collect(Collectors.joining(" "));
+                cells.add(LINE_BREAKS.matcher(text).replaceAll(" ").replace("|", "\\|"));
             }
             columns = Math.max(columns, cells.size());
             rows.add(cells);
@@ -127,7 +134,7 @@ final class DocxRenderer {
 
     /**
      * Text of the runs; a footnote reference becomes {@code [^id]}, an external link {@code [text](url)}.
-     * ponytail: links inside table cells and footnotes stay plain text, and so do HYPERLINK fields.
+     * ponytail: links inside footnotes stay plain text, and so do HYPERLINK fields.
      */
     private String text(XWPFParagraph paragraph) {
         StringBuilder text = new StringBuilder();
