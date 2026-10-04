@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -19,11 +20,13 @@ import org.apache.pdfbox.pdmodel.PDPage;
  * so that nothing else is ever removed:
  * <ul>
  *   <li>a paragraph starts with {@code Figure N.}, {@code Figure N:} or {@code Fig. N.};</li>
- *   <li>right above it (or, when there is none above, right below it) is a cluster of painted boxes that
- *       overlaps the caption horizontally, does not contain it (a page background does) and is more than
- *       thin lines (a table of rules is not a figure).</li>
+ *   <li>right above it (or, when there is none above, right below it) is a drawing: painted boxes joined
+ *       into clusters that are more than thin lines (a table of rules is not a figure), and clusters joined
+ *       into one figure by gaps of up to {@link #MAX_GAP} font sizes (a network diagram in columns, a column
+ *       cut by text). One piece overlaps the caption horizontally and is at most that gap away; the figure
+ *       is wholly on one side of the caption's baseline and does not contain it (a page background does).</li>
  * </ul>
- * The lines that start in the cluster, or between it and the caption, are removed; the caption stays.
+ * The lines that start in the figure, or between it and the caption, are removed; the caption stays.
  * Figures without a caption keep their text, and so do pages that paint more than {@link #MAX_BOXES} boxes.
  */
 final class Figures {
@@ -33,7 +36,10 @@ final class Figures {
     private static final float JOIN = 3;
     /** Labels around a drawing (axis numbers) reach this many caption font sizes beyond it. */
     private static final float MARGIN = 1;
-    /** A drawing at most this many caption font sizes away from the caption belongs to it. */
+    /**
+     * A drawing at most this many caption font sizes away from the caption belongs to it, and drawings at
+     * most this far apart are pieces of one figure.
+     */
     private static final float MAX_GAP = 3;
     /**
      * Pages that paint more boxes are skipped: joining boxes into drawings is quadratic, and an untrusted PDF
@@ -63,7 +69,7 @@ final class Figures {
 
     /** As {@link #remove(PDDocument, List)}, with the painted boxes of each page given. */
     static List<Line> remove(List<Line> lines, Map<Integer, List<PageGraphics.Box>> graphicsByPage) {
-        Map<Integer, List<Cluster>> clustersByPage = new HashMap<>();
+        Map<Integer, List<Figure>> figuresByPage = new HashMap<>();
         Map<Integer, List<PageGraphics.Box>> areasByPage = new HashMap<>();
         Set<Line> captionLines = Collections.newSetFromMap(new IdentityHashMap<>());
         for (List<Line> paragraph : Paragraphs.group(lines)) {
@@ -72,25 +78,30 @@ final class Figures {
                 continue;
             }
             captionLines.addAll(paragraph);
-            List<Cluster> clusters = clustersByPage.computeIfAbsent(caption.page(),
-                    page -> clusters(graphicsByPage.getOrDefault(page, List.of())));
             float size = caption.fontSize();
+            float gap = MAX_GAP * size;
+            // once per page, with the gap of its first caption: captions of one document share a font size
+            List<Figure> figures = figuresByPage.computeIfAbsent(caption.page(),
+                    page -> figures(clusters(graphicsByPage.getOrDefault(page, List.of())), gap));
             float captionTop = caption.pageY() - size;
             float captionEnd = paragraph.get(paragraph.size() - 1).pageY();
             List<PageGraphics.Box> areas = new ArrayList<>();
-            for (Cluster cluster : clusters) {
-                PageGraphics.Box box = cluster.box();
-                if (belongsTo(cluster, caption) && box.bottom() <= captionTop
-                        && captionTop - box.bottom() <= MAX_GAP * size) {
+            for (Figure figure : figures) {
+                PageGraphics.Box box = figure.box();
+                if (!box.contains(caption.pageX(), caption.pageY()) && box.bottom() <= caption.pageY()
+                        && figure.parts().stream().anyMatch(part -> overlaps(part, caption)
+                                && captionTop - part.bottom() <= gap)) {
                     PageGraphics.Box grown = box.grow(MARGIN * size);
-                    areas.add(new PageGraphics.Box(grown.left(), grown.top(), grown.right(), captionTop));
+                    // down to the caption's baseline: labels sit just above it, the caption lines are kept anyway
+                    areas.add(new PageGraphics.Box(grown.left(), grown.top(), grown.right(), caption.pageY()));
                 }
             }
             if (areas.isEmpty()) {
-                for (Cluster cluster : clusters) {
-                    PageGraphics.Box box = cluster.box();
-                    if (belongsTo(cluster, caption) && box.top() >= captionEnd
-                            && box.top() - captionEnd <= MAX_GAP * size) {
+                for (Figure figure : figures) {
+                    PageGraphics.Box box = figure.box();
+                    if (!box.contains(caption.pageX(), caption.pageY()) && box.top() >= captionEnd
+                            && figure.parts().stream().anyMatch(part -> overlaps(part, caption)
+                                    && part.top() - captionEnd <= gap)) {
                         PageGraphics.Box grown = box.grow(MARGIN * size);
                         areas.add(new PageGraphics.Box(grown.left(), captionEnd, grown.right(), grown.bottom()));
                     }
@@ -110,16 +121,41 @@ final class Figures {
         return !line.rotated() && !line.isTable() && CAPTION.matcher(line.text()).find();
     }
 
-    /** A drawing, not a background or a table of rules, in the same column as the caption. */
-    private static boolean belongsTo(Cluster cluster, Line caption) {
-        PageGraphics.Box box = cluster.box();
-        return cluster.drawing()
-                && !box.contains(caption.pageX(), caption.pageY())
-                && box.left() < caption.pageX() + caption.width() && box.right() > caption.pageX();
+    /** Whether the box is in the same column as the caption. */
+    private static boolean overlaps(PageGraphics.Box box, Line caption) {
+        return box.left() < caption.pageX() + caption.width() && box.right() > caption.pageX();
     }
 
     /** Painted boxes joined into drawings; {@code drawing} means at least one box is more than a thin line. */
     private record Cluster(PageGraphics.Box box, boolean drawing) {
+    }
+
+    /** Drawings that are pieces of one figure, and the box around them. */
+    private record Figure(List<PageGraphics.Box> parts, PageGraphics.Box box) {
+
+        Figure(List<PageGraphics.Box> parts) {
+            this(parts, parts.stream().reduce(PageGraphics.Box::union).orElseThrow());
+        }
+    }
+
+    /** Drawings chained by gaps of at most {@code gap} points; quadratic, like {@link #clusters}. */
+    private static List<Figure> figures(List<Cluster> clusters, float gap) {
+        List<List<PageGraphics.Box>> groups = new ArrayList<>();
+        for (Cluster cluster : clusters) {
+            if (!cluster.drawing()) {
+                continue;
+            }
+            List<PageGraphics.Box> joined = new ArrayList<>(List.of(cluster.box()));
+            for (Iterator<List<PageGraphics.Box>> it = groups.iterator(); it.hasNext(); ) {
+                List<PageGraphics.Box> group = it.next();
+                if (group.stream().anyMatch(part -> part.near(cluster.box(), gap))) {
+                    joined.addAll(group);
+                    it.remove();
+                }
+            }
+            groups.add(joined);
+        }
+        return groups.stream().map(Figure::new).toList();
     }
 
     /** Quadratic in the boxes of one page, hence {@link #MAX_BOXES}; none for a page above it. */

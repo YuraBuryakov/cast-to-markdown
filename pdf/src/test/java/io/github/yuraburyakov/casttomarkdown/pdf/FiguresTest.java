@@ -77,6 +77,47 @@ class FiguresTest {
     }
 
     @Test
+    void drawingInSeveralPiecesIsOneFigure() {
+        // arXiv Figure 3: three network columns, the left one cut into pieces by "pool, /2" text; only the
+        // lowest piece is near the caption, the others join it in chains of gaps up to 3 font sizes
+        List<Line> lines = List.of(line(72, 120, "Body text above."), line(110, 190, "3x3 conv, 64"),
+                line(170, 200, "3x3 conv, 128"), line(170, 270, "34-layer plain"), line(72, 300, "Figure 3. Networks."));
+
+        List<PageGraphics.Box> pieces = List.of(box(100, 240, 140, 285), box(100, 150, 140, 232),
+                box(160, 150, 200, 250));
+
+        assertThat(texts(Figures.remove(lines, Map.of(1, pieces))))
+                .containsExactly("Body text above.", "Figure 3. Networks.");
+    }
+
+    @Test
+    void frameTouchingTheCaptionStillBelongsToIt() {
+        // arXiv Figure 6: the frame ends 2 points below the estimated top of the caption, above its baseline
+        List<Line> lines = List.of(line(120, 170, "iter. (1e4)"), line(72, 225, "Figure 6. Training."));
+
+        assertThat(texts(Figures.remove(lines, Map.of(1, List.of(box(100, 140, 300, 222))))))
+                .containsExactly("Figure 6. Training.");
+    }
+
+    @Test
+    void axisLabelJustAboveTheCaptionIsRemoved() {
+        // arXiv Figure 6: the axis label's baseline is 3 points above the caption's, below its estimated top;
+        // the label is in a smaller font, so it is a paragraph of its own
+        List<Line> lines = List.of(line(150, 222, 6, "iter. (1e4)"), line(72, 225, "Figure 6. Training."));
+
+        assertThat(texts(Figures.remove(lines, Map.of(1, List.of(box(100, 140, 300, 205))))))
+                .containsExactly("Figure 6. Training.");
+    }
+
+    @Test
+    void drawingOnTheOtherSideOfTheCaptionIsNotJoined() {
+        List<Line> lines = List.of(line(120, 170, "above"), line(72, 225, "Figure 1. Above."), line(120, 245, "below"));
+
+        assertThat(texts(Figures.remove(lines, Map.of(1, List.of(box(100, 140, 300, 200), box(100, 232, 300, 260))))))
+                .containsExactly("Figure 1. Above.", "below");
+    }
+
+    @Test
     @Timeout(value = 5, unit = TimeUnit.SECONDS)
     void pageWithTooManyPaintedBoxesIsLeftAsItIs() {
         // untrusted input: tens of thousands of tiny boxes would make clustering slow, so the page is skipped
@@ -93,7 +134,11 @@ class FiguresTest {
 
     /** A horizontal 10 pt line on page 1, 5 points per character wide. */
     private static Line line(float x, float y, String text) {
-        return new Line(1, 792, x, y, 10, false, false, text, -1, text.length() * 5, x, y);
+        return line(x, y, 10, text);
+    }
+
+    private static Line line(float x, float y, float size, String text) {
+        return new Line(1, 792, x, y, size, false, false, text, -1, text.length() * size / 2, x, y);
     }
 
     private static PageGraphics.Box box(float left, float top, float right, float bottom) {
