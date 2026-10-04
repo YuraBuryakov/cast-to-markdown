@@ -127,7 +127,7 @@ final class Figures {
     }
 
     /** Painted boxes joined into drawings; {@code drawing} means at least one box is more than a thin line. */
-    private record Cluster(PageGraphics.Box box, boolean drawing) {
+    record Cluster(PageGraphics.Box box, boolean drawing) {
     }
 
     /** Drawings that are pieces of one figure, and the box around them. */
@@ -159,7 +159,7 @@ final class Figures {
     }
 
     /** Quadratic in the boxes of one page, hence {@link #MAX_BOXES}; none for a page above it. */
-    private static List<Cluster> clusters(List<PageGraphics.Box> boxes) {
+    static List<Cluster> clusters(List<PageGraphics.Box> boxes) {
         List<Cluster> clusters = new ArrayList<>();
         if (boxes.size() > MAX_BOXES) {
             return clusters;
