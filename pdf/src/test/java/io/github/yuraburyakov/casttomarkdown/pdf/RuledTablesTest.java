@@ -6,8 +6,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 class RuledTablesTest {
 
@@ -102,6 +104,37 @@ class RuledTablesTest {
                 line(135, w("Table", 130), w("1", 154), w("shows", 166), w("the", 190), w("results", 204)));
 
         assertThat(RuledTables.replace(lines, Map.of(1, smallGrid()), tables)).isEqualTo(lines);
+        assertThat(tables).isEmpty();
+    }
+
+    @Test
+    void clusterOfTooManyRulesIsNoTable() {
+        List<PageGraphics.Box> rules = new ArrayList<>(smallGrid());
+        for (int i = 0; i < 1_000; i++) {
+            rules.add(vertical(130 + i % 25, 73, 83));
+        }
+        List<Line> lines = List.of(line(81, w("layer", 130), w("18-layer", 170)),
+                line(135, w("Table", 130), w("1.", 154), w("Results.", 166)));
+
+        assertThat(RuledTables.replace(lines, Map.of(1, rules), tables)).isEqualTo(lines);
+        assertThat(tables).isEmpty();
+    }
+
+    @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
+    void manyCaptionsNextToManyRulesAreFast() {
+        // untrusted input: thousands of separate rules and thousands of captions on one page
+        List<PageGraphics.Box> rules = new ArrayList<>();
+        for (int i = 0; i < 9_000; i++) {
+            rules.add(rule(i % 100 * 8, i / 100 * 8, i % 100 * 8 + 3));
+        }
+        List<Line> lines = new ArrayList<>();
+        for (int i = 0; i < 2_000; i++) {
+            lines.add(line(100 + i * 20, w("Table", 0), w(i + ".", 30), w("Results", 60), w("of", 700)));
+        }
+
+        RuledTables.replace(lines, Map.of(1, rules), tables);
+
         assertThat(tables).isEmpty();
     }
 

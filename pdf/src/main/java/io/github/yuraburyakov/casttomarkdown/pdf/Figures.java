@@ -27,7 +27,7 @@ import org.apache.pdfbox.pdmodel.PDPage;
  *       is wholly on one side of the caption's baseline and does not contain it (a page background does).</li>
  * </ul>
  * The lines that start in the figure, or between it and the caption, are removed; the caption stays.
- * Figures without a caption keep their text, and so do pages that paint more than {@link #MAX_BOXES} boxes.
+ * Figures without a caption keep their text, and so do pages that paint more than {@link PageGraphics#MAX_BOXES} boxes.
  */
 final class Figures {
 
@@ -41,11 +41,6 @@ final class Figures {
      * most this far apart are pieces of one figure.
      */
     private static final float MAX_GAP = 3;
-    /**
-     * Pages that paint more boxes are skipped: joining boxes into drawings is quadratic, and an untrusted PDF
-     * can paint tens of thousands of tiny boxes in a few kilobytes. arXiv figures paint at most 419 per page.
-     */
-    private static final int MAX_BOXES = 10_000;
 
     private Figures() {
     }
@@ -126,8 +121,11 @@ final class Figures {
         return box.left() < caption.pageX() + caption.width() && box.right() > caption.pageX();
     }
 
-    /** Painted boxes joined into drawings; {@code drawing} means at least one box is more than a thin line. */
-    record Cluster(PageGraphics.Box box, boolean drawing) {
+    /**
+     * Painted boxes joined into drawings; {@code drawing} means at least one box is more than a thin line,
+     * {@code parts} are the boxes.
+     */
+    record Cluster(PageGraphics.Box box, boolean drawing, List<PageGraphics.Box> parts) {
     }
 
     /** Drawings that are pieces of one figure, and the box around them. */
@@ -158,21 +156,23 @@ final class Figures {
         return groups.stream().map(Figure::new).toList();
     }
 
-    /** Quadratic in the boxes of one page, hence {@link #MAX_BOXES}; none for a page above it. */
+    /** Quadratic in the boxes of one page, hence {@link PageGraphics#MAX_BOXES}; none for a page above it. */
     static List<Cluster> clusters(List<PageGraphics.Box> boxes) {
         List<Cluster> clusters = new ArrayList<>();
-        if (boxes.size() > MAX_BOXES) {
+        if (boxes.size() > PageGraphics.MAX_BOXES) {
             return clusters;
         }
         for (PageGraphics.Box box : boxes) {
-            Cluster joined = new Cluster(box, !box.thin());
+            Cluster joined = new Cluster(box, !box.thin(), new ArrayList<>(List.of(box)));
             boolean merged = true;
             while (merged) {
                 merged = false;
                 for (int i = 0; i < clusters.size(); i++) {
                     Cluster other = clusters.get(i);
                     if (other.box().near(joined.box(), JOIN)) {
-                        joined = new Cluster(joined.box().union(other.box()), joined.drawing() || other.drawing());
+                        joined.parts().addAll(other.parts());
+                        joined = new Cluster(joined.box().union(other.box()), joined.drawing() || other.drawing(),
+                                joined.parts());
                         clusters.remove(i);
                         merged = true;
                         break;

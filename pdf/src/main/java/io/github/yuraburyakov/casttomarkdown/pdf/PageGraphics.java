@@ -20,6 +20,12 @@ final class PageGraphics extends PDFGraphicsStreamEngine {
 
     /** A box narrower or lower than this many points is a thin line: a table rule, an underline. */
     private static final float THIN = 1.5f;
+    /**
+     * Pages that paint more boxes are skipped by figure and table detection: joining boxes into drawings is
+     * quadratic, and an untrusted PDF can paint millions of tiny boxes in a few kilobytes. Only one box more
+     * is kept, so that memory stays small too. arXiv pages paint at most 419.
+     */
+    static final int MAX_BOXES = 10_000;
 
     /** A painted area; {@code top} is above {@code bottom}, so {@code top < bottom}. */
     record Box(float left, float top, float right, float bottom) {
@@ -62,7 +68,7 @@ final class PageGraphics extends PDFGraphicsStreamEngine {
         pageTop = crop.getUpperRightY();
     }
 
-    /** The painted boxes of {@code page}, in content stream order. */
+    /** The painted boxes of {@code page}, in content stream order; at most {@link #MAX_BOXES} + 1. */
     static List<Box> of(PDPage page) throws IOException {
         PageGraphics graphics = new PageGraphics(page);
         graphics.processPage(page);
@@ -77,7 +83,7 @@ final class PageGraphics extends PDFGraphicsStreamEngine {
     }
 
     private void paint() {
-        if (path != null) {
+        if (path != null && boxes.size() <= MAX_BOXES) {
             boxes.add(path);
         }
         path = null;

@@ -36,8 +36,8 @@ import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
  * number; the level comes from the section number ({@code 2.1} is {@code ###}) or from the font size.
  * A PDF with images but no text (a scan) is rejected: OCR is not supported.
  * Bullet items become Markdown {@code - } items. Tables of tagged PDFs become Markdown tables;
- * in untagged PDFs (LaTeX, xml2rfc) a table drawn as a grid of rules with a caption ({@code Table 1.}) becomes
- * one too, other table text stays ordinary text.
+ * in untagged PDFs (LaTeX, xml2rfc) a table drawn as a grid of rules with a caption ({@code Table 1.})
+ * becomes one too, other table text stays ordinary text.
  * Text inside a figure is left out when the figure has a caption ({@code Figure 1.}); the caption stays.
  * Link annotations to web addresses become {@code [text](url)}. Block syntax at the start of a line
  * ({@code #}, {@code >}, code fences, rule lines) is escaped by {@link Markdown#escape}, so text such as {@code # layers}

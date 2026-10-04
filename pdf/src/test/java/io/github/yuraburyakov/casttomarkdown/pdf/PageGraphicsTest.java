@@ -45,6 +45,18 @@ class PageGraphicsTest {
     }
 
     @Test
+    void keepsOneBoxMoreThanTheLimit() throws IOException {
+        // untrusted input: millions of boxes would fill the memory before any limit is checked
+        TestPdf builder = TestPdf.builder().page();
+        for (int i = 0; i < PageGraphics.MAX_BOXES + 50; i++) {
+            builder.rect(i % 100 * 5, i / 100 * 5, 2, 2);
+        }
+        Path pdf = builder.writeTo(dir.resolve("many.pdf"));
+
+        assertThat(boxes(pdf)).hasSize(PageGraphics.MAX_BOXES + 1);
+    }
+
+    @Test
     void textIsNotGraphics() throws IOException {
         Path pdf = TestPdf.builder().page().line(700, "Only text").writeTo(dir.resolve("text.pdf"));
 

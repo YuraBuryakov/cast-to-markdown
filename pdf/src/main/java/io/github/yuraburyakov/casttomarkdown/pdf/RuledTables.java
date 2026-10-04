@@ -29,7 +29,8 @@ import org.apache.pdfbox.pdmodel.PDPage;
  * belongs to the column of its centre; where a row has no vertical rule between two columns, the cells are
  * merged and the text goes to the first one. The first row is the header.
  * The grid is left as text when a line has words both inside and outside it (text of the other column on
- * the same line) or it holds a tagged table, a rotated line or text outside its bands.
+ * the same line) or it holds a tagged table, a rotated line or text outside its bands, and a cluster of more
+ * than {@link #MAX_RULES} rules is not taken for a grid.
  */
 final class RuledTables {
 
@@ -38,6 +39,11 @@ final class RuledTables {
     private static final float MAX_GAP = 3;
     /** Rules and baselines closer than this many points are one. */
     private static final float SAME = 2;
+    /**
+     * A cluster with more rules is no table: untrusted input can draw thousands of rules, and the work per
+     * table grows with them. arXiv tables have at most about 140.
+     */
+    private static final int MAX_RULES = 1_000;
 
     private RuledTables() {
     }
@@ -66,7 +72,11 @@ final class RuledTables {
     /** As {@link #replace(PDDocument, List, List)}, with the painted boxes of each page given. */
     static List<Line> replace(List<Line> lines, Map<Integer, List<PageGraphics.Box>> graphicsByPage,
             List<String> tableMarkdown) {
-        Map<Integer, List<Figures.Cluster>> clustersByPage = new HashMap<>();
+        Map<Integer, List<Grid>> gridsByPage = new HashMap<>();
+        Map<Integer, List<Line>> linesByPage = new HashMap<>();
+        for (Line line : lines) {
+            linesByPage.computeIfAbsent(line.page(), page -> new ArrayList<>()).add(line);
+        }
         Map<Line, Integer> placeholders = new IdentityHashMap<>();
         Set<Line> removed = Collections.newSetFromMap(new IdentityHashMap<>());
         for (List<Line> paragraph : Paragraphs.group(lines)) {
@@ -74,16 +84,14 @@ final class RuledTables {
             if (!isCaption(caption)) {
                 continue;
             }
-            List<PageGraphics.Box> boxes = graphicsByPage.getOrDefault(caption.page(), List.of());
-            List<Figures.Cluster> clusters = clustersByPage.computeIfAbsent(caption.page(),
-                    page -> Figures.clusters(boxes));
-            PageGraphics.Box grid = grid(clusters, boxes, paragraph);
+            List<Grid> grids = gridsByPage.computeIfAbsent(caption.page(),
+                    page -> grids(graphicsByPage.getOrDefault(page, List.of())));
+            Grid grid = grid(grids, paragraph);
             if (grid == null) {
                 continue;
             }
-            List<Line> inGrid = linesIn(grid, caption.page(), lines, removed);
-            List<List<String>> rows = inGrid == null || inGrid.isEmpty() ? null
-                    : rows(inGrid, grid, rulesIn(grid, boxes));
+            List<Line> inGrid = linesIn(grid.box(), linesByPage.get(caption.page()), removed);
+            List<List<String>> rows = inGrid == null || inGrid.isEmpty() ? null : rows(inGrid, grid);
             if (rows == null) {
                 continue;
             }
@@ -111,42 +119,49 @@ final class RuledTables {
         return !line.rotated() && !line.isTable() && CAPTION.matcher(line.text()).find();
     }
 
+    /** A cluster of thin rules with at least two horizontal and one vertical rule. */
+    private record Grid(PageGraphics.Box box, List<PageGraphics.Box> horizontals, List<PageGraphics.Box> verticals) {
+    }
+
+    /** The grids of a page, found once per page. */
+    private static List<Grid> grids(List<PageGraphics.Box> boxes) {
+        List<Grid> grids = new ArrayList<>();
+        for (Figures.Cluster cluster : Figures.clusters(boxes)) {
+            if (cluster.drawing() || cluster.parts().size() > MAX_RULES) {
+                continue;
+            }
+            List<PageGraphics.Box> horizontals = cluster.parts().stream().filter(RuledTables::isHorizontal).toList();
+            List<PageGraphics.Box> verticals = cluster.parts().stream().filter(rule -> !isHorizontal(rule)).toList();
+            if (horizontals.size() >= 2 && !verticals.isEmpty()) {
+                grids.add(new Grid(cluster.box(), horizontals, verticals));
+            }
+        }
+        return grids;
+    }
+
     /** The nearest grid above the caption, else below it; {@code null} when there is none. */
-    private static PageGraphics.Box grid(List<Figures.Cluster> clusters, List<PageGraphics.Box> boxes,
-            List<Line> paragraph) {
+    private static Grid grid(List<Grid> grids, List<Line> paragraph) {
         Line caption = paragraph.get(0);
         float gap = MAX_GAP * caption.fontSize();
         float captionTop = caption.pageY() - caption.fontSize();
         float captionEnd = paragraph.get(paragraph.size() - 1).pageY();
-        PageGraphics.Box above = null;
-        PageGraphics.Box below = null;
-        for (Figures.Cluster cluster : clusters) {
-            PageGraphics.Box box = cluster.box();
-            if (cluster.drawing() || box.contains(caption.pageX(), caption.pageY())
-                    || box.left() >= caption.pageX() + caption.width() || box.right() <= caption.pageX()
-                    || !isGrid(rulesIn(box, boxes))) {
+        Grid above = null;
+        Grid below = null;
+        for (Grid grid : grids) {
+            PageGraphics.Box box = grid.box();
+            if (box.contains(caption.pageX(), caption.pageY())
+                    || box.left() >= caption.pageX() + caption.width() || box.right() <= caption.pageX()) {
                 continue;
             }
             if (box.bottom() <= caption.pageY() && captionTop - box.bottom() <= gap
-                    && (above == null || box.bottom() > above.bottom())) {
-                above = box;
+                    && (above == null || box.bottom() > above.box().bottom())) {
+                above = grid;
             } else if (box.top() >= captionEnd && box.top() - captionEnd <= gap
-                    && (below == null || box.top() < below.top())) {
-                below = box;
+                    && (below == null || box.top() < below.box().top())) {
+                below = grid;
             }
         }
         return above != null ? above : below;
-    }
-
-    private static List<PageGraphics.Box> rulesIn(PageGraphics.Box grid, List<PageGraphics.Box> boxes) {
-        PageGraphics.Box area = grid.grow(0.5f);
-        return boxes.stream().filter(box -> box.thin() && area.contains(box.left(), box.top())
-                && area.contains(box.right(), box.bottom())).toList();
-    }
-
-    private static boolean isGrid(List<PageGraphics.Box> rules) {
-        long horizontal = rules.stream().filter(RuledTables::isHorizontal).count();
-        return horizontal >= 2 && rules.size() > horizontal;
     }
 
     private static boolean isHorizontal(PageGraphics.Box rule) {
@@ -154,13 +169,13 @@ final class RuledTables {
     }
 
     /**
-     * The lines whose words are in the grid, in document order; {@code null} when the grid cannot be a table
-     * (a line half in it, a tagged table or rotated text in it, a line already in another table).
+     * The lines of the page whose words are in the grid, in document order; {@code null} when the grid cannot
+     * be a table (a line half in it, a tagged table or rotated text in it, a line already in another table).
      */
-    private static List<Line> linesIn(PageGraphics.Box grid, int page, List<Line> lines, Set<Line> taken) {
+    private static List<Line> linesIn(PageGraphics.Box grid, List<Line> pageLines, Set<Line> taken) {
         List<Line> inGrid = new ArrayList<>();
-        for (Line line : lines) {
-            if (line.page() != page || line.pageY() <= grid.top() || line.pageY() >= grid.bottom()) {
+        for (Line line : pageLines) {
+            if (line.pageY() <= grid.top() || line.pageY() >= grid.bottom()) {
                 continue;
             }
             if (line.isTable() || line.rotated() || line.words().isEmpty()) {
@@ -190,25 +205,47 @@ final class RuledTables {
     }
 
     /** The cells of the table, row by row; {@code null} when some text is outside the bands. */
-    private static List<List<String>> rows(List<Line> lines, PageGraphics.Box grid, List<PageGraphics.Box> rules) {
-        List<PageGraphics.Box> verticals = rules.stream().filter(rule -> !isHorizontal(rule)).toList();
-        List<Float> bounds = new ArrayList<>(List.of(grid.left()));
-        for (float x : merged(verticals.stream().map(rule -> (rule.left() + rule.right()) / 2).toList())) {
-            if (x - grid.left() > SAME && grid.right() - x > SAME) {
+    private static List<List<String>> rows(List<Line> lines, Grid grid) {
+        PageGraphics.Box box = grid.box();
+        List<Float> bounds = new ArrayList<>(List.of(box.left()));
+        for (float x : merged(grid.verticals().stream().map(rule -> (rule.left() + rule.right()) / 2).toList())) {
+            if (x - box.left() > SAME && box.right() - x > SAME) {
                 bounds.add(x);
             }
         }
-        bounds.add(grid.right());
-        List<Float> bands = merged(rules.stream().filter(RuledTables::isHorizontal)
-                .map(rule -> (rule.top() + rule.bottom()) / 2).toList());
+        bounds.add(box.right());
+        // the vertical rules on each column boundary, found once per table
+        List<List<PageGraphics.Box>> ruledBounds = new ArrayList<>();
+        for (int c = 0; c < bounds.size(); c++) {
+            ruledBounds.add(new ArrayList<>());
+        }
+        for (PageGraphics.Box rule : grid.verticals()) {
+            int c = Collections.binarySearch(bounds, (rule.left() + rule.right()) / 2);
+            int nearest = c >= 0 ? c : nearest(bounds, -c - 1, (rule.left() + rule.right()) / 2);
+            if (nearest > 0 && nearest + 1 < bounds.size()
+                    && Math.abs(bounds.get(nearest) - (rule.left() + rule.right()) / 2) <= SAME) {
+                ruledBounds.get(nearest).add(rule);
+            }
+        }
+        List<Float> bands = merged(grid.horizontals().stream().map(rule -> (rule.top() + rule.bottom()) / 2).toList());
 
         List<TextLine> textLines = textLines(lines);
         List<List<String>> rows = new ArrayList<>();
         int placed = 0;
+        int next = 0;
         for (int b = 0; b + 1 < bands.size(); b++) {
             float top = bands.get(b);
             float bottom = bands.get(b + 1);
-            List<TextLine> band = textLines.stream().filter(line -> line.y() > top && line.y() <= bottom).toList();
+            // text lines are sorted by y: each band takes the next ones
+            while (next < textLines.size() && textLines.get(next).y() <= top) {
+                next++;
+            }
+            int end = next;
+            while (end < textLines.size() && textLines.get(end).y() <= bottom) {
+                end++;
+            }
+            List<TextLine> band = textLines.subList(next, end);
+            next = end;
             if (band.isEmpty()) {
                 continue;
             }
@@ -217,24 +254,34 @@ final class RuledTables {
                     .anyMatch(word -> column(word, bounds) == 0));
             if (labelOnEveryLine) {
                 for (TextLine line : band) {
-                    rows.add(cells(List.of(line), line.y() - line.fontSize(), line.y(), bounds, verticals));
+                    rows.add(cells(List.of(line), line.y() - line.fontSize(), line.y(), bounds, ruledBounds));
                 }
             } else {
-                rows.add(cells(band, top, bottom, bounds, verticals));
+                rows.add(cells(band, top, bottom, bounds, ruledBounds));
             }
         }
         return placed == textLines.size() ? rows : null;
     }
 
+    /** The index of the bound nearest to {@code x}, given its insertion point. */
+    private static int nearest(List<Float> bounds, int insertion, float x) {
+        if (insertion >= bounds.size()) {
+            return bounds.size() - 1;
+        }
+        if (insertion == 0) {
+            return 0;
+        }
+        return x - bounds.get(insertion - 1) <= bounds.get(insertion) - x ? insertion - 1 : insertion;
+    }
+
     /** The cells of one row: words in reading order, merged cells to their first column. */
     private static List<String> cells(List<TextLine> lines, float top, float bottom, List<Float> bounds,
-            List<PageGraphics.Box> verticals) {
+            List<List<PageGraphics.Box>> ruledBounds) {
         int columns = bounds.size() - 1;
         boolean[] ruled = new boolean[columns];
         for (int c = 1; c < columns; c++) {
-            float x = bounds.get(c);
-            ruled[c] = verticals.stream().anyMatch(rule -> Math.abs((rule.left() + rule.right()) / 2 - x) <= SAME
-                    && rule.top() < bottom - 0.5f && rule.bottom() > top + 0.5f);
+            ruled[c] = ruledBounds.get(c).stream()
+                    .anyMatch(rule -> rule.top() < bottom - 0.5f && rule.bottom() > top + 0.5f);
         }
         List<StringBuilder> cells = new ArrayList<>();
         for (int c = 0; c < columns; c++) {
@@ -253,13 +300,12 @@ final class RuledTables {
         return cells.stream().map(StringBuilder::toString).toList();
     }
 
+    /** The column of the word's centre. */
     private static int column(Line.Word word, List<Float> bounds) {
         float centre = (word.left() + word.right()) / 2;
-        int column = 0;
-        while (column + 2 < bounds.size() && centre >= bounds.get(column + 1)) {
-            column++;
-        }
-        return column;
+        int index = Collections.binarySearch(bounds, centre);
+        int column = (index >= 0 ? index : -index - 2);
+        return Math.max(0, Math.min(column, bounds.size() - 2));
     }
 
     /** The words of the lines grouped by baseline, top to bottom, each line left to right. */
@@ -271,10 +317,12 @@ final class RuledTables {
             TextLine last = textLines.isEmpty() ? null : textLines.get(textLines.size() - 1);
             if (last != null && line.pageY() - last.y() <= SAME) {
                 last.words().addAll(line.words());
-                last.words().sort(Comparator.comparingDouble(Line.Word::left));
             } else {
                 textLines.add(new TextLine(line.pageY(), line.fontSize(), new ArrayList<>(line.words())));
             }
+        }
+        for (TextLine line : textLines) {
+            line.words().sort(Comparator.comparingDouble(Line.Word::left));
         }
         return textLines;
     }
