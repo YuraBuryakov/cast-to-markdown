@@ -25,6 +25,7 @@ import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
  * Converts PDF to Markdown with Apache PDFBox.
  *
  * <p>Pipeline: {@link LineCollector} (text lines in reading order, from PDFBox) ->
+ * {@link Figures} (text inside captioned figures removed) ->
  * {@link TaggedTables} and {@link Lists} (list markers back on their lines) ->
  * {@link PageFurniture} (headers, footers, page numbers removed) -> {@link Paragraphs} -> {@link Headings}
  * -> {@link Hyphens} -> Markdown -> {@link Markdown#normalize}.
@@ -34,9 +35,10 @@ import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
  * number; the level comes from the section number ({@code 2.1} is {@code ###}) or from the font size.
  * A PDF with images but no text (a scan) is rejected: OCR is not supported.
  * Bullet items become Markdown {@code - } items. Tables of tagged PDFs become Markdown tables;
- * in untagged PDFs (LaTeX, WeasyPrint) table text stays ordinary text. Link annotations to web
- * addresses become {@code [text](url)}. Block syntax at the start of a line ({@code #}, {@code >},
- * code fences, rule lines) is escaped by {@link Markdown#escape}, so text such as {@code # layers}
+ * in untagged PDFs (LaTeX, WeasyPrint) table text stays ordinary text.
+ * Text inside a figure is left out when the figure has a caption ({@code Figure 1.}); the caption stays.
+ * Link annotations to web addresses become {@code [text](url)}. Block syntax at the start of a line
+ * ({@code #}, {@code >}, code fences, rule lines) is escaped by {@link Markdown#escape}, so text such as {@code # layers}
  * in a table does not turn into a heading.
  *
  * <p>Stateless and thread-safe: every call works on its own document and collector.
@@ -83,6 +85,7 @@ public final class PdfConverter implements DocumentConverter {
                 throw new UnsupportedFormatException("PDF has no text layer, only images (scanned document?); "
                         + "OCR is not supported, run OCR first: " + name);
             }
+            lines = Figures.remove(document, lines);
             List<String> tableMarkdown = new ArrayList<>();
             for (int table = 0; table < tables.size(); table++) {
                 tableMarkdown.add(tables.markdown(table, collected.cellText()));
