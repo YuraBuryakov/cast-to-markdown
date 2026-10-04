@@ -71,23 +71,16 @@ CastToMarkdown converter = CastToMarkdown.builder()
         .build();
 ```
 
-PDF: headings are found by font size and boldness and by section numbers (`2.1 Scope`), paragraphs by line spacing; bullet lists become `-` items; running headers, footers and page numbers are removed; tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports) become Markdown tables, and so do tables of untagged PDFs (LaTeX, RFCs) drawn as a grid of rules with a caption such as "Table 1." next to them; links to web addresses become `[text](url)`. Password-protected PDFs are rejected with `DocumentConversionException`; PDFs that only restrict printing or copying are converted.
+## What it can do
 
-DOCX: headings come from the paragraph styles (`Title`, `Heading 1..6`); bold text without a heading style stays a paragraph. Lists keep their nesting and numbering, tables become Markdown tables, footnotes become Markdown footnotes, external links become `[text](url)`; running headers and footers are left out. Password-protected DOCX files and old `.doc` files renamed to `.docx` are rejected with `DocumentConversionException`. Apache POI logs through Log4j API: without a Log4j provider (or the `log4j-to-slf4j` bridge that Spring Boot includes) it prints one `Log4j API could not find a logging provider` line to stderr.
+[FEATURES.md](FEATURES.md) lists every feature: what it can do, what it cannot do yet, and the tests that check it. In short:
 
-Errors are unchecked: `UnsupportedFormatException` for unsupported formats, `DocumentConversionException` for unreadable or damaged files (the original exception is the cause).
+- PDF (with a text layer): paragraphs, headings, bullet lists, web links, tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports) and captioned ruled tables of untagged ones (LaTeX), empty cells included; running headers, footers and page numbers are removed, words split by a hyphen at a line end are joined when the document shows how, and the text inside captioned figures is left out. Scanned PDFs are rejected: run OCR first, for example with [OCRmyPDF](https://ocrmypdf.readthedocs.io/).
+- DOCX: headings from paragraph styles, nested and numbered lists, tables, footnotes, links.
 
-Scanned PDFs (pages are images without a text layer) are not supported: the converter throws `UnsupportedFormatException` instead of returning empty Markdown. Run OCR first, for example with [OCRmyPDF](https://ocrmypdf.readthedocs.io/), which adds a text layer to the PDF; the result can then be converted.
+Errors are unchecked: `UnsupportedFormatException` for unsupported formats and scans, `DocumentTooLargeException` above the size limit, `DocumentConversionException` for unreadable, damaged or password-protected files (the original exception is the cause).
 
-## Limitations
-
-- Scanned PDFs need OCR first (see above); a PDF where only some pages are scans is not detected.
-- PDF: a paragraph split by a footnote at the bottom of the page stays split in two; a word split by a hyphen at a line end is joined only when the document writes it elsewhere, with or without the hyphen; nested lists are not detected; text inside a figure (chart labels, diagram boxes) is left out only when the figure has a caption such as "Figure 1." next to it, otherwise it stays in the text; other tables of untagged PDFs (without vertical rules or without a caption, as in many web-to-PDF tools) stay plain text; in a ruled table, columns without a rule between them share one cell, and rules drawn inside cells (large brackets of a matrix) can split a row in two.
-- PDF: running headers and footers are recognized when they repeat on at least three pages; in one- or two-page documents they stay in the text.
-- Tables: merged cells are not spread over the columns they span; links inside PDF tables stay plain text.
-- Markdown escaping covers block syntax at the start of a line (`#`, `>`, code fences, rule and heading-underline lines such as `---`, `***`, `===`, a lone `-` or `*`). List markers (`-`, `*`, `1.`) and inline syntax (`*`, `_`, `` ` ``, `[`, `<`) are kept as they are: PDFs write real lists as plain text.
-- The first PDF that uses fonts it does not embed makes PDFBox scan the system fonts once and save a font cache (`.pdfbox.cache` in the user home); with hundreds of fonts, as on Windows, that takes about a minute. Later conversions and later runs reuse the cache.
-- A conversion has no time limit. For untrusted uploads run it in your own executor with a timeout, as with any parser.
+A conversion has no time limit. For untrusted uploads run it in your own executor with a timeout, as with any parser.
 
 ## Formats
 
