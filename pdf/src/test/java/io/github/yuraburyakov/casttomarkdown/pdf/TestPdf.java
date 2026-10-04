@@ -77,6 +77,24 @@ final class TestPdf {
         return this;
     }
 
+    /** A filled rectangle with its lower left corner at ({@code x}, {@code y}), like a box in a diagram. */
+    TestPdf rect(float x, float y, float width, float height) {
+        if (pages.isEmpty()) {
+            throw new IllegalStateException("Call page() before rect()");
+        }
+        pages.get(pages.size() - 1).add(new Shape(x, y, width, height));
+        return this;
+    }
+
+    /** A stroked horizontal line, like a table rule. */
+    TestPdf rule(float x, float y, float width) {
+        if (pages.isEmpty()) {
+            throw new IllegalStateException("Call page() before rule()");
+        }
+        pages.get(pages.size() - 1).add(new Shape(x, y, width, 0));
+        return this;
+    }
+
     /** Untagged text written upwards from ({@code x}, {@code y}), like the vertical axis label of a chart. */
     TestPdf rotatedLine(float x, float y, String text) {
         if (pages.isEmpty()) {
@@ -152,6 +170,15 @@ final class TestPdf {
                             mcid = drawTable(content, font, page, documentElement, table, mcid);
                         } else if (item instanceof LinkLine link) {
                             drawLink(document, content, font, page, link);
+                        } else if (item instanceof Shape shape) {
+                            if (shape.height() == 0) {
+                                content.moveTo(shape.x(), shape.y());
+                                content.lineTo(shape.x() + shape.width(), shape.y());
+                                content.stroke();
+                            } else {
+                                content.addRect(shape.x(), shape.y(), shape.width(), shape.height());
+                                content.fill();
+                            }
                         } else if (item instanceof RotatedLine rotated) {
                             content.beginText();
                             content.setFont(font, FONT_SIZE);
@@ -237,7 +264,10 @@ final class TestPdf {
         page.getAnnotations().add(annotation);
     }
 
-    private sealed interface Item permits Line, LinkLine, Table, RotatedLine {
+    private sealed interface Item permits Line, LinkLine, Table, RotatedLine, Shape {
+    }
+
+    private record Shape(float x, float y, float width, float height) implements Item {
     }
 
     private record RotatedLine(float x, float y, String text) implements Item {
