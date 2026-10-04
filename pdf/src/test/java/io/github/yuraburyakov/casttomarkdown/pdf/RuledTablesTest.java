@@ -68,6 +68,24 @@ class RuledTablesTest {
     }
 
     @Test
+    void cellSpanningUnderAHeaderWithMoreColumnsGoesToTheFirstOfThem() {
+        // arXiv Table 1, conv1: the header has a rule between every model, the conv1 row only after the label;
+        // the row's line sits so close under the header that a font size above its baseline reaches into it
+        List<PageGraphics.Box> rules = List.of(rule(126, 300, 72), rule(126, 300, 84), rule(126, 300, 96),
+                vertical(160, 72, 96), vertical(200, 72, 84), vertical(250, 72, 84));
+        List<Line> lines = List.of(
+                line(81, w("layer", 130), w("18-layer", 165), w("34-layer", 205), w("50-layer", 255)),
+                line(90, w("conv1", 130), w("7×7,", 215), w("64", 235)),
+                line(111, w("Table", 130), w("1.", 154), w("Architectures.", 166)));
+
+        RuledTables.replace(lines, Map.of(1, rules), tables);
+
+        assertThat(tables).containsExactly(TableMarkdown.of(List.of(
+                List.of("layer", "18-layer", "34-layer", "50-layer"),
+                List.of("conv1", "7×7, 64", "", "")), false));
+    }
+
+    @Test
     void captionInTheParagraphOfTheRowsIsFound() {
         // arXiv Table 13: the caption follows the last row in the same font, 15 points below it, and the
         // lines 12 points apart make that one paragraph

@@ -272,7 +272,9 @@ final class RuledTables {
                     .anyMatch(word -> column(word, bounds) == 0));
             if (labelOnEveryLine) {
                 for (TextLine line : band) {
-                    rows.add(cells(List.of(line), line.y() - line.fontSize(), line.y(), bounds, ruledBounds));
+                    // within the band: a font size above the baseline can reach the rules of the row above
+                    rows.add(cells(List.of(line), Math.max(top, line.y() - line.fontSize()), line.y(), bounds,
+                            ruledBounds));
                 }
             } else {
                 rows.add(cells(band, top, bottom, bounds, ruledBounds));
