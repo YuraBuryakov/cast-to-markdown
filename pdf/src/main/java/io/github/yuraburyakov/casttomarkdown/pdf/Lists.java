@@ -50,7 +50,8 @@ final class Lists {
             if (item >= 0) {
                 Line text = result.get(item);
                 result.set(item, new Line(text.page(), text.pageHeight(), marker.x(), text.y(), text.fontSize(),
-                        text.bold(), text.rotated(), marker.text().strip() + " " + text.text().strip()));
+                        text.bold(), text.rotated(), marker.text().strip() + " " + text.text().strip(), -1,
+                        text.x() + text.width() - marker.x(), marker.pageX(), marker.pageY()));
                 result.remove(m);
                 m--;
             }

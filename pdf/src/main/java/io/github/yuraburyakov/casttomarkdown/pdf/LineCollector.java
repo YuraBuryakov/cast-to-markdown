@@ -52,6 +52,7 @@ final class LineCollector extends PDFTextStripper {
     private final List<Line> lines = new ArrayList<>();
     private final StringBuilder text = new StringBuilder();
     private TextPosition first;
+    private TextPosition last;
     private final Map<Float, Integer> charsBySize = new HashMap<>();
     private int boldChars;
     private int chars;
@@ -177,6 +178,7 @@ final class LineCollector extends PDFTextStripper {
             if (first == null) {
                 first = position;
             }
+            last = position;
             if (!position.getUnicode().isBlank()) {
                 charsBySize.merge(position.getFontSizeInPt(), 1, Integer::sum);
                 chars++;
@@ -320,11 +322,13 @@ final class LineCollector extends PDFTextStripper {
             float pageHeight = getCurrentPage().getRotation() % 180 == 0 ? box.getHeight() : box.getWidth();
             float fontSize = charsBySize.isEmpty() ? first.getFontSizeInPt() : dominantSize(charsBySize);
             int table = tableChars > 0 && otherChars == 0 && !severalTables ? lineTable : -1;
+            float width = last.getXDirAdj() + last.getWidthDirAdj() - first.getXDirAdj();
             lines.add(new Line(getCurrentPageNo(), pageHeight, first.getXDirAdj(), first.getYDirAdj(), fontSize,
-                    boldChars * 2 > chars, first.getDir() != 0, lineText, table));
+                    boldChars * 2 > chars, first.getDir() != 0, lineText, table, width, first.getX(), first.getY()));
         }
         text.setLength(0);
         first = null;
+        last = null;
         charsBySize.clear();
         boldChars = 0;
         chars = 0;

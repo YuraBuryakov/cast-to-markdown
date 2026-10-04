@@ -26,6 +26,7 @@ import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.pdmodel.interactive.action.PDActionURI;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageFitDestination;
+import org.apache.pdfbox.util.Matrix;
 
 /**
  * Builds small PDFs for tests, so tests do not depend on binary fixtures.
@@ -73,6 +74,15 @@ final class TestPdf {
             throw new IllegalStateException("Call page() before line()");
         }
         pages.get(pages.size() - 1).add(new Line(x, y, text));
+        return this;
+    }
+
+    /** Untagged text written upwards from ({@code x}, {@code y}), like the vertical axis label of a chart. */
+    TestPdf rotatedLine(float x, float y, String text) {
+        if (pages.isEmpty()) {
+            throw new IllegalStateException("Call page() before rotatedLine()");
+        }
+        pages.get(pages.size() - 1).add(new RotatedLine(x, y, text));
         return this;
     }
 
@@ -142,6 +152,12 @@ final class TestPdf {
                             mcid = drawTable(content, font, page, documentElement, table, mcid);
                         } else if (item instanceof LinkLine link) {
                             drawLink(document, content, font, page, link);
+                        } else if (item instanceof RotatedLine rotated) {
+                            content.beginText();
+                            content.setFont(font, FONT_SIZE);
+                            content.setTextMatrix(Matrix.getRotateInstance(Math.PI / 2, rotated.x(), rotated.y()));
+                            content.showText(rotated.text());
+                            content.endText();
                         } else if (item instanceof Line line) {
                             content.beginText();
                             content.setFont(font, FONT_SIZE);
@@ -221,7 +237,10 @@ final class TestPdf {
         page.getAnnotations().add(annotation);
     }
 
-    private sealed interface Item permits Line, LinkLine, Table {
+    private sealed interface Item permits Line, LinkLine, Table, RotatedLine {
+    }
+
+    private record RotatedLine(float x, float y, String text) implements Item {
     }
 
     private record LinkLine(float y, String before, String linkText, String url, String after) implements Item {

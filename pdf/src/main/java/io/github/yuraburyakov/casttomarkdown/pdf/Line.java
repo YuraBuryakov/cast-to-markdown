@@ -6,12 +6,20 @@ package io.github.yuraburyakov.casttomarkdown.pdf;
  * {@code rotated} means the text is not horizontal (e.g. vertical text in a page margin).
  * {@code table} is the index of a tagged table this line stands for (see {@link TaggedTables}),
  * or {@code -1} for ordinary text.
+ * {@code x} and {@code y} are along the text direction; {@code pageX} and {@code pageY} are where the line
+ * starts on the page (y downwards), the same as {@code x} and {@code y} for horizontal text.
+ * {@code width} runs from the start of the first character to the end of the last one, 0 when unknown.
  */
 record Line(int page, float pageHeight, float x, float y, float fontSize, boolean bold, boolean rotated, String text,
-        int table) {
+        int table, float width, float pageX, float pageY) {
 
     /** US Letter height, for lines built in tests. */
     private static final float DEFAULT_PAGE_HEIGHT = 792;
+
+    Line(int page, float pageHeight, float x, float y, float fontSize, boolean bold, boolean rotated, String text,
+            int table) {
+        this(page, pageHeight, x, y, fontSize, bold, rotated, text, table, 0, x, y);
+    }
 
     Line(int page, float pageHeight, float x, float y, float fontSize, boolean bold, boolean rotated, String text) {
         this(page, pageHeight, x, y, fontSize, bold, rotated, text, -1);
