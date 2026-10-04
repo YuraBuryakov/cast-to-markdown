@@ -8,7 +8,6 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -37,7 +36,6 @@ final class TaggedTables {
     private static final int NO_TH = 0;
     private static final int SOME_TH = 1;
     private static final int ONLY_TH = 2;
-    private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
     /** Cell ids of each table, row by row. */
     private final List<List<List<Integer>>> tables = new ArrayList<>();
@@ -116,42 +114,15 @@ final class TaggedTables {
      */
     String markdown(int table, Map<Integer, StringBuilder> textByCell) {
         List<List<String>> rows = new ArrayList<>();
-        int columns = 0;
         for (List<Integer> row : tables.get(table)) {
             List<String> cells = new ArrayList<>();
             for (int cell : row) {
                 StringBuilder text = textByCell.get(cell);
-                cells.add(text == null ? "" : WHITESPACE.matcher(text.toString().strip()).replaceAll(" ").replace("|", "\\|"));
+                cells.add(text == null ? "" : text.toString());
             }
-            columns = Math.max(columns, cells.size());
             rows.add(cells);
         }
-        for (List<String> cells : rows) {
-            while (cells.size() < columns) {
-                cells.add("");
-            }
-        }
-        for (int column = columns - 1; column >= 0; column--) {
-            int c = column;
-            if (rows.stream().allMatch(cells -> cells.get(c).isEmpty())) {
-                rows.forEach(cells -> cells.remove(c));
-                columns--;
-            }
-        }
-        if (withoutHeaderRow.contains(table)) {
-            // the picture row of an infobox has no text
-            rows.removeIf(cells -> cells.stream().allMatch(String::isEmpty));
-            rows.add(0, Collections.nCopies(columns, ""));
-        }
-        StringBuilder markdown = new StringBuilder();
-        for (int r = 0; r < rows.size(); r++) {
-            List<String> cells = rows.get(r);
-            markdown.append("| ").append(String.join(" | ", cells)).append(" |\n");
-            if (r == 0) {
-                markdown.append("|").append(" --- |".repeat(columns)).append('\n');
-            }
-        }
-        return markdown.toString().stripTrailing();
+        return TableMarkdown.of(rows, withoutHeaderRow.contains(table));
     }
 
     /**
