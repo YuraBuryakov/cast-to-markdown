@@ -95,6 +95,15 @@ final class TestPdf {
         return this;
     }
 
+    /** Clips what is drawn after it on this page to the rectangle (lower left corner at {@code x}, {@code y}). */
+    TestPdf clip(float x, float y, float width, float height) {
+        if (pages.isEmpty()) {
+            throw new IllegalStateException("Call page() before clip()");
+        }
+        pages.get(pages.size() - 1).add(new Clip(x, y, width, height));
+        return this;
+    }
+
     /** A stroked horizontal line, like a table rule. */
     TestPdf rule(float x, float y, float width) {
         if (pages.isEmpty()) {
@@ -179,6 +188,9 @@ final class TestPdf {
                             mcid = drawTable(content, font, page, documentElement, table, mcid);
                         } else if (item instanceof LinkLine link) {
                             drawLink(document, content, font, page, link);
+                        } else if (item instanceof Clip clip) {
+                            content.addRect(clip.x(), clip.y(), clip.width(), clip.height());
+                            content.clip();
                         } else if (item instanceof Shape shape) {
                             if (shape.height() == 0 || shape.width() == 0) {
                                 content.moveTo(shape.x(), shape.y());
@@ -273,7 +285,11 @@ final class TestPdf {
         page.getAnnotations().add(annotation);
     }
 
-    private sealed interface Item permits Line, LinkLine, Table, RotatedLine, Shape {
+    private sealed interface Item permits Line, LinkLine, Table, RotatedLine, Shape, Clip {
+    }
+
+    /** Clips everything drawn after it on the page to the rectangle, as a placed picture is clipped. */
+    private record Clip(float x, float y, float width, float height) implements Item {
     }
 
     private record Shape(float x, float y, float width, float height) implements Item {

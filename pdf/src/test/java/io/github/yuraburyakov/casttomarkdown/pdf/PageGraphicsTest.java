@@ -57,6 +57,28 @@ class PageGraphicsTest {
     }
 
     @Test
+    void onlyTheVisiblePartOfAClippedBoxCounts() throws IOException {
+        // Inception-v3 p4: the background of a placed figure reaches under the next column, clipped away
+        Path pdf = TestPdf.builder().page().clip(100, 500, 200, 100).rect(50, 450, 400, 300)
+                .writeTo(dir.resolve("clipped.pdf"));
+
+        assertThat(boxes(pdf)).singleElement().satisfies(box -> {
+            assertThat(box.left()).isCloseTo(100f, within(0.5f));
+            assertThat(box.right()).isCloseTo(300f, within(0.5f));
+            assertThat(box.top()).isCloseTo(192f, within(0.5f));
+            assertThat(box.bottom()).isCloseTo(292f, within(0.5f));
+        });
+    }
+
+    @Test
+    void boxClippedAwayCompletelyIsNotPainted() throws IOException {
+        Path pdf = TestPdf.builder().page().clip(100, 500, 50, 50).rect(300, 100, 50, 50)
+                .writeTo(dir.resolve("hidden.pdf"));
+
+        assertThat(boxes(pdf)).isEmpty();
+    }
+
+    @Test
     void textIsNotGraphics() throws IOException {
         Path pdf = TestPdf.builder().page().line(700, "Only text").writeTo(dir.resolve("text.pdf"));
 

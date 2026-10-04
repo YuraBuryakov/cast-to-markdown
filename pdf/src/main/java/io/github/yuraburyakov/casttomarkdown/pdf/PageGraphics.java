@@ -1,6 +1,8 @@
 package io.github.yuraburyakov.casttomarkdown.pdf;
 
+import java.awt.geom.Area;
 import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,6 +61,8 @@ final class PageGraphics extends PDFGraphicsStreamEngine {
     private final List<Box> boxes = new ArrayList<>();
     /** The path being built, {@code null} when there is none. */
     private Box path;
+    /** Whether the path being built becomes the clip when it ends ({@code W n}). */
+    private boolean clipping;
     private final Point2D.Float current = new Point2D.Float();
 
     private PageGraphics(PDPage page) {
@@ -84,9 +88,26 @@ final class PageGraphics extends PDFGraphicsStreamEngine {
 
     private void paint() {
         if (path != null && boxes.size() <= MAX_BOXES) {
-            boxes.add(path);
+            Box visible = visible(path);
+            if (visible != null) {
+                boxes.add(visible);
+            }
         }
+        applyClip();
         path = null;
+    }
+
+    /**
+     * The part of the box inside the clipping path, {@code null} when none of it is: a placed picture's
+     * background can reach far beyond what is shown, under the text of the next column.
+     */
+    private Box visible(Box box) {
+        Rectangle2D clip = getGraphicsState().getCurrentClippingPath().getBounds2D();
+        float left = Math.max(box.left(), (float) clip.getMinX() - originX);
+        float right = Math.min(box.right(), (float) clip.getMaxX() - originX);
+        float top = Math.max(box.top(), pageTop - (float) clip.getMaxY());
+        float bottom = Math.min(box.bottom(), pageTop - (float) clip.getMinY());
+        return left <= right && top <= bottom ? new Box(left, top, right, bottom) : null;
     }
 
     @Override
@@ -113,7 +134,8 @@ final class PageGraphics extends PDFGraphicsStreamEngine {
 
     @Override
     public void clip(int windingRule) {
-        // a clip path is not painted; endPath() follows and drops it
+        // the clip takes effect when the path ends, as in PDFBox's own renderer
+        clipping = true;
     }
 
     @Override
@@ -147,7 +169,19 @@ final class PageGraphics extends PDFGraphicsStreamEngine {
 
     @Override
     public void endPath() {
+        applyClip();
         path = null;
+    }
+
+    /** Makes the ended path the clip when {@code W} asked for it; it takes effect after painting. */
+    private void applyClip() {
+        if (clipping && path != null) {
+            // ponytail: clipped to the bounding box of the clip path, not its exact shape; placed pictures
+            // and figure panels are clipped by rectangles
+            getGraphicsState().intersectClippingPath(new Area(new Rectangle2D.Float(path.left() + originX,
+                    pageTop - path.bottom(), path.right() - path.left(), path.bottom() - path.top())));
+        }
+        clipping = false;
     }
 
     @Override
