@@ -86,6 +86,15 @@ final class TestPdf {
         return this;
     }
 
+    /** A stroked vertical line going down from ({@code x}, {@code y}), like a column rule of a table. */
+    TestPdf verticalRule(float x, float y, float height) {
+        if (pages.isEmpty()) {
+            throw new IllegalStateException("Call page() before verticalRule()");
+        }
+        pages.get(pages.size() - 1).add(new Shape(x, y, 0, -height));
+        return this;
+    }
+
     /** A stroked horizontal line, like a table rule. */
     TestPdf rule(float x, float y, float width) {
         if (pages.isEmpty()) {
@@ -171,9 +180,9 @@ final class TestPdf {
                         } else if (item instanceof LinkLine link) {
                             drawLink(document, content, font, page, link);
                         } else if (item instanceof Shape shape) {
-                            if (shape.height() == 0) {
+                            if (shape.height() == 0 || shape.width() == 0) {
                                 content.moveTo(shape.x(), shape.y());
-                                content.lineTo(shape.x() + shape.width(), shape.y());
+                                content.lineTo(shape.x() + shape.width(), shape.y() + shape.height());
                                 content.stroke();
                             } else {
                                 content.addRect(shape.x(), shape.y(), shape.width(), shape.height());

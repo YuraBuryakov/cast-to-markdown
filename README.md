@@ -2,7 +2,7 @@
 
 Java-native library that converts common document formats into clean, LLM/RAG-friendly Markdown through one consistent API, using mature Java parsers under the hood.
 
-> **Status:** early development (`0.1.0-SNAPSHOT`), preparing the first release `0.1.0`; the API may still change before `1.0`. PDF: paragraphs, headings, bullet lists, headers/footers removed, tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports), web links. DOCX: headings, lists, tables, footnotes, links.
+> **Status:** early development (`0.1.0-SNAPSHOT`), preparing the first release `0.1.0`; the API may still change before `1.0`. PDF: paragraphs, headings, bullet lists, headers/footers removed, tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports) and captioned ruled tables of untagged ones, web links. DOCX: headings, lists, tables, footnotes, links.
 
 ## Goals
 
@@ -71,7 +71,7 @@ CastToMarkdown converter = CastToMarkdown.builder()
         .build();
 ```
 
-PDF: headings are found by font size and boldness and by section numbers (`2.1 Scope`), paragraphs by line spacing; bullet lists become `-` items; running headers, footers and page numbers are removed; tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports) become Markdown tables; links to web addresses become `[text](url)`. Password-protected PDFs are rejected with `DocumentConversionException`; PDFs that only restrict printing or copying are converted.
+PDF: headings are found by font size and boldness and by section numbers (`2.1 Scope`), paragraphs by line spacing; bullet lists become `-` items; running headers, footers and page numbers are removed; tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports) become Markdown tables, and so do tables of untagged PDFs (LaTeX, RFCs) drawn as a grid of rules with a caption such as "Table 1." next to them; links to web addresses become `[text](url)`. Password-protected PDFs are rejected with `DocumentConversionException`; PDFs that only restrict printing or copying are converted.
 
 DOCX: headings come from the paragraph styles (`Title`, `Heading 1..6`); bold text without a heading style stays a paragraph. Lists keep their nesting and numbering, tables become Markdown tables, footnotes become Markdown footnotes, external links become `[text](url)`; running headers and footers are left out. Password-protected DOCX files and old `.doc` files renamed to `.docx` are rejected with `DocumentConversionException`. Apache POI logs through Log4j API: without a Log4j provider (or the `log4j-to-slf4j` bridge that Spring Boot includes) it prints one `Log4j API could not find a logging provider` line to stderr.
 
@@ -82,7 +82,7 @@ Scanned PDFs (pages are images without a text layer) are not supported: the conv
 ## Limitations
 
 - Scanned PDFs need OCR first (see above); a PDF where only some pages are scans is not detected.
-- PDF: a paragraph split by a footnote at the bottom of the page stays split in two; a word split by a hyphen at a line end is joined only when the document writes it elsewhere, with or without the hyphen; nested lists are not detected; text inside a figure (chart labels, diagram boxes) is left out only when the figure has a caption such as "Figure 1." next to it, otherwise it stays in the text; tables of untagged PDFs (LaTeX, many web-to-PDF tools) stay plain text.
+- PDF: a paragraph split by a footnote at the bottom of the page stays split in two; a word split by a hyphen at a line end is joined only when the document writes it elsewhere, with or without the hyphen; nested lists are not detected; text inside a figure (chart labels, diagram boxes) is left out only when the figure has a caption such as "Figure 1." next to it, otherwise it stays in the text; other tables of untagged PDFs (without vertical rules or without a caption, as in many web-to-PDF tools) stay plain text.
 - PDF: running headers and footers are recognized when they repeat on at least three pages; in one- or two-page documents they stay in the text.
 - Tables: merged cells are not spread over the columns they span; links inside PDF tables stay plain text.
 - Markdown escaping covers block syntax at the start of a line (`#`, `>`, code fences, rule and heading-underline lines such as `---`, `***`, `===`, a lone `-` or `*`). List markers (`-`, `*`, `1.`) and inline syntax (`*`, `_`, `` ` ``, `[`, `<`) are kept as they are: PDFs write real lists as plain text.
