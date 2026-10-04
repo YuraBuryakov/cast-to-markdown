@@ -26,6 +26,7 @@ Known limitations: Markdown escaping covers block syntax at line start only (`#`
 
 - One small step at a time; run the tests after each step.
 - Suggest a commit message after each logical step. Commit only when the author says so.
+- `FEATURES.md` is the list of what each feature can and cannot do. A change to a feature's behaviour updates its section in the same commit; a "Can" line names the test that checks it, or says it is not covered.
 
 ### At the end of the session
 
