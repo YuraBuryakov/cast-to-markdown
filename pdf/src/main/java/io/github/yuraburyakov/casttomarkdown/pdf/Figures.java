@@ -24,7 +24,7 @@ import org.apache.pdfbox.pdmodel.PDPage;
  *       thin lines (a table of rules is not a figure).</li>
  * </ul>
  * The lines that start in the cluster, or between it and the caption, are removed; the caption stays.
- * Figures without a caption keep their text.
+ * Figures without a caption keep their text, and so do pages that paint more than {@link #MAX_BOXES} boxes.
  */
 final class Figures {
 
@@ -35,6 +35,11 @@ final class Figures {
     private static final float MARGIN = 1;
     /** A drawing at most this many caption font sizes away from the caption belongs to it. */
     private static final float MAX_GAP = 3;
+    /**
+     * Pages that paint more boxes are skipped: joining boxes into drawings is quadratic, and an untrusted PDF
+     * can paint tens of thousands of tiny boxes in a few kilobytes. arXiv figures paint at most 419 per page.
+     */
+    private static final int MAX_BOXES = 10_000;
 
     private Figures() {
     }
@@ -58,13 +63,17 @@ final class Figures {
 
     /** As {@link #remove(PDDocument, List)}, with the painted boxes of each page given. */
     static List<Line> remove(List<Line> lines, Map<Integer, List<PageGraphics.Box>> graphicsByPage) {
-        Set<Line> removed = Collections.newSetFromMap(new IdentityHashMap<>());
+        Map<Integer, List<Cluster>> clustersByPage = new HashMap<>();
+        Map<Integer, List<PageGraphics.Box>> areasByPage = new HashMap<>();
+        Set<Line> captionLines = Collections.newSetFromMap(new IdentityHashMap<>());
         for (List<Line> paragraph : Paragraphs.group(lines)) {
             Line caption = paragraph.get(0);
             if (!isCaption(caption)) {
                 continue;
             }
-            List<Cluster> clusters = clusters(graphicsByPage.getOrDefault(caption.page(), List.of()));
+            captionLines.addAll(paragraph);
+            List<Cluster> clusters = clustersByPage.computeIfAbsent(caption.page(),
+                    page -> clusters(graphicsByPage.getOrDefault(page, List.of())));
             float size = caption.fontSize();
             float captionTop = caption.pageY() - size;
             float captionEnd = paragraph.get(paragraph.size() - 1).pageY();
@@ -87,19 +96,14 @@ final class Figures {
                     }
                 }
             }
-            Set<Line> captionLines = Collections.newSetFromMap(new IdentityHashMap<>());
-            captionLines.addAll(paragraph);
-            for (Line line : lines) {
-                if (line.page() == caption.page() && !line.isTable() && !captionLines.contains(line)
-                        && areas.stream().anyMatch(area -> area.contains(line.pageX(), line.pageY()))) {
-                    removed.add(line);
-                }
-            }
+            areasByPage.computeIfAbsent(caption.page(), page -> new ArrayList<>()).addAll(areas);
         }
-        if (removed.isEmpty()) {
+        if (areasByPage.isEmpty()) {
             return lines;
         }
-        return lines.stream().filter(line -> !removed.contains(line)).toList();
+        return lines.stream().filter(line -> line.isTable() || captionLines.contains(line)
+                || areasByPage.getOrDefault(line.page(), List.of()).stream()
+                        .noneMatch(area -> area.contains(line.pageX(), line.pageY()))).toList();
     }
 
     private static boolean isCaption(Line line) {
@@ -118,9 +122,12 @@ final class Figures {
     private record Cluster(PageGraphics.Box box, boolean drawing) {
     }
 
-    /** ponytail: quadratic in the boxes of one page; fine for charts of a few thousand paths. */
+    /** Quadratic in the boxes of one page, hence {@link #MAX_BOXES}; none for a page above it. */
     private static List<Cluster> clusters(List<PageGraphics.Box> boxes) {
         List<Cluster> clusters = new ArrayList<>();
+        if (boxes.size() > MAX_BOXES) {
+            return clusters;
+        }
         for (PageGraphics.Box box : boxes) {
             Cluster joined = new Cluster(box, !box.thin());
             boolean merged = true;

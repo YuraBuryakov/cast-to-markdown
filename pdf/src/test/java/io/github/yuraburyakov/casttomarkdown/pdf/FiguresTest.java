@@ -2,9 +2,12 @@ package io.github.yuraburyakov.casttomarkdown.pdf;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 class FiguresTest {
 
@@ -71,6 +74,21 @@ class FiguresTest {
         List<Line> lines = List.of(line(330, 170, "conv"), line(72, 225, "Figure 1. Left."));
 
         assertThat(Figures.remove(lines, Map.of(1, List.of(box(320, 140, 520, 200))))).isEqualTo(lines);
+    }
+
+    @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
+    void pageWithTooManyPaintedBoxesIsLeftAsItIs() {
+        // untrusted input: tens of thousands of tiny boxes would make clustering slow, so the page is skipped
+        List<PageGraphics.Box> boxes = new ArrayList<>(List.of(box(100, 140, 300, 200)));
+        for (int i = 0; i < 20_000; i++) {
+            float x = i % 100 * 5;
+            float y = 300 + i / 100 * 5f;
+            boxes.add(box(x, y, x + 1, y + 1));
+        }
+        List<Line> lines = List.of(line(120, 170, "3x3 conv"), line(72, 225, "Figure 1. Many boxes."));
+
+        assertThat(Figures.remove(lines, Map.of(1, boxes))).isEqualTo(lines);
     }
 
     /** A horizontal 10 pt line on page 1, 5 points per character wide. */
