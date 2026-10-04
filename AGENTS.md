@@ -18,9 +18,9 @@ Reply in the language the author writes in.
 
 ### Current next step
 
-PDF works: paragraphs, headings, bullet lists, tables of tagged PDFs (structure tree + MCIDs), headers/footers removed, web links as `[text](url)` (link annotations, tagged or not), scans rejected, `Path` and `InputStream` input, size limit. DOCX works: style headings, lists with numbering, tables, footnotes, external links. Modules: `core`, `pdf`, `docx`. Before a first release: the `commons.math3` filename-based automatic module required by POI (compiler warning), see the Obsidian note on public API decisions.
+PDF works: paragraphs, headings, bullet lists, tables of tagged PDFs (structure tree + MCIDs) and captioned ruled tables of untagged PDFs (grid of rules + `Table N.` caption), text inside captioned figures left out, headers/footers removed, web links as `[text](url)` (link annotations, tagged or not), scans rejected, `Path` and `InputStream` input, size limit. DOCX works: style headings, lists with numbering, tables, footnotes, external links. Modules: `core`, `pdf`, `docx`. Before a first release: the `commons.math3` filename-based automatic module required by POI (compiler warning), see the Obsidian note on public API decisions.
 
-Known limitations: Markdown escaping covers block syntax at line start only (`#`, `>`, fences, rule lines), not list markers or inline syntax; tables of untagged PDFs (LaTeX, WeasyPrint) are plain text; merged table cells are not spread over columns; links inside PDF tables and DOCX HYPERLINK fields stay plain text. Findings and open questions are in the Obsidian notes "CastToMarkdown - Experiment 01/02".
+Known limitations: Markdown escaping covers block syntax at line start only (`#`, `>`, fences, rule lines), not list markers or inline syntax; tables of untagged PDFs without vertical rules or caption (WeasyPrint, RFCs on a page background) are plain text; merged table cells are not spread over columns; links inside PDF tables and DOCX HYPERLINK fields stay plain text. Findings and open questions are in the Obsidian notes "CastToMarkdown - Experiment 01/02".
 
 ### During the session
 
