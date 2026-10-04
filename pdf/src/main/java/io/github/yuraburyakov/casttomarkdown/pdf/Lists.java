@@ -3,6 +3,7 @@ package io.github.yuraburyakov.casttomarkdown.pdf;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 /**
  * Bullet lists: puts list markers back on their lines and renders them as Markdown {@code - } items.
@@ -51,7 +52,8 @@ final class Lists {
                 Line text = result.get(item);
                 result.set(item, new Line(text.page(), text.pageHeight(), marker.x(), text.y(), text.fontSize(),
                         text.bold(), text.rotated(), marker.text().strip() + " " + text.text().strip(), -1,
-                        text.x() + text.width() - marker.x(), marker.pageX(), marker.pageY()));
+                        text.x() + text.width() - marker.x(), marker.pageX(), marker.pageY(),
+                        Stream.concat(marker.words().stream(), text.words().stream()).toList()));
                 result.remove(m);
                 m--;
             }

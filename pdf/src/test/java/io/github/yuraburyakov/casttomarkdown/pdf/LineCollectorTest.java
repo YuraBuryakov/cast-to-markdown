@@ -43,6 +43,19 @@ class LineCollectorTest {
     }
 
     @Test
+    void lineKnowsWhereEachWordIs() throws IOException {
+        Path pdf = TestPdf.builder().page().line(100, 700, "Hello big world").writeTo(dir.resolve("words.pdf"));
+
+        List<Line.Word> words = lines(pdf).get(0).words();
+
+        PDType1Font font = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+        assertThat(words).extracting(Line.Word::text).containsExactly("Hello", "big", "world");
+        assertThat(words.get(0).left()).isCloseTo(100f, within(0.5f));
+        assertThat(words.get(0).right()).isCloseTo(100 + font.getStringWidth("Hello") / 1000 * 12, within(0.5f));
+        assertThat(words.get(2).right()).isCloseTo(100 + font.getStringWidth("Hello big world") / 1000 * 12, within(0.5f));
+    }
+
+    @Test
     void rotatedLineKnowsWhereItIsOnThePage() throws IOException {
         // vertical text written upwards from (300, 400): 392 points from the top of a 792-point page
         Path pdf = TestPdf.builder().page().rotatedLine(300, 400, "training error").writeTo(dir.resolve("rotated.pdf"));

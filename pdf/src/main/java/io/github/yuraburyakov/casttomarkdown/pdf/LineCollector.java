@@ -53,6 +53,7 @@ final class LineCollector extends PDFTextStripper {
     private final StringBuilder text = new StringBuilder();
     private TextPosition first;
     private TextPosition last;
+    private final List<Line.Word> words = new ArrayList<>();
     private final Map<Float, Integer> charsBySize = new HashMap<>();
     private int boldChars;
     private int chars;
@@ -200,7 +201,35 @@ final class LineCollector extends PDFTextStripper {
                 otherChars += position.getUnicode().isBlank() ? 0 : 1;
             }
         }
+        addWords(positions);
         appendText(string, positions);
+    }
+
+    /** The words of a string: PDFBox passes the text between its word gaps, which may hold spaces. */
+    private void addWords(List<TextPosition> positions) {
+        StringBuilder word = new StringBuilder();
+        TextPosition start = null;
+        TextPosition end = null;
+        for (TextPosition position : positions) {
+            if (position.getUnicode().isBlank()) {
+                if (start != null) {
+                    words.add(word(word, start, end));
+                }
+                word.setLength(0);
+                start = null;
+            } else {
+                start = start == null ? position : start;
+                end = position;
+                word.append(position.getUnicode());
+            }
+        }
+        if (start != null) {
+            words.add(word(word, start, end));
+        }
+    }
+
+    private static Line.Word word(CharSequence text, TextPosition start, TextPosition end) {
+        return new Line.Word(text.toString(), start.getXDirAdj(), end.getXDirAdj() + end.getWidthDirAdj());
     }
 
     /**
@@ -324,11 +353,13 @@ final class LineCollector extends PDFTextStripper {
             int table = tableChars > 0 && otherChars == 0 && !severalTables ? lineTable : -1;
             float width = last.getXDirAdj() + last.getWidthDirAdj() - first.getXDirAdj();
             lines.add(new Line(getCurrentPageNo(), pageHeight, first.getXDirAdj(), first.getYDirAdj(), fontSize,
-                    boldChars * 2 > chars, first.getDir() != 0, lineText, table, width, first.getX(), first.getY()));
+                    boldChars * 2 > chars, first.getDir() != 0, lineText, table, width, first.getX(), first.getY(),
+                    List.copyOf(words)));
         }
         text.setLength(0);
         first = null;
         last = null;
+        words.clear();
         charsBySize.clear();
         boldChars = 0;
         chars = 0;

@@ -1,5 +1,7 @@
 package io.github.yuraburyakov.casttomarkdown.pdf;
 
+import java.util.List;
+
 /**
  * One text line as PDFBox emits it; {@code y} grows downwards from the top of the page,
  * {@code fontSize} is the size of most characters, {@code bold} means most characters are bold,
@@ -9,9 +11,14 @@ package io.github.yuraburyakov.casttomarkdown.pdf;
  * {@code x} and {@code y} are along the text direction; {@code pageX} and {@code pageY} are where the line
  * starts on the page (y downwards), the same as {@code x} and {@code y} for horizontal text.
  * {@code width} runs from the start of the first character to the end of the last one, 0 when unknown.
+ * {@code words} are the words of the line with their extent along the text, as {@code x}; empty when unknown.
  */
 record Line(int page, float pageHeight, float x, float y, float fontSize, boolean bold, boolean rotated, String text,
-        int table, float width, float pageX, float pageY) {
+        int table, float width, float pageX, float pageY, List<Word> words) {
+
+    /** A word of the line, from the start of its first character to the end of its last one. */
+    record Word(String text, float left, float right) {
+    }
 
     /** US Letter height, for lines built in tests. */
     private static final float DEFAULT_PAGE_HEIGHT = 792;
@@ -19,6 +26,11 @@ record Line(int page, float pageHeight, float x, float y, float fontSize, boolea
     Line(int page, float pageHeight, float x, float y, float fontSize, boolean bold, boolean rotated, String text,
             int table) {
         this(page, pageHeight, x, y, fontSize, bold, rotated, text, table, 0, x, y);
+    }
+
+    Line(int page, float pageHeight, float x, float y, float fontSize, boolean bold, boolean rotated, String text,
+            int table, float width, float pageX, float pageY) {
+        this(page, pageHeight, x, y, fontSize, bold, rotated, text, table, width, pageX, pageY, List.of());
     }
 
     Line(int page, float pageHeight, float x, float y, float fontSize, boolean bold, boolean rotated, String text) {
