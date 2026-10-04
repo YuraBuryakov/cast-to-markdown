@@ -19,7 +19,9 @@ import org.apache.pdfbox.pdmodel.PDPage;
  * text lines and an empty cell is lost: {@code ensemble 59.0 37.4} no longer says which columns the numbers
  * are in. A table is recognized only by its caption, so that nothing else is ever turned into one:
  * <ul>
- *   <li>a paragraph starts with {@code Table N.} or {@code Table N:};</li>
+ *   <li>a line starts with {@code Table N.} or {@code Table N:} and starts a paragraph, or is more than
+ *       {@link #CAPTION_GAP} font sizes below the line before it (a caption right under the table rows, in their
+ *       font, can end up in their paragraph);</li>
  *   <li>right above it (or, when there is none above, right below it) is a cluster of thin rules only, with
  *       at least two horizontal and one vertical rule, that overlaps the caption horizontally, is at most
  *       {@link #MAX_GAP} font sizes away and does not contain it.</li>
@@ -35,6 +37,8 @@ import org.apache.pdfbox.pdmodel.PDPage;
 final class RuledTables {
 
     private static final Pattern CAPTION = Pattern.compile("^\\s*Table\\s+\\d+[.:]");
+    /** A caption line at least this many font sizes below the previous line starts the caption. */
+    private static final float CAPTION_GAP = 1.5f;
     /** A grid at most this many caption font sizes away from the caption belongs to it. */
     private static final float MAX_GAP = 3;
     /** Rules and baselines closer than this many points are one. */
@@ -79,11 +83,8 @@ final class RuledTables {
         }
         Map<Line, Integer> placeholders = new IdentityHashMap<>();
         Set<Line> removed = Collections.newSetFromMap(new IdentityHashMap<>());
-        for (List<Line> paragraph : Paragraphs.group(lines)) {
+        for (List<Line> paragraph : captions(lines)) {
             Line caption = paragraph.get(0);
-            if (!isCaption(caption)) {
-                continue;
-            }
             List<Grid> grids = gridsByPage.computeIfAbsent(caption.page(),
                     page -> grids(graphicsByPage.getOrDefault(page, List.of())));
             Grid grid = grid(grids, paragraph);
@@ -113,6 +114,23 @@ final class RuledTables {
             }
         }
         return result;
+    }
+
+    /** The captions with the rest of their paragraph. */
+    private static List<List<Line>> captions(List<Line> lines) {
+        List<List<Line>> captions = new ArrayList<>();
+        for (List<Line> paragraph : Paragraphs.group(lines)) {
+            for (int i = 0; i < paragraph.size(); i++) {
+                Line line = paragraph.get(i);
+                Line previous = i == 0 ? null : paragraph.get(i - 1);
+                if (isCaption(line) && (previous == null || previous.page() != line.page()
+                        || line.pageY() - previous.pageY() > CAPTION_GAP * line.fontSize())) {
+                    captions.add(paragraph.subList(i, paragraph.size()));
+                    break;
+                }
+            }
+        }
+        return captions;
     }
 
     private static boolean isCaption(Line line) {

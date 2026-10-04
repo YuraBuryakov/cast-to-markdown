@@ -68,6 +68,24 @@ class RuledTablesTest {
     }
 
     @Test
+    void captionInTheParagraphOfTheRowsIsFound() {
+        // arXiv Table 13: the caption follows the last row in the same font, 15 points below it, and the
+        // lines 12 points apart make that one paragraph
+        List<Line> lines = List.of(
+                line(81, w("layer", 130), w("18-layer", 170)),
+                line(93, w("a", 130), w("1", 170)),
+                line(105, w("b", 130), w("2", 170)),
+                line(117, w("c", 130), w("3", 170)),
+                line(132, w("Table", 130), w("13.", 154), w("Localization.", 172)));
+        assertThat(Paragraphs.group(lines)).hasSize(1);
+
+        RuledTables.replace(lines, Map.of(1, smallGrid()), tables);
+
+        assertThat(tables).containsExactly(TableMarkdown.of(List.of(List.of("layer", "18-layer"),
+                List.of("a", "1"), List.of("b", "2"), List.of("c", "3")), false));
+    }
+
+    @Test
     void rulesWithoutVerticalsAreNoGrid() {
         List<Line> lines = List.of(line(81, w("layer", 130), w("18-layer", 170)),
                 line(135, w("Table", 130), w("1.", 154), w("Results.", 166)));

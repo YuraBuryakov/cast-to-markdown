@@ -56,6 +56,13 @@ class LineCollectorTest {
     }
 
     @Test
+    void wordsHaveLigaturesDecomposedAsTheLineText() {
+        // arXiv Table 9: "reﬁnement" with the ligature U+FB01 in the text positions
+        assertThat(LineCollector.wordText("reﬁnement")).isEqualTo("refinement");
+        assertThat(LineCollector.wordText("3×3,")).isEqualTo("3×3,");
+    }
+
+    @Test
     void rotatedLineKnowsWhereItIsOnThePage() throws IOException {
         // vertical text written upwards from (300, 400): 392 points from the top of a 792-point page
         Path pdf = TestPdf.builder().page().rotatedLine(300, 400, "training error").writeTo(dir.resolve("rotated.pdf"));

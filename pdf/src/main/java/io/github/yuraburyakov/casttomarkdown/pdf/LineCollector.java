@@ -2,6 +2,7 @@ package io.github.yuraburyakov.casttomarkdown.pdf;
 
 import io.github.yuraburyakov.casttomarkdown.internal.Markdown;
 import java.io.IOException;
+import java.text.Normalizer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -46,6 +47,8 @@ final class LineCollector extends PDFTextStripper {
     }
 
     private static final Pattern BOLD_FONT_NAME = Pattern.compile("(?i)bold|black|heavy|semibold|demibold");
+    /** Ligatures and other presentation forms, the characters PDFBox decomposes in the text of a line. */
+    private static final Pattern PRESENTATION_FORMS = Pattern.compile("[\\uFB00-\\uFDFF\\uFE70-\\uFEFF]");
     /** A horizontal gap larger than this share of the font size between two characters of a cell is a space. */
     private static final float WORD_GAP = 0.2f;
 
@@ -229,7 +232,16 @@ final class LineCollector extends PDFTextStripper {
     }
 
     private static Line.Word word(CharSequence text, TextPosition start, TextPosition end) {
-        return new Line.Word(text.toString(), start.getXDirAdj(), end.getXDirAdj() + end.getWidthDirAdj());
+        return new Line.Word(wordText(text.toString()), start.getXDirAdj(), end.getXDirAdj() + end.getWidthDirAdj());
+    }
+
+    /**
+     * The word with ligatures and other presentation forms decomposed ({@code ﬁ} to {@code fi}), as PDFBox
+     * does for the text of a line: the characters of a word come raw from its text positions.
+     */
+    static String wordText(String word) {
+        return PRESENTATION_FORMS.matcher(word)
+                .replaceAll(form -> Normalizer.normalize(form.group(), Normalizer.Form.NFKC));
     }
 
     /**
