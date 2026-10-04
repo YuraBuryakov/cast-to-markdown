@@ -110,6 +110,38 @@ class FiguresTest {
     }
 
     @Test
+    void figuresOfTheOtherColumnAreNotJoined() {
+        // Inception-v3 p4: drawings of both columns 20 points apart; the left caption must not take the text
+        // of the right column
+        List<Line> lines = List.of(line(100, 150, "conv"), line(310, 215, "Figure 5. Right."),
+                line(310, 250, "of the other"), line(310, 262, "column text"), line(50, 315, "Figure 4. Left side."));
+
+        assertThat(texts(Figures.remove(lines, Map.of(1, List.of(box(50, 70, 280, 300), box(300, 70, 540, 200))))))
+                .containsExactly("Figure 5. Right.", "of the other", "column text", "Figure 4. Left side.");
+    }
+
+    @Test
+    void longLinesInsideAFigureStay() {
+        // Learned Index p10: a table drawn as a figure; its rows are data, a short label is a label
+        List<Line> lines = List.of(line(110, 160, "52.45 (4.00x) 274 (0.97x) 198 (72.3%) 51.93 (4.00x) 276"),
+                line(110, 175, "page size"), line(72, 225, "Figure 4. Learned Index vs B-Tree."));
+
+        assertThat(texts(Figures.remove(lines, Map.of(1, List.of(box(100, 140, 300, 200))))))
+                .containsExactly("52.45 (4.00x) 274 (0.97x) 198 (72.3%) 51.93 (4.00x) 276",
+                        "Figure 4. Learned Index vs B-Tree.");
+    }
+
+    @Test
+    void labelsBesideTheDrawingWithinTheCaptionWidthAreRemoved() {
+        // arXiv Figure 2: "F(x)" stands 31 points left of the blocks, still within the caption's width
+        List<Line> lines = List.of(line(98, 114, "F(x)"), line(20, 120, "margin note"), line(107, 147, "F(x) + x"),
+                line(87, 168, "Figure 2. Residual learning: a building block."));
+
+        assertThat(texts(Figures.remove(lines, Map.of(1, List.of(box(129, 81, 204, 154))))))
+                .containsExactly("margin note", "Figure 2. Residual learning: a building block.");
+    }
+
+    @Test
     void drawingOnTheOtherSideOfTheCaptionIsNotJoined() {
         List<Line> lines = List.of(line(120, 170, "above"), line(72, 225, "Figure 1. Above."), line(120, 245, "below"));
 
