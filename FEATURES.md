@@ -192,13 +192,18 @@ LaTeX and similar tools draw tables as a grid of rules, without tags.
 ### Text inside figures
 
 **Can**
-- In untagged PDFs (LaTeX), the text inside a vector figure (axis labels, diagram boxes, vertical axis titles) is left out when the figure has a caption `Figure N.`, `Figure N:` or `Fig. N.` right above or below it; the caption stays, once.
-- A figure drawn in several pieces (columns of a diagram, a column cut by text) is one figure; a frame touching the caption still belongs to it.
-- Never taken for a figure: a table of thin rules, a page background, graphics in another column, `Fig. 4.` in the middle of a paragraph, a caption without graphics next to it.
-- A page painting more than 10,000 boxes is left as it is (untrusted input).
+- In untagged PDFs (LaTeX), the labels of a vector figure (axis labels, diagram boxes, vertical axis titles) are left out when the figure has a caption `Figure N.`, `Figure N:` or `Fig. N.` right above or below it; the caption stays, once.
+- Labels beside the drawing are found within the caption's width (arXiv Figure 2: `F(x) + x` left of the blocks).
+- A figure drawn in several pieces (columns of a diagram, a column cut by text) is one figure, within the caption's column; a frame touching the caption still belongs to it.
+- Only lines of at most 8 words are labels: longer lines in a figure (rows of a table drawn as a figure, sentences) always stay.
+- Only what is visible counts as drawn: a placed picture's background clipped away under the next column does not join the columns.
+- Never taken for a figure: a table of thin rules, a page background, a figure in the other column, `Fig. 4.` in the middle of a paragraph, a caption without graphics next to it.
+- Left as they are (untrusted input): pages painting more than 10,000 boxes, or with more than 200 drawings or 50 captions.
 
 **Cannot**
 - A figure without such a caption keeps its text; rotated pages are skipped.
+- Labels more than one caption font size above or below the drawing stay (arXiv Figure 3: the network names over its columns).
+- A short label line inside a table drawn as a figure (a header such as `page size`) is removed with the other labels.
 - Figures are not kept as images.
 
 **Tests:** `FiguresTest`, `PdfFiguresTest`, `PageGraphicsTest`
