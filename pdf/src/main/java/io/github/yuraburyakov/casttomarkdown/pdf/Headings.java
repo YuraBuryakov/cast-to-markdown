@@ -64,7 +64,9 @@ final class Headings {
      * text inside figures, which is followed by small figure text.
      */
     private static boolean[] find(List<List<Line>> paragraphs) {
-        int body = bodySizeKey(paragraphs);
+        int primaryBody = bodySizeKey(paragraphs);
+        java.util.Set<Integer> bodySizes = bodySizeKeys(paragraphs);
+        int body = bodySizes.stream().mapToInt(Integer::intValue).max().orElse(0);
         boolean[] headings = new boolean[paragraphs.size()];
         for (int i = paragraphs.size() - 1; i >= 0; i--) {
             List<Line> paragraph = paragraphs.get(i);
@@ -77,7 +79,7 @@ final class Headings {
             // ponytail: a bold numbered list item whose number still fits the section sequence ("2. Foo" right
             // after "1. Introduction") passes as a heading; out-of-sequence ones are dropped below.
             boolean candidate = !paragraph.get(0).isTable()
-                    && (size > body || boldNumbered)
+                    && (size > body || boldNumbered || numbered && size > primaryBody)
                     && paragraph.size() <= (size >= TITLE_SIZE_RATIO * body ? MAX_TITLE_LINES : MAX_LINES)
                     && text.length() <= MAX_LENGTH
                     && (numbered || WORD.matcher(text).find())
@@ -86,7 +88,7 @@ final class Headings {
             // recognized, it follows the heading and the heading is missed.
             boolean followedByText = i == paragraphs.size() - 1
                     || headings[i + 1]
-                    || paragraphs.get(i + 1).get(0).sizeKey() == body;
+                    || bodySizes.contains(paragraphs.get(i + 1).get(0).sizeKey());
             headings[i] = candidate && followedByText;
         }
         dropNumbersOutOfSequence(paragraphs, headings);
@@ -133,6 +135,57 @@ final class Headings {
                 .max(Map.Entry.<Integer, Integer>comparingByValue().thenComparing(Map.Entry.comparingByKey()))
                 .map(Map.Entry::getKey)
                 .orElse(0);
+    }
+
+    /** A second body font needs substantial repeated evidence, not merely a nearby size. */
+    private static java.util.Set<Integer> bodySizeKeys(List<List<Line>> paragraphs) {
+        int primary = bodySizeKey(paragraphs);
+        Map<Integer, Integer> counts = new HashMap<>();
+        Map<Integer, Integer> weights = new HashMap<>();
+        for (List<Line> paragraph : paragraphs) {
+            for (Line line : paragraph) {
+                if (!line.isTable() && !line.rotated() && !line.bold() && line.text().strip().length() >= 40) {
+                    counts.merge(line.sizeKey(), 1, Integer::sum);
+                    weights.merge(line.sizeKey(), line.text().strip().length(), Integer::sum);
+                }
+            }
+        }
+        java.util.Set<Integer> sizes = new java.util.HashSet<>();
+        sizes.add(primary);
+        int primaryWeight = weights.getOrDefault(primary, 0);
+        if (counts.getOrDefault(primary, 0) >= 10) {
+            for (var entry : weights.entrySet()) {
+                int size = entry.getKey();
+                // At most 1 pt above the primary, >=10 long plain lines, >=half its text weight.
+                if (size > primary && size <= primary + 2 && counts.get(size) >= 10
+                        && interleavings(paragraphs, primary, size) >= 10
+                        && entry.getValue() >= primaryWeight * 0.5) {
+                    sizes.add(size);
+                }
+            }
+        }
+        return sizes;
+    }
+
+    /** Distinguish mixed body typography from separate sections using different fonts. */
+    private static int interleavings(List<List<Line>> paragraphs, int primary, int secondary) {
+        List<Line> lines = paragraphs.stream().flatMap(List::stream).toList();
+        int count = 0;
+        for (int i = 1; i < lines.size(); i++) {
+            Line a = lines.get(i - 1);
+            Line b = lines.get(i);
+            float size = Math.max(a.fontSize(), b.fontSize());
+            boolean pair = a.sizeKey() == primary && b.sizeKey() == secondary
+                    || a.sizeKey() == secondary && b.sizeKey() == primary;
+            if (pair && a.page() == b.page() && !a.bold() && !b.bold()
+                    && !a.rotated() && !b.rotated() && !a.isTable() && !b.isTable()
+                    && a.text().strip().length() >= 40 && b.text().strip().length() >= 40
+                    && b.y() > a.y() && b.y() - a.y() <= 1.5f * size
+                    && Math.abs(a.x() - b.x()) <= 0.5f * size) {
+                count++;
+            }
+        }
+        return count;
     }
 
     /**

@@ -98,14 +98,16 @@ PDFs with a text layer, based on Apache PDFBox.
 
 **Can**
 - Text larger than the body font is a heading; levels follow the font sizes, largest first.
+- A second plain body size up to 1 pt larger is not treated as an unnumbered heading when it has at least ten long lines, at least half the primary size's long-text weight, and at least ten close, aligned alternations with the primary size. Repeated bold headings and fonts used in separate sections do not establish this second size in the tested cases.
 - Bold body-size text that starts with a section number (`2.1 Scope`) is a heading with the level from the number; `§` headings are split from the text that follows.
 - A heading is at most one level deeper than the one before; a two-line heading is joined; a title in a much larger font may take up to four lines.
 - Not taken for headings: a bold numbered list item out of sequence, a table of contents entry, a long paragraph in a large font, text fragments without words, large text followed by small figure text, a mostly bold first line of a definition.
 
 **Cannot**
 - Bold headings without a number in body size are not found (`Abstract` in NIST documents); a title on a cover page may not be found.
+- The mixed-body thresholds are conservative heuristics, not a general font classifier. This change does not repair arbitrary paragraph splitting or every missing heading.
 
-**Tests:** `PdfConverterHeadingsTest`
+**Tests:** `PdfConverterHeadingsTest`, `HeadingsBodyFontsTest`
 
 ### Bullet lists
 
