@@ -94,7 +94,7 @@ public final class PdfConverter implements DocumentConverter {
             }
             lines = RuledTables.replace(document, lines, tableMarkdown);
             lines = ScientificPowers.apply(document, lines);
-            return Markdown.normalize(toMarkdown(lines, tableMarkdown));
+            return Markdown.normalize(toMarkdown(lines, tableMarkdown, document.getNumberOfPages() > 0 && document.getPage(0).getRotation() % 360 == 0));
         } catch (InvalidPasswordException e) {
             throw new DocumentConversionException("PDF is encrypted: " + name, e);
         } catch (IOException e) {
@@ -144,14 +144,23 @@ public final class PdfConverter implements DocumentConverter {
 
     /** As {@link #toMarkdown(List)}; a table placeholder line is replaced by {@code tables.get(line.table())}. */
     static String toMarkdown(List<Line> lines, List<String> tables) {
+        return toMarkdown(lines, tables, false);
+    }
+
+    static String toMarkdown(List<Line> lines, List<String> tables, boolean stampAllowed) {
         List<List<Line>> paragraphs = Paragraphs.group(PageFurniture.remove(Lists.attachMarkers(lines)));
         int[] levels = Headings.levels(paragraphs);
         Set<String> words = Hyphens.words(lines);
 
+        float left = stampAllowed ? ArxivStamp.leftMargin(lines) : Float.NaN;
         StringJoiner out = new StringJoiner("\n\n");
         for (int i = 0; i < paragraphs.size(); i++) {
             List<Line> paragraph = paragraphs.get(i);
-            if (paragraph.get(0).isTable()) {
+            ArxivStamp.Block stamp = stampAllowed ? ArxivStamp.at(paragraphs, levels, i, left) : null;
+            if (stamp != null) {
+                out.add(Markdown.escape(stamp.text()));
+                i = stamp.end() - 1;
+            } else if (paragraph.get(0).isTable()) {
                 out.add(tables.get(paragraph.get(0).table()));
             } else if (levels[i] > 0) {
                 out.add("#".repeat(levels[i]) + " " + Markdown.escape(Headings.text(paragraph)));

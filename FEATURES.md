@@ -239,6 +239,22 @@ LaTeX and similar tools draw tables as a grid of rules, without tags.
 
 **Tests:** `ScientificPowersTest` (synthetic geometry, a generated PDF, ruled-table fixture); the local sample comparison is recorded separately in the AI work log.
 
+### arXiv margin stamp
+
+**Can**
+- Reconstruct a complete, fragmented modern arXiv stamp on page 1 as one plain Markdown block, retaining the identifier, version, category and date at the original output position.
+- Require adjacent single-line rotated paragraphs, a consistent left-margin band, contiguous increasing text coordinates, and at least three substantial horizontal lines of the dominant text size to establish a margin.
+- Reject missing or corrupted stamp parts, interrupted chains, text inside the body, page 2 and ordinary short text. Keep rotated axis labels and existing heading output unchanged in the tested cases.
+- Serialize after paragraph and heading analysis, without changing the original Line geometry or those analyses.
+
+**Cannot**
+- No general reconstruction of rotated text, older arXiv identifiers, right-margin stamps or sparse pages without a confident text margin.
+- Production conversion disables this rule when the first page is rotated; the unit fixtures check the disabled serialization path, not a generated rotated PDF.
+- Geometry tolerances are conservative hypotheses based on ResNet; this does not promise support for every PDF generator.
+- This cosmetic change does not repair sentences interrupted by footnotes, captions or column transitions.
+
+**Tests:** `ArxivStampTest` (seven tests with measured ResNet Line fixtures and negative cases). The separate before/after sample comparison is recorded in the AI work log.
+
 ## DOCX
 
 Word 2007+ files, based on Apache POI.
