@@ -17,7 +17,10 @@ record Line(int page, float pageHeight, float x, float y, float fontSize, boolea
         int table, float width, float pageX, float pageY, List<Word> words) {
 
     /** A word of the line, from the start of its first character to the end of its last one. */
-    record Word(String text, float left, float right) {
+    record Word(String text, float left, float right, ScientificPowers.Power power) {
+        Word(String text, float left, float right) {
+            this(text, left, right, null);
+        }
     }
 
     /** US Letter height, for lines built in tests. */

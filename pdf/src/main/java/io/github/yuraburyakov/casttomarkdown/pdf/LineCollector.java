@@ -57,6 +57,9 @@ final class LineCollector extends PDFTextStripper {
     private TextPosition first;
     private TextPosition last;
     private final List<Line.Word> words = new ArrayList<>();
+    private final List<List<ScientificPowers.Glyph>> wordGlyphs = new ArrayList<>();
+    private boolean powerEligible;
+    private final boolean untagged;
     private final Map<Float, Integer> charsBySize = new HashMap<>();
     private int boldChars;
     private int chars;
@@ -90,8 +93,9 @@ final class LineCollector extends PDFTextStripper {
     private final StringBuilder otherText = new StringBuilder();
     private boolean severalTables;
 
-    private LineCollector(TaggedTables tables) {
+    private LineCollector(TaggedTables tables, boolean untagged) {
         this.tables = tables;
+        this.untagged = untagged;
         if (!tables.isEmpty()) {
             addOperator(new BeginMarkedContentSequenceWithProperties(this));
             addOperator(new BeginMarkedContentSequence(this));
@@ -101,7 +105,7 @@ final class LineCollector extends PDFTextStripper {
 
     /** Lines of all pages in reading order, with placeholders for the tagged tables. */
     static Collected collect(PDDocument document, TaggedTables tables) throws IOException {
-        LineCollector collector = new LineCollector(tables);
+        LineCollector collector = new LineCollector(tables, document.getDocumentCatalog().getStructureTreeRoot() == null);
         collector.getText(document);
         return new Collected(placeTables(collector.lines), collector.cellText);
     }
@@ -124,6 +128,7 @@ final class LineCollector extends PDFTextStripper {
     @Override
     protected void startPage(PDPage page) throws IOException {
         mcids.clear();
+        powerEligible = untagged && page.getRotation() % 360 == 0;
         // the previous page is written out already; keep only this page's positions
         cellOfPosition.clear();
         readLinks(page);
@@ -183,6 +188,7 @@ final class LineCollector extends PDFTextStripper {
                 first = position;
             }
             last = position;
+            powerEligible &= position.getDir() == 0 && urlAt(position) == null && !cellOfPosition.containsKey(position);
             if (!position.getUnicode().isBlank()) {
                 charsBySize.merge(position.getFontSizeInPt(), 1, Integer::sum);
                 chars++;
@@ -211,23 +217,31 @@ final class LineCollector extends PDFTextStripper {
     /** The words of a string: PDFBox passes the text between its word gaps, which may hold spaces. */
     private void addWords(List<TextPosition> positions) {
         StringBuilder word = new StringBuilder();
+        List<ScientificPowers.Glyph> glyphs = new ArrayList<>();
         TextPosition start = null;
         TextPosition end = null;
         for (TextPosition position : positions) {
             if (position.getUnicode().isBlank()) {
                 if (start != null) {
                     words.add(word(word, start, end));
+                    wordGlyphs.add(List.copyOf(glyphs));
                 }
                 word.setLength(0);
+                glyphs.clear();
                 start = null;
             } else {
                 start = start == null ? position : start;
                 end = position;
                 word.append(position.getUnicode());
+                if (position.getUnicode().length() == 1) {
+                    glyphs.add(new ScientificPowers.Glyph(position.getUnicode().charAt(0), position.getXDirAdj(),
+                            position.getXDirAdj() + position.getWidthDirAdj(), position.getYDirAdj(), position.getFontSizeInPt()));
+                }
             }
         }
         if (start != null) {
             words.add(word(word, start, end));
+            wordGlyphs.add(List.copyOf(glyphs));
         }
     }
 
@@ -366,12 +380,14 @@ final class LineCollector extends PDFTextStripper {
             float width = last.getXDirAdj() + last.getWidthDirAdj() - first.getXDirAdj();
             lines.add(new Line(getCurrentPageNo(), pageHeight, first.getXDirAdj(), first.getYDirAdj(), fontSize,
                     boldChars * 2 > chars, first.getDir() != 0, lineText, table, width, first.getX(), first.getY(),
-                    List.copyOf(words)));
+                    powerEligible && tableChars == 0 ? ScientificPowers.detect(words, wordGlyphs) : List.copyOf(words)));
         }
         text.setLength(0);
         first = null;
         last = null;
         words.clear();
+        wordGlyphs.clear();
+        powerEligible = untagged && getCurrentPage().getRotation() % 360 == 0;
         charsBySize.clear();
         boldChars = 0;
         chars = 0;

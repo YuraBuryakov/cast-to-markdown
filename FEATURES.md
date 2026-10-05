@@ -222,6 +222,23 @@ LaTeX and similar tools draw tables as a grid of rules, without tags.
 
 **Tests:** `CastToMarkdownTest`, `PdfRobustnessTest`
 
+### Scientific powers in untagged PDFs
+
+**Can**
+- Write a raised positive integer exponent as Unicode in scientific notation: `60× 104` becomes `60× 10⁴`, and `1.8×109` becomes `1.8×10⁹`, when glyph sizes, baselines and spacing identify the exponent.
+- Use a nearby numeric multiplier ending in `×` in ordinary text, rejecting a different baseline, a large gap, intervening text or a vertical rule.
+- In recognised ruled tables, convert a scientific expression inside one word in its existing cell; preserve columns and empty cells. Never use another word as context in those table cells.
+- Leave footnote-like word endings, ordinary baseline numbers, standalone `10` powers without a numeric multiplier, dollar signs and existing Unicode unchanged in the tested cases.
+- Disable detection in tagged documents (tested). Geometry and surrounding text are preserved by the transformation.
+
+**Cannot**
+- This first version only handles `M×10^E`: M uses ASCII digits and an optional decimal point; E is 1–3 positive ASCII digits. No negative signs, general formulas, lower indices or LaTeX output.
+- Cross-word expressions in recognised tables stay text. Tables the existing table detector does not recognise receive the ordinary-text rules; those are not a guarantee of cell boundaries.
+- Detection is also disabled on rotated pages and lines containing URL links (code guards; no end-to-end regression fixture yet).
+- Thresholds are based on ResNet measurements, not calibrated across PDF generators. A raised digit directly after scientific notation can still be ambiguous with a footnote.
+
+**Tests:** `ScientificPowersTest` (synthetic geometry, a generated PDF, ruled-table fixture); the local sample comparison is recorded separately in the AI work log.
+
 ## DOCX
 
 Word 2007+ files, based on Apache POI.

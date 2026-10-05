@@ -93,6 +93,7 @@ public final class PdfConverter implements DocumentConverter {
                 tableMarkdown.add(tables.markdown(table, collected.cellText()));
             }
             lines = RuledTables.replace(document, lines, tableMarkdown);
+            lines = ScientificPowers.apply(document, lines);
             return Markdown.normalize(toMarkdown(lines, tableMarkdown));
         } catch (InvalidPasswordException e) {
             throw new DocumentConversionException("PDF is encrypted: " + name, e);

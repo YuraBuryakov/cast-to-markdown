@@ -314,7 +314,7 @@ final class RuledTables {
                     column--;
                 }
                 StringBuilder cell = cells.get(column);
-                cell.append(cell.isEmpty() ? "" : " ").append(word.text());
+                cell.append(cell.isEmpty() ? "" : " ").append(ScientificPowers.cellText(word));
             }
         }
         return cells.stream().map(StringBuilder::toString).toList();
