@@ -40,20 +40,36 @@ class PdfLinksTest {
     }
 
     @Test
-    void internalUnsafeAndSelfLinksStayText() throws IOException {
+    void internalAndUnsafeLinksStayText() throws IOException {
         Path pdf = TestPdf.builder()
                 .page()
                 .link(720, "Go to ", "Introduction", null, ".")
                 .link(690, "Click ", "here", "javascript:alert(1)", ".")
-                .link(660, "Visit ", "https://example.org", "https://example.org", " today.")
                 .writeTo(dir.resolve("plain.pdf"));
 
         assertThat(converter.convert(pdf).markdown()).isEqualTo("""
                 Go to Introduction.
 
                 Click here.
+                """);
+    }
 
-                Visit https://example.org today.
+    @Test
+    void linkToItselfIsAnAutolink() throws IOException {
+        Path pdf = TestPdf.builder()
+                .page()
+                .link(720, "Visit ", "https://example.org", "https://example.org", " today.")
+                .link(690, "", "https://example.org/c", "https://example.org/c", " first")
+                // RFC 9562 writes the brackets itself: that is an autolink already
+                .link(660, "at <", "https://example.org/d", "https://example.org/d", ">.")
+                .writeTo(dir.resolve("self.pdf"));
+
+        assertThat(converter.convert(pdf).markdown()).isEqualTo("""
+                Visit <https://example.org> today.
+
+                <https://example.org/c> first
+
+                at <https://example.org/d>.
                 """);
     }
 

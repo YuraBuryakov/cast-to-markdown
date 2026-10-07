@@ -69,7 +69,7 @@ Add `cast-to-markdown-pdf`, `cast-to-markdown-docx` or both; they are found with
 **Can**
 - Line endings become `\n`, trailing spaces are removed, runs of blank lines become one, the text ends with one `\n`.
 - Block syntax at the start of a line is escaped: `#`, `>`, code fences, and the rule or heading-underline lines CommonMark reads as syntax (`---`, `***`, `===`, a lone `-` or `*`).
-- Links: only `http`, `https` and `mailto` become `[text](url)`; brackets in the text and parentheses and control characters in the address are escaped; a link whose text is just its address, or a piece of it, stays text.
+- Links: only `http`, `https` and `mailto` become `[text](url)`; brackets in the text and parentheses and control characters in the address are escaped. A link whose text is just its address becomes an autolink `<https://...>` or `<team@example.org>`, which works anywhere in a line (a bare address right after a footnote number, `1http://...`, is no link to GFM); it stays text when the address has a space, `<` or `>`. A link whose text is a piece of its address stays text. Tested by `MarkdownTest`.
 
 **Cannot**
 - List markers (`-`, `*`, `1.`) and inline syntax (`*`, `_`, `` ` ``, `[`, `<`) in the text are not escaped: PDFs write real lists as plain text.
@@ -178,11 +178,13 @@ PDFs with a text layer, based on Apache PDFBox.
 
 **Can**
 - Link annotations to web addresses become `[text](url)`, in tagged and untagged PDFs.
-- A link box that ends inside a word does not split the word; internal links, unsafe addresses and links to themselves stay text.
+- A link box that ends inside a word does not split the word; internal links and unsafe addresses stay text.
+- A link to itself becomes `<url>`; an address the document already writes in angle brackets (RFC 9562: `<https://...>`) stays as it is. Tested by `PdfLinksTest`.
 - A link broken over lines of a paragraph is one link with a line break in its text (`[Distributed Computing\nEnvironment](url)`). Tested by `PdfLinksTest`.
 
 **Cannot**
 - Links inside PDF tables, on rotated pages and on rotated text stay text.
+- A link box that starts inside a word (an address right after a digit of the same font, `1https://...`) does not start the link there: the word stays text. Not covered.
 - Two links to the same address on following lines of a paragraph are taken for one link, also when they were two (a rare list of two links to one page). Addresses with parentheses stay two links. Not covered.
 
 **Tests:** `PdfLinksTest`, `MarkdownTest`
@@ -346,7 +348,7 @@ Word 2007+ files, based on Apache POI.
 
 **Can**
 - External links become `[text](url)`, also when Word splits one link over several runs.
-- Internal and unsafe links stay text; an address shown as its own link text stays plain text; brackets and parentheses are escaped.
+- Internal and unsafe links stay text; an address shown as its own link text becomes `<url>`; brackets and parentheses are escaped. Tested by `DocxConverterTest.addressShownAsLinkTextIsAnAutolink`.
 
 **Cannot**
 - Links made with `HYPERLINK` fields stay plain text.

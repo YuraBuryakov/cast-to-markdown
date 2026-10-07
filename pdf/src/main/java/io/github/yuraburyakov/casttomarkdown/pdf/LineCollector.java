@@ -444,7 +444,10 @@ final class LineCollector extends PDFTextStripper {
 
     private void closeLink() {
         if (linkUrl != null) {
-            text.append(Markdown.link(linkText.toString(), linkUrl));
+            String link = Markdown.link(linkText.toString(), linkUrl);
+            // "<https://...>" written out in the document (RFC 9562) is an autolink already
+            boolean bracketed = !text.isEmpty() && text.charAt(text.length() - 1) == '<' && link.startsWith("<");
+            text.append(bracketed ? linkText : link);
             linkText.setLength(0);
             linkUrl = null;
         }

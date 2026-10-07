@@ -21,6 +21,11 @@ public final class Markdown {
     private static final Pattern TRAILING_SPACE = Pattern.compile("(\\s|%20)+$");
     /** Line breaks inside link text: a blank line there would end the paragraph. */
     private static final Pattern LINE_BREAKS = Pattern.compile("[\\r\\n]+");
+    /** What an autolink {@code <...>} cannot hold: CommonMark ends it there or does not read it at all. */
+    private static final Pattern NOT_IN_AUTOLINK = Pattern.compile("[\\s\\p{Cntrl}<>]");
+    /** The e-mail address CommonMark reads as {@code <team@example.org>}. */
+    private static final Pattern AUTOLINK_EMAIL = Pattern.compile("[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9]"
+            + "(?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*");
     private static final Pattern ADDRESS_LIKE = Pattern.compile("/|^www\\.|://");
     /** Sentence punctuation after an address in running text: "see https://example.org/x." */
     private static final Pattern ADDRESS_END_PUNCTUATION = Pattern.compile("[.,;:)]+$");
@@ -48,9 +53,11 @@ public final class Markdown {
     }
 
     /**
-     * {@code [text](url)}; spaces around the text stay outside the brackets. Stays plain text when the
-     * text is blank or is the address itself ({@code [url](url)} only repeats it), and for schemes other
-     * than http, https and mailto: documents are untrusted, {@code javascript:} must not reach a renderer.
+     * {@code [text](url)}; spaces around the text stay outside the brackets. Text that is the address itself
+     * becomes an autolink {@code <url>} ({@code [url](url)} only repeats it, and a bare address after a footnote
+     * number, "1http://...", is no link to a GFM renderer). Stays plain text when the text is blank, is a piece
+     * of the address, or an autolink cannot hold the address, and for schemes other than http, https and
+     * mailto: documents are untrusted, {@code javascript:} must not reach a renderer.
      *
      * @param text the link text
      * @param url the link target; may be {@code null}
@@ -60,8 +67,13 @@ public final class Markdown {
         String label = text.strip();
         // a space typed after the address ends up in the target as %20
         String target = url == null ? "" : TRAILING_SPACE.matcher(url.strip()).replaceFirst("");
-        if (label.isEmpty() || !SAFE_URL.matcher(target).lookingAt() || label.equals(target)
-                || ("mailto:" + label).equalsIgnoreCase(target) || isPartOfAddress(label, target)) {
+        if (label.isEmpty() || !SAFE_URL.matcher(target).lookingAt()) {
+            return text;
+        }
+        if (label.equals(target) || ("mailto:" + label).equalsIgnoreCase(target)) {
+            return autolink(text, label);
+        }
+        if (isPartOfAddress(label, target)) {
             return text;
         }
         target = encodeControlCharacters(target);
@@ -71,6 +83,17 @@ public final class Markdown {
         int start = text.indexOf(label);
         String shown = LINE_BREAKS.matcher(label).replaceAll(" ").replace("[", "\\[").replace("]", "\\]");
         return text.substring(0, start) + "[" + shown + "](" + target + ")" + text.substring(start + label.length());
+    }
+
+    /** {@code <address>} in place of the address in the text, or the text unchanged if no autolink holds it. */
+    private static String autolink(String text, String address) {
+        boolean holds = !NOT_IN_AUTOLINK.matcher(address).find()
+                && (SAFE_URL.matcher(address).lookingAt() || AUTOLINK_EMAIL.matcher(address).matches());
+        if (!holds) {
+            return text;
+        }
+        int start = text.indexOf(address);
+        return text.substring(0, start) + "<" + address + ">" + text.substring(start + address.length());
     }
 
     /**

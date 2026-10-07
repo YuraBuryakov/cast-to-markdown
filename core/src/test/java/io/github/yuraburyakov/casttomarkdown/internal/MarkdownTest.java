@@ -67,11 +67,29 @@ class MarkdownTest {
     @Test
     void linkStaysTextWhenItAddsNothingOrIsUnsafe() {
         assertThat(Markdown.link("  ", "https://example.org/")).isEqualTo("  ");
-        assertThat(Markdown.link("https://example.org/", "https://example.org/%20")).isEqualTo("https://example.org/");
-        assertThat(Markdown.link("team@example.org", "mailto:team@example.org")).isEqualTo("team@example.org");
         assertThat(Markdown.link("here", "javascript:alert(1)")).isEqualTo("here");
         assertThat(Markdown.link("here", "file:///etc/passwd")).isEqualTo("here");
         assertThat(Markdown.link("here", null)).isEqualTo("here");
+    }
+
+    @Test
+    void linkToItselfIsAnAutolink() {
+        // "1http://..." after a footnote number is no GFM autolink; <...> works anywhere on the line
+        assertThat(Markdown.link("https://example.org/", "https://example.org/%20")).isEqualTo("<https://example.org/>");
+        assertThat(Markdown.link(" https://example.org/a ", "https://example.org/a")).isEqualTo(" <https://example.org/a> ");
+        assertThat(Markdown.link("team@example.org", "mailto:team@example.org")).isEqualTo("<team@example.org>");
+        assertThat(Markdown.link("mailto:team@example.org", "mailto:team@example.org"))
+                .isEqualTo("<mailto:team@example.org>");
+    }
+
+    @Test
+    void linkToItselfThatNoAutolinkCanHoldStaysText() {
+        assertThat(Markdown.link("javascript:alert(1)", "javascript:alert(1)")).isEqualTo("javascript:alert(1)");
+        assertThat(Markdown.link("https://example.org/a<b", "https://example.org/a<b")).isEqualTo("https://example.org/a<b");
+        assertThat(Markdown.link("https://example.org/a b", "https://example.org/a b")).isEqualTo("https://example.org/a b");
+        assertThat(Markdown.link("not an@address!", "mailto:not an@address!")).isEqualTo("not an@address!");
+        // a piece of an address broken over lines is no address of its own
+        assertThat(Markdown.link("example.org/guide", "https://example.org/guide")).isEqualTo("example.org/guide");
     }
 
     @Test

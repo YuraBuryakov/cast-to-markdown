@@ -255,20 +255,26 @@ class DocxConverterTest {
     }
 
     @Test
-    void addressShownAsLinkTextStaysPlainText() throws IOException {
+    void addressShownAsLinkTextIsAnAutolink() throws IOException {
         // real form: the URL was typed with a trailing space, so the target ends with %20
         byte[] docx = TestDocx.builder()
                 .paragraphWithLink("Use ", "https://example.org/form%20", ".", "https://example.org/form")
                 .paragraphWithLink("Email ", "mailto:team@example.org", ".", "team@example.org")
                 .paragraphWithLink("", "https://example.org/a%20", "", "Form")
+                .paragraphWithLink("Note 1", "https://example.org/b", " and", "https://example.org/b")
+                .paragraphWithLink("", "https://example.org/c", " first", "https://example.org/c")
                 .bytes();
 
         assertThat(convert(docx)).isEqualTo("""
-                Use https://example.org/form.
+                Use <https://example.org/form>.
 
-                Email team@example.org.
+                Email <team@example.org>.
 
                 [Form](https://example.org/a)
+
+                Note 1<https://example.org/b> and
+
+                <https://example.org/c> first
                 """);
     }
 
