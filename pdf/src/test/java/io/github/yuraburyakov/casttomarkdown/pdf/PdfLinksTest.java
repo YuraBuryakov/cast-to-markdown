@@ -74,6 +74,17 @@ class PdfLinksTest {
     }
 
     @Test
+    void linkAfterARaisedFootnoteNumberIsAnAutolink() throws IOException {
+        // arXiv ResNet: "1http://image-net.org/..." was plain text, no GFM autolink right after a digit
+        Path pdf = TestPdf.builder()
+                .page()
+                .scriptLine(720, "", "1", 4, "https://example.org/a", "https://example.org/a")
+                .writeTo(dir.resolve("footnote-link.pdf"));
+
+        assertThat(converter.convert(pdf).markdown()).isEqualTo("¹<https://example.org/a>\n");
+    }
+
+    @Test
     void linkBrokenOverLinesIsOneLink() {
         // Chrome (Wikipedia): the link box of each line becomes a link of its own
         assertThat(PdfConverter.joinSplitLinks("""

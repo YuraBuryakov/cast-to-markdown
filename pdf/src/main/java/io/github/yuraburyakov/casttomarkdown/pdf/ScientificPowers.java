@@ -13,15 +13,15 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 final class ScientificPowers {
     private static final Pattern NUMBER_TIMES = Pattern.compile("[0-9]+(?:\\.[0-9]+)?×");
     private static final Pattern POWER = Pattern.compile("(?:((?:[0-9]+(?:\\.[0-9]+)?)?×))?10([0-9]{1,3})");
-    private static final String DIGITS = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+    static final String DIGITS = "⁰¹²³⁴⁵⁶⁷⁸⁹";
     // Hypotheses around six ResNet measurements, not calibrated across PDF generators.
-    private static final float MIN_SIZE = 0.55f;
-    private static final float MAX_SIZE = 0.80f;
-    private static final float MIN_RISE = 0.20f;
-    private static final float MAX_RISE = 0.50f;
-    private static final float MAX_SCRIPT_GAP = 0.15f;
+    static final float MIN_SIZE = 0.55f;
+    static final float MAX_SIZE = 0.80f;
+    static final float MIN_RISE = 0.20f;
+    static final float MAX_RISE = 0.50f;
+    static final float MAX_SCRIPT_GAP = 0.15f;
     private static final float MAX_WORD_GAP = 0.25f;
-    private static final float BASE_TOLERANCE = 0.05f;
+    static final float BASE_TOLERANCE = 0.05f;
 
     record Glyph(char text, float left, float right, float baseline, float size) {
     }

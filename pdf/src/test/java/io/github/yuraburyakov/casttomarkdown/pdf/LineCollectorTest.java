@@ -133,8 +133,37 @@ class LineCollectorTest {
 
         Line line = lines(pdf).get(0);
 
-        assertThat(line.text()).isEqualTo("5We would like to thank Michael Mitzenmacher");
+        assertThat(line.text()).isEqualTo("⁵We would like to thank Michael Mitzenmacher");
         assertThat(line.y()).isCloseTo(792 - 700, within(0.5f));
+    }
+
+    @Test
+    void raisedFootnoteNumberIsASuperscript() throws IOException {
+        // arXiv ResNet: "COCO 2015 competitions1, where", the number 6 pt on 9 pt text, 3.6 pt up
+        Path pdf = TestPdf.builder()
+                .page()
+                .scriptLine(720, "COCO 2015 competitions", "1", 4, ", where", null)
+                .scriptLine(690, "as shown", "12", 4, " before", null)
+                .writeTo(dir.resolve("raised.pdf"));
+
+        assertThat(lines(pdf)).extracting(Line::text)
+                .containsExactly("COCO 2015 competitions¹, where", "as shown¹² before");
+    }
+
+    @Test
+    void otherSmallDigitsStayDigits() throws IOException {
+        Path pdf = TestPdf.builder()
+                .page()
+                .scriptLine(720, "the state h", "1", -2, " of", null) // a subscript
+                .scriptLine(690, "about 10", "6", 4, " steps", null) // a power: ScientificPowers decides
+                .scriptLine(660, "page", "1234", 4, " on", null) // more than three digits
+                .scriptLine(630, "large", "1", 1, " text", null) // hardly raised
+                .line(72, 600, "competitions1, where") // the size of the text
+                .scriptLine(570, "strings a", "10,000", 4, "b", null) // a part of a longer raised text
+                .writeTo(dir.resolve("digits.pdf"));
+
+        assertThat(lines(pdf)).extracting(Line::text).containsExactly("the state h1 of", "about 106 steps",
+                "page1234 on", "large1 text", "competitions1, where", "strings a10,000b");
     }
 
     @Test

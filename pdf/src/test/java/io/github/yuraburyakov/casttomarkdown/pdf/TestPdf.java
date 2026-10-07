@@ -45,6 +45,7 @@ final class TestPdf {
 
     private static final float LEFT_MARGIN = 72;
     private static final float FONT_SIZE = 12;
+    private static final float SCRIPT_SIZE = 8;
     private static final float COLUMN_WIDTH = 160;
     private static final float ROW_HEIGHT = 16;
 
@@ -78,12 +79,24 @@ final class TestPdf {
         return this;
     }
 
-    /** A footnote line: a raised number in a 6 pt font, then the text, as LaTeX sets a footnote. */
+    /** A footnote line: a raised number in an 8 pt font, then the text, as LaTeX sets a footnote. */
     TestPdf footnoteLine(float x, float y, String number, String text) {
         if (pages.isEmpty()) {
             throw new IllegalStateException("Call page() before footnoteLine()");
         }
         pages.get(pages.size() - 1).add(new FootnoteLine(x, y, number, text));
+        return this;
+    }
+
+    /**
+     * {@code before}, then {@code number} in an 8 pt font {@code rise} points above the baseline (below for a
+     * negative rise), then {@code after}, which links to {@code url} unless it is {@code null}.
+     */
+    TestPdf scriptLine(float y, String before, String number, float rise, String after, String url) {
+        if (pages.isEmpty()) {
+            throw new IllegalStateException("Call page() before scriptLine()");
+        }
+        pages.get(pages.size() - 1).add(new ScriptLine(y, before, number, rise, after, url));
         return this;
     }
 
@@ -236,13 +249,15 @@ final class TestPdf {
                             content.endText();
                         } else if (item instanceof FootnoteLine line) {
                             content.beginText();
-                            content.setFont(font, 6);
+                            content.setFont(font, SCRIPT_SIZE);
                             content.newLineAtOffset(line.x(), line.y() + 3);
                             content.showText(line.number());
                             content.setFont(font, FONT_SIZE);
-                            content.newLineAtOffset(font.getStringWidth(line.number()) / 1000 * 6, -3);
+                            content.newLineAtOffset(font.getStringWidth(line.number()) / 1000 * SCRIPT_SIZE, -3);
                             content.showText(line.text());
                             content.endText();
+                        } else if (item instanceof ScriptLine line) {
+                            drawScript(page, content, font, line);
                         } else if (item instanceof StretchedLine line) {
                             // pdfTeX stretches through the text matrix, not with horizontal scaling (Tz)
                             content.beginText();
@@ -315,6 +330,32 @@ final class TestPdf {
         return picture;
     }
 
+    private static void drawScript(PDPage page, PDPageContentStream content, PDType1Font font, ScriptLine line)
+            throws IOException {
+        float numberX = LEFT_MARGIN + font.getStringWidth(line.before()) / 1000 * FONT_SIZE;
+        float afterX = numberX + font.getStringWidth(line.number()) / 1000 * SCRIPT_SIZE;
+        content.beginText();
+        content.setFont(font, FONT_SIZE);
+        content.newLineAtOffset(LEFT_MARGIN, line.y());
+        content.showText(line.before());
+        content.setFont(font, SCRIPT_SIZE);
+        content.newLineAtOffset(numberX - LEFT_MARGIN, line.rise());
+        content.showText(line.number());
+        content.setFont(font, FONT_SIZE);
+        content.newLineAtOffset(afterX - numberX, -line.rise());
+        content.showText(line.after());
+        content.endText();
+        if (line.url() != null) {
+            float right = afterX + font.getStringWidth(line.after()) / 1000 * FONT_SIZE;
+            PDAnnotationLink annotation = new PDAnnotationLink();
+            annotation.setRectangle(new PDRectangle(afterX, line.y() - 3, right - afterX, FONT_SIZE + 4));
+            PDActionURI action = new PDActionURI();
+            action.setURI(line.url());
+            annotation.setAction(action);
+            page.getAnnotations().add(annotation);
+        }
+    }
+
     private static void drawLink(PDDocument document, PDPageContentStream content, PDType1Font font, PDPage page,
             LinkLine link) throws IOException {
         content.beginText();
@@ -339,7 +380,7 @@ final class TestPdf {
         page.getAnnotations().add(annotation);
     }
 
-    private sealed interface Item permits Line, InvisibleLine, StretchedLine, FootnoteLine, LinkLine, Table, RotatedLine, Shape, Clip {
+    private sealed interface Item permits Line, InvisibleLine, StretchedLine, FootnoteLine, ScriptLine, LinkLine, Table, RotatedLine, Shape, Clip {
     }
 
     /** Clips everything drawn after it on the page to the rectangle, as a placed picture is clipped. */
@@ -362,6 +403,10 @@ final class TestPdf {
     }
 
     private record FootnoteLine(float x, float y, String number, String text) implements Item {
+    }
+
+    private record ScriptLine(float y, String before, String number, float rise, String after, String url)
+            implements Item {
     }
 
     private record StretchedLine(float x, float y, String text, float percent) implements Item {

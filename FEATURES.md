@@ -90,6 +90,7 @@ PDFs with a text layer, based on Apache PDFBox.
 - A list item cut by the end of a page goes on at its hanging indent on the next page, in lower case (tdf-statutes.pdf). Tested by `PdfConverterParagraphsTest`.
 - A sentence cut by the end of a column goes on at the top of the next column when it continues in lower case or after a hyphen (arXiv 1512.00567, 1608.06993, 1810.04805). Tested by `PdfConverterParagraphsTest`.
 - A line that starts with a raised footnote number keeps the baseline of its text, so a two-line footnote stays one paragraph (arXiv 1712.01208, 1810.04805). Tested by `LineCollectorTest`.
+- A raised footnote number becomes superscript digits, in the text and before the footnote: `competitions¹, where`, `¹Note, that`, `¹<http://image-net.org/...>`. One to three digits, touching a character of the text and smaller and raised as a power is (the thresholds of the scientific powers below), with a space or text on the baseline on their other side. The same rule writes a raised digit of a formula as a superscript too (`O(n² · d)`, `key²`). Tested by `LineCollectorTest.raisedFootnoteNumberIsASuperscript`, `PdfLinksTest.linkAfterARaisedFootnoteNumberIsAnAutolink`.
 - A hanging indent of a list item stays in one paragraph, also for items numbered `I`, `II` or `[1]`: an indented line after a line that does not end a sentence is no first-line indent (arXiv 1404.7828). Tested by `PdfConverterParagraphsTest`.
 - A sentence at the bottom of a page goes on past the footnotes of that page when the next page carries it on in lower case (or the line ends with a hyphen); the footnotes follow the paragraph (arXiv 1706.03762, 1712.01208, 1404.7828). Tested by `PdfConverterParagraphsTest`.
 - The second line of a centred title is not taken for a first-line indent when the next line is in another font (arXiv 1810.04805). Tested by `PdfConverterHeadingsTest`.
@@ -103,6 +104,7 @@ PDFs with a text layer, based on Apache PDFBox.
 **Cannot**
 - Text hidden by other means (white on white, covered by a box drawn later, cut by a clipping path drawn with `W`) is still output. Not covered.
 - An OCR layer on a page that also has some visible text (a stamp, a printed page number) is left out with the other invisible text. Not covered.
+- A raised footnote number is no Markdown footnote (`[^1]`): the number in the text is not tied to the text of the footnote. Digits next to the number (`10` of `10⁶`), subscripts, more than three digits and digits inside a longer raised expression (`a^{10,000,000}`) stay as they are (`LineCollectorTest.otherSmallDigitsStayDigits`). A footnote address without a link annotation after its number (`²http://...`) is no link to GFM.
 - A sentence cut by a footnote at the bottom of a page stays split when the next page starts with a capital letter, or when the two parts are in different columns. Not covered.
 - Footnotes and floating blocks (figures, tables from another column) can sit between the parts of a sentence.
 
@@ -270,7 +272,7 @@ LaTeX and similar tools draw tables as a grid of rules, without tags.
 - Use a nearby numeric multiplier ending in `×` in ordinary text, rejecting a different baseline, a large gap, intervening text or a vertical rule.
 - A standalone `×10^E` is emitted as Unicode only at the end of the first row's cell in a recognised ruled table when that same cell contains the label `params` (case-insensitive). The existing glyph-size/baseline/gap checks still apply. Other cells, data rows and ordinary prose keep it unchanged.
 - In recognised ruled tables, convert a scientific expression inside one word in its existing cell; preserve columns and empty cells. Never use another word as context in those table cells.
-- Leave footnote-like word endings, ordinary baseline numbers, standalone `10` powers without a numeric multiplier, dollar signs and existing Unicode unchanged in the tested cases.
+- Leave footnote-like word endings (those become superscripts by the footnote-number rule under Paragraphs, not by this one), ordinary baseline numbers, standalone `10` powers without a numeric multiplier, dollar signs and existing Unicode unchanged in the tested cases.
 - Disable detection in tagged documents (tested). Geometry and surrounding text are preserved by the transformation.
 
 **Cannot**

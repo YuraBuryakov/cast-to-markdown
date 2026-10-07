@@ -63,6 +63,8 @@ final class LineCollector extends PDFTextStripper {
     private final List<Line> lines = new ArrayList<>();
     private final StringBuilder text = new StringBuilder();
     private TextPosition first;
+    /** Raised footnote numbers of the current string, as superscript digits. */
+    private final Map<TextPosition, String> superscripts = new IdentityHashMap<>();
     private TextPosition last;
     private final List<Line.Word> words = new ArrayList<>();
     private final List<List<ScientificPowers.Glyph>> wordGlyphs = new ArrayList<>();
@@ -239,6 +241,7 @@ final class LineCollector extends PDFTextStripper {
 
     @Override
     protected void writeString(String string, List<TextPosition> positions) {
+        superscripts.clear();
         List<TextPosition> kept = withoutCoveredSpaces(positions);
         if (kept.size() < positions.size() && string.equals(unicode(positions))) {
             positions = kept;
@@ -254,6 +257,10 @@ final class LineCollector extends PDFTextStripper {
             string = unicode(positions);
         }
         afterSeparator = false;
+        if (string.equals(unicode(positions))) {
+            markFootnoteNumbers(positions);
+            string = unicode(positions);
+        }
         for (TextPosition position : positions) {
             if (first == null) {
                 first = position;
@@ -278,7 +285,7 @@ final class LineCollector extends PDFTextStripper {
                 lineTable = table;
                 tableChars++;
             } else {
-                otherText.append(position.getUnicode());
+                otherText.append(unicode(position));
                 otherChars += position.getUnicode().isBlank() ? 0 : 1;
             }
         }
@@ -322,12 +329,87 @@ final class LineCollector extends PDFTextStripper {
         return false;
     }
 
-    private static String unicode(List<TextPosition> positions) {
+    private String unicode(List<TextPosition> positions) {
         StringBuilder text = new StringBuilder();
         for (TextPosition position : positions) {
-            text.append(position.getUnicode());
+            text.append(unicode(position));
         }
         return text.toString();
+    }
+
+    /** The text of the character, a superscript digit for a raised footnote number. */
+    private String unicode(TextPosition position) {
+        return superscripts.getOrDefault(position, position.getUnicode());
+    }
+
+    /**
+     * Marks raised footnote numbers as superscript digits: one to three digits that touch a character of the
+     * text before or after them, smaller and raised as {@link ScientificPowers} measures a power ("competitions1,
+     * where" and "1http://..." in arXiv ResNet: 6 pt on 7.6 or 9 pt text, raised by a third of it). A digit
+     * next to them, as in the {@code 10} of {@code 10^6}, leaves the number to {@link ScientificPowers}.
+     */
+    private void markFootnoteNumbers(List<TextPosition> positions) {
+        int i = 0;
+        while (i < positions.size()) {
+            int end = i;
+            while (end < positions.size() && isDigit(positions.get(end))) {
+                end++;
+            }
+            if (end == i) {
+                i++;
+                continue;
+            }
+            TextPosition before = i > 0 ? positions.get(i - 1) : last;
+            TextPosition after = end < positions.size() ? positions.get(end) : null;
+            List<TextPosition> number = positions.subList(i, end);
+            // the other side is a space or text on the baseline: in a^{10,000,000} the "000" before "b" is no number
+            if (number.size() <= 3 && (raisedAfter(before, number.get(0)) && onBaseline(after, before)
+                    || raisedBefore(number.get(end - i - 1), after) && onBaseline(before, after))
+                    && number.stream().allMatch(digit -> sameScript(number.get(0), digit))) {
+                for (TextPosition digit : number) {
+                    superscripts.put(digit, String.valueOf(ScientificPowers.DIGITS.charAt(digit.getUnicode().charAt(0) - '0')));
+                }
+            }
+            i = end;
+        }
+    }
+
+    private boolean isDigit(TextPosition position) {
+        String unicode = position.getUnicode();
+        return unicode.length() == 1 && unicode.charAt(0) >= '0' && unicode.charAt(0) <= '9' && position.getDir() == 0
+                && !cellOfPosition.containsKey(position);
+    }
+
+    private boolean raisedAfter(TextPosition text, TextPosition digit) {
+        return text != null && raised(text, digit, digit.getXDirAdj() - (text.getXDirAdj() + text.getWidthDirAdj()));
+    }
+
+    private boolean raisedBefore(TextPosition digit, TextPosition text) {
+        return text != null && raised(text, digit, text.getXDirAdj() - (digit.getXDirAdj() + digit.getWidthDirAdj()));
+    }
+
+    /** Whether the digit is a raised script of the text character beside it, {@code gap} away from it. */
+    private boolean raised(TextPosition text, TextPosition digit, float gap) {
+        float size = Math.abs(text.getYScale());
+        if (size == 0 || text.getDir() != 0 || text.getUnicode().isBlank() || isDigit(text)) {
+            return false;
+        }
+        float ratio = Math.abs(digit.getYScale()) / size;
+        float rise = (text.getYDirAdj() - digit.getYDirAdj()) / size;
+        return ratio >= ScientificPowers.MIN_SIZE && ratio <= ScientificPowers.MAX_SIZE
+                && rise >= ScientificPowers.MIN_RISE && rise <= ScientificPowers.MAX_RISE
+                && gap >= -0.01f * size && gap <= ScientificPowers.MAX_SCRIPT_GAP * size;
+    }
+
+    /** Whether the character is missing, blank or on the baseline of the text character. */
+    private static boolean onBaseline(TextPosition other, TextPosition text) {
+        return other == null || other.getUnicode().isBlank() || Math.abs(other.getYDirAdj() - text.getYDirAdj())
+                <= ScientificPowers.BASE_TOLERANCE * Math.abs(text.getYScale());
+    }
+
+    private static boolean sameScript(TextPosition first, TextPosition digit) {
+        return Math.abs(digit.getYScale() - first.getYScale()) <= 0.01f * Math.abs(first.getYScale())
+                && Math.abs(digit.getYDirAdj() - first.getYDirAdj()) < 0.1f;
     }
 
     /** The words of a string: PDFBox passes the text between its word gaps, which may hold spaces. */
@@ -348,7 +430,7 @@ final class LineCollector extends PDFTextStripper {
             } else {
                 start = start == null ? position : start;
                 end = position;
-                word.append(position.getUnicode());
+                word.append(unicode(position));
                 if (position.getUnicode().length() == 1) {
                     glyphs.add(new ScientificPowers.Glyph(position.getUnicode().charAt(0), position.getXDirAdj(),
                             position.getXDirAdj() + position.getWidthDirAdj(), position.getYDirAdj(), position.getFontSizeInPt()));
@@ -385,7 +467,7 @@ final class LineCollector extends PDFTextStripper {
         }
         int end = 0;
         for (TextPosition position : positions) {
-            String unicode = position.getUnicode();
+            String unicode = unicode(position);
             end = end >= 0 && string.startsWith(unicode, end) ? end + unicode.length() : -1;
         }
         if (end != string.length()) {
@@ -395,7 +477,7 @@ final class LineCollector extends PDFTextStripper {
         }
         String previous = "";
         for (TextPosition position : positions) {
-            String unicode = position.getUnicode();
+            String unicode = unicode(position);
             // the string is one word: a link box that ends inside it ("[Scheme t](url)o") does not split it
             if (!(endsWithLetterOrDigit(previous) && startsWithLetterOrDigit(unicode))) {
                 switchLink(urlAt(position));
