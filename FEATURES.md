@@ -88,9 +88,12 @@ PDFs with a text layer, based on Apache PDFBox.
 - A sentence cut by the end of a page stays one paragraph; a finished sentence or list item on the next page starts a new one.
 - A hanging indent of a list item stays in one paragraph.
 
+- Invisible text (rendering mode 3) is left out on a page that has visible text, so it neither shows up nor removes visible letters it overlaps (Word 365 put an older wording of a note invisibly under the visible one). On a page with only invisible text, such as the OCR layer of a scan, it is the text. Visible text drawn twice for boldness comes once. Tested by `PdfInvisibleTextTest`.
 - A space drawn over a letter or digit gives no space (LibreOffice 7.3 draws spaces over the letters of a link: `http  s  ://` becomes `https://`). Tested by `LineCollectorTest`.
 
 **Cannot**
+- Text hidden by other means (white on white, covered by a box drawn later, clipped away) is still output. Not covered.
+- An OCR layer on a page that also has some visible text (a stamp, a printed page number) is left out with the other invisible text. Not covered.
 - A justified line keeps two spaces where the space character is narrower than the gap PDFBox sees between the words (LibreOffice 7.3, `The  foundation  promotes`). Not covered.
 - A paragraph split by a footnote at the bottom of a page stays split in two.
 - Footnotes and floating blocks (figures, tables from another column) can sit between the parts of a sentence.

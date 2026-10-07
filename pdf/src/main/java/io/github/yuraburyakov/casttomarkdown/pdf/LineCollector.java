@@ -27,6 +27,7 @@ import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDFontDescriptor;
 import org.apache.pdfbox.pdmodel.interactive.action.PDActionURI;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
+import org.apache.pdfbox.pdmodel.graphics.state.RenderingMode;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
@@ -96,6 +97,9 @@ final class LineCollector extends PDFTextStripper {
      */
     private final StringBuilder otherText = new StringBuilder();
     private boolean severalTables;
+    /** Invisible characters of the page, kept back until it is known whether the page has visible ones. */
+    private final List<TextPosition> invisible = new ArrayList<>();
+    private boolean visibleOnPage;
 
     private LineCollector(TaggedTables tables, boolean untagged) {
         this.tables = tables;
@@ -182,7 +186,30 @@ final class LineCollector extends PDFTextStripper {
                 cellOfPosition.put(position, cell);
             }
         }
-        super.processTextPosition(position);
+        if (getGraphicsState().getTextState().getRenderingMode() == RenderingMode.NEITHER) {
+            invisible.add(position);
+        } else {
+            visibleOnPage = true;
+            super.processTextPosition(position);
+        }
+    }
+
+    /**
+     * Invisible text (rendering mode 3) is left out when the page has visible text: Word 365 put an older wording
+     * of a note under the visible one, 0.7 pt off, and PDFBox dropped the visible letters that repeat invisible
+     * ones as duplicates ("ure al  fields are complet d"). On a page with only invisible text, the text layer of
+     * a scan that went through OCR, it is the text.
+     */
+    @Override
+    protected void writePage() throws IOException {
+        if (!visibleOnPage) {
+            for (TextPosition position : invisible) {
+                super.processTextPosition(position);
+            }
+        }
+        invisible.clear();
+        visibleOnPage = false;
+        super.writePage();
     }
 
     @Override

@@ -23,6 +23,7 @@ import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceGray;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.apache.pdfbox.pdmodel.graphics.state.RenderingMode;
 import org.apache.pdfbox.pdmodel.interactive.action.PDActionURI;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageFitDestination;
@@ -74,6 +75,15 @@ final class TestPdf {
             throw new IllegalStateException("Call page() before line()");
         }
         pages.get(pages.size() - 1).add(new Line(x, y, text));
+        return this;
+    }
+
+    /** Invisible text (rendering mode 3) starting at {@code x}, like the text layer of a scan that went through OCR. */
+    TestPdf invisibleLine(float x, float y, String text) {
+        if (pages.isEmpty()) {
+            throw new IllegalStateException("Call page() before invisibleLine()");
+        }
+        pages.get(pages.size() - 1).add(new InvisibleLine(x, y, text));
         return this;
     }
 
@@ -206,6 +216,16 @@ final class TestPdf {
                             content.setTextMatrix(Matrix.getRotateInstance(Math.PI / 2, rotated.x(), rotated.y()));
                             content.showText(rotated.text());
                             content.endText();
+                        } else if (item instanceof InvisibleLine line) {
+                            // the rendering mode is graphics state: it outlives the text object
+                            content.saveGraphicsState();
+                            content.beginText();
+                            content.setFont(font, FONT_SIZE);
+                            content.setRenderingMode(RenderingMode.NEITHER);
+                            content.newLineAtOffset(line.x(), line.y());
+                            content.showText(line.text());
+                            content.endText();
+                            content.restoreGraphicsState();
                         } else if (item instanceof Line line) {
                             content.beginText();
                             content.setFont(font, FONT_SIZE);
@@ -285,7 +305,7 @@ final class TestPdf {
         page.getAnnotations().add(annotation);
     }
 
-    private sealed interface Item permits Line, LinkLine, Table, RotatedLine, Shape, Clip {
+    private sealed interface Item permits Line, InvisibleLine, LinkLine, Table, RotatedLine, Shape, Clip {
     }
 
     /** Clips everything drawn after it on the page to the rectangle, as a placed picture is clipped. */
@@ -302,6 +322,9 @@ final class TestPdf {
     }
 
     private record Line(float x, float y, String text) implements Item {
+    }
+
+    private record InvisibleLine(float x, float y, String text) implements Item {
     }
 
     private record Table(float y, boolean keys, String[][] rows) implements Item {
