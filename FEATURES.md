@@ -122,12 +122,13 @@ PDFs with a text layer, based on Apache PDFBox.
 - Bold body-size text that starts with a section number (`2.1 Scope`) is a heading with the level from the number; `§` headings are split from the text that follows.
 - A heading is at most one level deeper than the one before; a two-line heading is joined; a title in a much larger font may take up to four lines.
 - A heading of up to four short centred lines is one heading (`Appendix for “BERT: ...”`); a centred notice of long lines is not a heading. Tested by `PdfConverterHeadingsTest`.
+- `Abstract` alone on a line is a heading on the first two pages in any font (arXiv sets it in the small font of the abstract), and bold on any page (NIST). Tested by `PdfConverterHeadingsTest`.
 - An unnumbered first heading on the first page is level 1 when no heading has that level, also in the font of the numbered sections (which are level 2). Tested by `PdfConverterHeadingsTest`.
 - A title on the first page in a font at least 1.5 times the body size, or the first paragraph of the document in a font at least 1.25 times the body size, is a heading also when the authors follow in a font a little larger than the body. Tested by `PdfConverterHeadingsTest`.
 - Not taken for headings: a bold numbered list item out of sequence, a table of contents entry, a long paragraph in a large font, text fragments without words, large text followed by small figure text, a mostly bold first line of a definition, a date alone (`1 October 2026`), and the authors right after a first-page title when e-mail addresses follow them. Tested by `PdfConverterHeadingsTest`.
 
 **Cannot**
-- Bold headings without a number in body size are not found (`Abstract` in NIST documents); a title on a cover page may not be found.
+- Bold headings without a number in body size are not found, except `Abstract`; a title on a cover page may not be found.
 - The mixed-body thresholds are conservative heuristics, not a general font classifier. This change does not repair arbitrary paragraph splitting or every missing heading.
 
 **Tests:** `PdfConverterHeadingsTest`, `HeadingsBodyFontsTest`

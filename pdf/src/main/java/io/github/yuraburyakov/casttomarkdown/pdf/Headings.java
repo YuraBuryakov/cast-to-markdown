@@ -42,6 +42,10 @@ final class Headings {
             + "|\u00a7\\s*\\d{1,3}((?:\\.\\d{1,2})*)\\.?)"
             + "(?=[\\s\u2014:])");
 
+    /** The heading of a paper's abstract. */
+    private static final Pattern ABSTRACT = Pattern.compile("(?i)abstract[.:]?");
+    /** The abstract is on one of the first this many pages. */
+    private static final int ABSTRACT_PAGES = 2;
     /** A date alone: "1 October 2026", "October 1, 2026", "May 2024", "2026-10-01". */
     private static final Pattern DATE = Pattern.compile("(?i)(?:\\d{1,2}(?:st|nd|rd|th)?\\s+)?"
             + "(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\.?(?:\\s+\\d{1,2}(?:st|nd|rd|th)?,?)?\\s+\\d{4}"
@@ -62,6 +66,17 @@ final class Headings {
     /** Heading level ({@code 1} for {@code #}) of each paragraph, {@code 0} for a paragraph that is not a heading. */
     static int[] levels(List<List<Line>> paragraphs) {
         return levels(paragraphs, find(paragraphs));
+    }
+
+    /**
+     * "Abstract" alone on a line of the first pages, or bold (NIST, page 6): arXiv papers set it in the small font of the abstract
+     * (1404.7828, 1712.01208), BERT one size above it, NIST in bold body size; the rules for headings by font
+     * size miss them.
+     */
+    private static boolean isAbstract(List<Line> paragraph) {
+        Line line = paragraph.get(0);
+        return paragraph.size() == 1 && !line.isTable() && (line.page() <= ABSTRACT_PAGES || line.bold())
+                && ABSTRACT.matcher(text(paragraph)).matches();
     }
 
     /**
@@ -130,6 +145,12 @@ final class Headings {
         }
         dropNumbersOutOfSequence(paragraphs, headings);
         dropDatesAndAuthors(paragraphs, headings);
+        // after the others, so that it does not make the authors above it headings followed by a heading
+        for (int i = 0; i < paragraphs.size(); i++) {
+            if (isAbstract(paragraphs.get(i))) {
+                headings[i] = true;
+            }
+        }
         return headings;
     }
 

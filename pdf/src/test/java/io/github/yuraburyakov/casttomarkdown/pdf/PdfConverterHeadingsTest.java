@@ -225,6 +225,30 @@ class PdfConverterHeadingsTest {
     }
 
     @Test
+    void abstractInTheSmallFontOfTheAbstractIsAHeading() {
+        // arXiv 1404.7828: "Abstract" in the 8 pt of the abstract under it, body 9 pt
+        List<Line> lines = List.of(
+                line(100, 14, "Deep Learning in Neural Networks: An Overview"),
+                line(336, 8, "Abstract"),
+                line(352, 8, "In recent years, deep artificial neural networks have won numerous contests."),
+                line(400, 9, BODY),
+                line(412, 9, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines)).contains("\n\n## Abstract\n\n");
+    }
+
+    @Test
+    void boldAbstractLaterInTheFrontMatterIsAHeading() {
+        // NIST SP 800-63-3, page 6: "Abstract" bold in 12 pt, body 12 pt
+        List<Line> lines = List.of(
+                new Line(6, 72, 94, 12, true, "Abstract"),
+                new Line(6, 72, 120, 12, BODY),
+                new Line(6, 72, 134, 12, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines)).startsWith("# Abstract\n\n");
+    }
+
+    @Test
     void centredTitleIsOneHeadingBeforeTheAuthors() {
         // arXiv 1810.04805: a 14 pt title in two centred lines, authors in 11 pt, body 10 pt
         List<Line> lines = List.of(
