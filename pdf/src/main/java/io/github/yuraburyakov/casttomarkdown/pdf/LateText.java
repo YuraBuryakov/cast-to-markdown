@@ -74,7 +74,9 @@ final class LateText {
         List<Integer> candidates = new ArrayList<>();
         int key = baselineKey(late);
         for (int k = key - 1; k <= key + 1; k++) {
-            candidates.addAll(byBaseline.getOrDefault(k, List.of()));
+            List<Integer> bucket = byBaseline.getOrDefault(k, List.of());
+            // only the newest of each bucket: copying a whole bucket would make the search quadratic again
+            candidates.addAll(bucket.subList(Math.max(0, bucket.size() - MAX_TRIES), bucket.size()));
         }
         candidates.sort(Comparator.reverseOrder());
         // a damaged or hostile page with thousands of pieces on one baseline must not take quadratic time

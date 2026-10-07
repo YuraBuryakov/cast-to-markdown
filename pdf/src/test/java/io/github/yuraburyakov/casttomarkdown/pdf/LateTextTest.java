@@ -12,9 +12,9 @@ class LateTextTest {
 
     @Test
     void manyPiecesOnOneBaselineTakeLinearTime() {
-        // a hostile page: 30 000 one-word lines on one baseline, each far from the others, none joins
+        // a hostile page: 200 000 one-word lines on one baseline, each far from the others, none joins
         List<Line> lines = new ArrayList<>();
-        for (int i = 0; i < 30_000; i++) {
+        for (int i = 0; i < 200_000; i++) {
             float x = i * 20;
             lines.add(new Line(1, 792, x, 100, 12, false, false, "w", -1, 6, x, 100,
                     List.of(new Line.Word("w", x, x + 6))));
@@ -22,6 +22,6 @@ class LateTextTest {
 
         List<Line> result = assertTimeoutPreemptively(Duration.ofSeconds(5), () -> LateText.insert(lines));
 
-        assertThat(result).hasSize(30_000);
+        assertThat(result).hasSize(200_000);
     }
 }
