@@ -274,10 +274,10 @@ final class RuledTables {
                 for (TextLine line : band) {
                     // within the band: a font size above the baseline can reach the rules of the row above
                     rows.add(cells(List.of(line), Math.max(top, line.y() - line.fontSize()), line.y(), bounds,
-                            ruledBounds));
+                            ruledBounds, rows.isEmpty()));
                 }
             } else {
-                rows.add(cells(band, top, bottom, bounds, ruledBounds));
+                rows.add(cells(band, top, bottom, bounds, ruledBounds, rows.isEmpty()));
             }
         }
         return placed == textLines.size() ? rows : null;
@@ -296,16 +296,16 @@ final class RuledTables {
 
     /** The cells of one row: words in reading order, merged cells to their first column. */
     private static List<String> cells(List<TextLine> lines, float top, float bottom, List<Float> bounds,
-            List<List<PageGraphics.Box>> ruledBounds) {
+            List<List<PageGraphics.Box>> ruledBounds, boolean header) {
         int columns = bounds.size() - 1;
         boolean[] ruled = new boolean[columns];
         for (int c = 1; c < columns; c++) {
             ruled[c] = ruledBounds.get(c).stream()
                     .anyMatch(rule -> rule.top() < bottom - 0.5f && rule.bottom() > top + 0.5f);
         }
-        List<StringBuilder> cells = new ArrayList<>();
+        List<List<Line.Word>> cells = new ArrayList<>();
         for (int c = 0; c < columns; c++) {
-            cells.add(new StringBuilder());
+            cells.add(new ArrayList<>());
         }
         for (TextLine line : lines) {
             for (Line.Word word : line.words()) {
@@ -313,11 +313,10 @@ final class RuledTables {
                 while (column > 0 && !ruled[column]) {
                     column--;
                 }
-                StringBuilder cell = cells.get(column);
-                cell.append(cell.isEmpty() ? "" : " ").append(ScientificPowers.cellText(word));
+                cells.get(column).add(word);
             }
         }
-        return cells.stream().map(StringBuilder::toString).toList();
+        return cells.stream().map(words -> ScientificPowers.cellText(words, header)).toList();
     }
 
     /** The column of the word's centre. */

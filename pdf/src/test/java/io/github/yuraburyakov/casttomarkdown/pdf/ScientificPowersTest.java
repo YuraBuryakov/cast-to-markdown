@@ -102,6 +102,61 @@ class ScientificPowersTest {
     }
 
     @Test
+    void standaloneScaleNeedsParamsHeaderAndFinalPositionInItsOwnCell() {
+        var scale = detect(chars("×106", 200, 3, 3.615f)).get(0);
+        var params = new Line.Word("params", 150, 180);
+        assertThat(ScientificPowers.cellText(List.of(params, scale), true)).isEqualTo("params ×10⁶");
+        assertThat(ScientificPowers.cellText(List.of(params, scale), false)).isEqualTo("params ×106");
+        assertThat(ScientificPowers.cellText(List.of(scale), true)).isEqualTo("×106");
+        assertThat(ScientificPowers.cellText(List.of(params, scale, new Line.Word("note", 230, 250)), true))
+                .isEqualTo("params ×106 note");
+        assertThat(ScientificPowers.cellText(scale)).isEqualTo("×106");
+        Line prose = line(100, List.of(params, scale));
+        assertThat(ScientificPowers.apply(prose, List.of())).isSameAs(prose);
+        assertThat(scale.left()).isEqualTo(200);
+    }
+
+    @Test
+    void standaloneScaleRejectsOrdinaryNumbersAndInconsistentPrefixGeometry() {
+        for (String text : List.of("x106", "109", "(×106)", "×10-6")) {
+            assertThat(detect(chars(text, 100, text.length() - 1, 3.6f)).get(0).power()).isNull();
+        }
+        assertThat(detect(chars("×106", 100, 4, 0)).get(0).power()).isNull();
+        var shifted = new ArrayList<>(chars("×106", 100, 3, 3.6f));
+        var prefix = shifted.get(0);
+        shifted.set(0, new ScientificPowers.Glyph(prefix.text(), prefix.left(), prefix.right(), 102, 9));
+        assertThat(detect(shifted).get(0).power()).isNull();
+        shifted.set(0, new ScientificPowers.Glyph(prefix.text(), prefix.left(), prefix.right(), 100, 8));
+        assertThat(detect(shifted).get(0).power()).isNull();
+    }
+
+    @Test
+    void ruledScaleIsOnlyRenderedInParamsHeaderNotAnotherCellOrDataRow() {
+        var headerScale = detect(chars("×106", 200, 3, 3.6f)).get(0);
+        var dataScale = detect(chars("×106", 200, 3, 3.6f)).get(0);
+        List<PageGraphics.Box> rules = List.of(new PageGraphics.Box(126, 72, 300, 72.4f),
+                new PageGraphics.Box(126, 84, 300, 84.4f), new PageGraphics.Box(126, 120, 300, 120.4f),
+                new PageGraphics.Box(160, 72, 160.4f, 120), new PageGraphics.Box(240, 72, 240.4f, 120));
+        for (int scenario = 0; scenario < 3; scenario++) {
+            boolean ownCell = scenario == 0;
+            // The third header merges the first two columns, but its data row still separates them.
+            var tableRules = scenario == 2 ? rules.stream().map(rule -> rule.left() == 160
+                    ? new PageGraphics.Box(160, 84, 160.4f, 120) : rule).toList() : rules;
+            var params = new Line.Word("params", ownCell ? 170 : 130, ownCell ? 195 : 155);
+            List<Line> lines = List.of(line(81, List.of(params, headerScale)),
+                    line(100, List.of(new Line.Word("model", 130, 150),
+                            new Line.Word("params", 170, 195), dataScale)),
+                    line(135, List.of(new Line.Word("Table", 130, 150), new Line.Word("1.", 154, 159))));
+            List<String> tables = new ArrayList<>();
+            RuledTables.replace(lines, Map.of(1, tableRules), tables);
+            assertThat(tables).containsExactly(TableMarkdown.of(List.of(
+                    scenario == 2 ? List.of("params ×10⁶", "", "")
+                            : ownCell ? List.of("", "params ×10⁶", "") : List.of("params", "×106", ""),
+                    List.of("model", "params ×106", "")), false));
+        }
+    }
+
+    @Test
     void dollarsAndExistingUnicodeArePreserved() {
         var powered = detect(chars("1.8×109", 110, 6, 3.6f)).get(0);
         Line input = line(100, List.of(new Line.Word("$5", 90, 99), powered, new Line.Word("10⁴", 150, 165)));

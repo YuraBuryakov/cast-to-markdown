@@ -12,7 +12,7 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 /** Conservative Unicode powers in M×10^E; no general formula or footnote recognition. */
 final class ScientificPowers {
     private static final Pattern NUMBER_TIMES = Pattern.compile("[0-9]+(?:\\.[0-9]+)?×");
-    private static final Pattern POWER = Pattern.compile("(?:([0-9]+(?:\\.[0-9]+)?×))?10([0-9]{1,3})");
+    private static final Pattern POWER = Pattern.compile("(?:((?:[0-9]+(?:\\.[0-9]+)?)?×))?10([0-9]{1,3})");
     private static final String DIGITS = "⁰¹²³⁴⁵⁶⁷⁸⁹";
     // Hypotheses around six ResNet measurements, not calibrated across PDF generators.
     private static final float MIN_SIZE = 0.55f;
@@ -27,7 +27,7 @@ final class ScientificPowers {
     }
 
     /** precedingWord=-1 means the whole scientific expression is inside one Word. */
-    record Power(String text, int precedingWord) {
+    record Power(String text, int precedingWord, boolean tableScale) {
     }
 
     private ScientificPowers() {
@@ -82,7 +82,7 @@ final class ScientificPowers {
                 for (int i = exponent; i < powered.length(); i++) {
                     powered.setCharAt(i, DIGITS.charAt(powered.charAt(i) - '0'));
                 }
-                result.set(w, new Line.Word(word.text(), word.left(), word.right(), new Power(powered.toString(), preceding)));
+                result.set(w, new Line.Word(word.text(), word.left(), word.right(), new Power(powered.toString(), preceding, "×".equals(match.group(1)))));
             }
         }
         return List.copyOf(result);
@@ -123,7 +123,20 @@ final class ScientificPowers {
 
     /** Ruled table cells never use context from another Word/column. */
     static String cellText(Line.Word word) {
-        return word.power() != null && word.power().precedingWord() < 0 ? word.power().text() : word.text();
+        return word.power() != null && word.power().precedingWord() < 0 && !word.power().tableScale() ? word.power().text() : word.text();
+    }
+
+    /** Standalone scales are only emitted at the end of a recognised params header cell. */
+    static String cellText(List<Line.Word> words, boolean header) {
+        boolean params = header && words.stream().anyMatch(w -> w.text().equalsIgnoreCase("params"));
+        List<String> text = new ArrayList<>();
+        for (int i = 0; i < words.size(); i++) {
+            Line.Word word = words.get(i);
+            Power power = word.power();
+            text.add(params && i == words.size() - 1 && power != null && power.tableScale()
+                    ? power.text() : cellText(word));
+        }
+        return String.join(" ", text);
     }
 
     /** Run after RuledTables: its row lines have gone, so only ordinary text can use a neighbour. */
@@ -160,7 +173,7 @@ final class ScientificPowers {
             }
             String changed = word.text();
             Power power = word.power();
-            if (power != null && (power.precedingWord() < 0 || !blocked(line, word, power, rules))) {
+            if (power != null && !power.tableScale() && (power.precedingWord() < 0 || !blocked(line, word, power, rules))) {
                 changed = power.text();
                 text.replace(offset, offset + word.text().length(), changed);
             }

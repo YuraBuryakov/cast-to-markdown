@@ -229,12 +229,14 @@ LaTeX and similar tools draw tables as a grid of rules, without tags.
 **Can**
 - Write a raised positive integer exponent as Unicode in scientific notation: `60× 104` becomes `60× 10⁴`, and `1.8×109` becomes `1.8×10⁹`, when glyph sizes, baselines and spacing identify the exponent.
 - Use a nearby numeric multiplier ending in `×` in ordinary text, rejecting a different baseline, a large gap, intervening text or a vertical rule.
+- A standalone `×10^E` is emitted as Unicode only at the end of the first row's cell in a recognised ruled table when that same cell contains the label `params` (case-insensitive). The existing glyph-size/baseline/gap checks still apply. Other cells, data rows and ordinary prose keep it unchanged.
 - In recognised ruled tables, convert a scientific expression inside one word in its existing cell; preserve columns and empty cells. Never use another word as context in those table cells.
 - Leave footnote-like word endings, ordinary baseline numbers, standalone `10` powers without a numeric multiplier, dollar signs and existing Unicode unchanged in the tested cases.
 - Disable detection in tagged documents (tested). Geometry and surrounding text are preserved by the transformation.
 
 **Cannot**
-- This first version only handles `M×10^E`: M uses ASCII digits and an optional decimal point; E is 1–3 positive ASCII digits. No negative signs, general formulas, lower indices or LaTeX output.
+- This first version only handles `M×10^E`: M uses ASCII digits and an optional decimal point; E is 1–3 positive ASCII digits. No negative signs, general formulas, lower indices or LaTeX output. Standalone scales have only the narrow `params` header exception above.
+- A raised footnote immediately following `×10` in a `params` header is geometrically ambiguous with a power; the header rule does not prove the absence of a footnote. Other header labels and punctuation around the scale remain outside this step.
 - Cross-word expressions in recognised tables stay text. Tables the existing table detector does not recognise receive the ordinary-text rules; those are not a guarantee of cell boundaries.
 - Detection is also disabled on rotated pages and lines containing URL links (code guards; no end-to-end regression fixture yet).
 - Thresholds are based on ResNet measurements, not calibrated across PDF generators. A raised digit directly after scientific notation can still be ambiguous with a footnote.
