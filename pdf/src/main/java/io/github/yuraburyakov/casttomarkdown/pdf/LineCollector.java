@@ -31,6 +31,7 @@ import org.apache.pdfbox.pdmodel.graphics.state.RenderingMode;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotationLink;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
+import org.apache.pdfbox.util.Matrix;
 
 /**
  * Collects text lines with their position and font instead of writing text out.
@@ -190,12 +191,30 @@ final class LineCollector extends PDFTextStripper {
                 cellOfPosition.put(position, cell);
             }
         }
+        if (clippedAway(position)) {
+            return;
+        }
         if (getGraphicsState().getTextState().getRenderingMode() == RenderingMode.NEITHER) {
             invisible.add(position);
         } else {
             visibleOnPage = true;
             super.processTextPosition(position);
         }
+    }
+
+    /**
+     * Whether the character lies outside the clipping path, so it is not drawn. Text extraction follows only
+     * the page box and the boxes of form XObjects, not clipping paths drawn with {@code W}: the figure of arXiv
+     * 1706.03762 page 13 is a form cropped by its box, and its title "Input-Input Layer5" lies under the section
+     * heading, cut away; a URL in arXiv 1712.01208 runs past the page edge.
+     */
+    private boolean clippedAway(TextPosition position) {
+        Matrix matrix = position.getTextMatrix();
+        // the whole glyph box outside: a full stop at a column edge only partly inside the clip is drawn
+        float width = Math.max(position.getWidthDirAdj(), 0.1f);
+        float height = Math.max(position.getHeightDir(), 0.1f);
+        return !getGraphicsState().getCurrentClippingPath()
+                .intersects(matrix.getTranslateX(), matrix.getTranslateY(), width, height);
     }
 
     /**

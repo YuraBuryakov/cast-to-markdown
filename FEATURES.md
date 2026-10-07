@@ -90,12 +90,13 @@ PDFs with a text layer, based on Apache PDFBox.
 - The second line of a centred title is not taken for a first-line indent when the next line is in another font (arXiv 1810.04805). Tested by `PdfConverterHeadingsTest`.
 - Lines that pdfTeX (microtype) stretches a little keep the font size of the paragraph, so they do not start a new paragraph (arXiv 1706.03762). A font scaled wider on purpose keeps the size PDFBox gives it. Tested by `LineCollectorTest`.
 
+- Text outside the page or outside the box of an embedded figure (a form XObject) is cut away and left out (the title of a cropped figure in arXiv 1706.03762 under a section heading; a full stop past the page edge). Tested by `LineCollectorTest`.
 - Invisible text (rendering mode 3) is left out on a page that has visible text, so it neither shows up nor removes visible letters it overlaps (Word 365 put an older wording of a note invisibly under the visible one). On a page with only invisible text, such as the OCR layer of a scan, it is the text. Visible text drawn twice for boldness comes once. Tested by `PdfInvisibleTextTest`.
 - A justified line where the space character is narrower than the stretched gap gives one space, not two (LibreOffice 7.3, `The  foundation  promotes`). Tested by `LineCollectorTest`.
 - A space drawn over a letter or digit gives no space (LibreOffice 7.3 draws spaces over the letters of a link: `http  s  ://` becomes `https://`). Tested by `LineCollectorTest`.
 
 **Cannot**
-- Text hidden by other means (white on white, covered by a box drawn later, clipped away) is still output. Not covered.
+- Text hidden by other means (white on white, covered by a box drawn later, cut by a clipping path drawn with `W`) is still output. Not covered.
 - An OCR layer on a page that also has some visible text (a stamp, a printed page number) is left out with the other invisible text. Not covered.
 - A paragraph split by a footnote at the bottom of a page stays split in two.
 - Footnotes and floating blocks (figures, tables from another column) can sit between the parts of a sentence.

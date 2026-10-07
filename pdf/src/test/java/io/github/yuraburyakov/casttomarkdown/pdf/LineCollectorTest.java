@@ -124,6 +124,20 @@ class LineCollectorTest {
     }
 
     @Test
+    void textOutsideThePageIsLeftOut() throws IOException {
+        // arXiv 1712.01208 page 21: a URL runs past the right page edge, its final full stop is not on the page
+        Path pdf = TestPdf.builder()
+                .page()
+                .line(72, 700, "A visible line")
+                .line(620, 400, "past the edge")
+                .line(600, 300, "half on the page")
+                .writeTo(dir.resolve("outside.pdf"));
+
+        // "h" is on the page, "a" crosses the edge at 612 pt and is partly drawn, the rest is beyond it
+        assertThat(lines(pdf)).extracting(Line::text).containsExactly("A visible line", "ha");
+    }
+
+    @Test
     void longLineWithManySpacesTakesLinearTime() throws IOException {
         // a hostile page: one string of 60 000 characters, half of them spaces
         Path pdf = TestPdf.builder().page().line(10, 700, "a ".repeat(30_000)).writeTo(dir.resolve("long.pdf"));
