@@ -48,6 +48,13 @@ final class Figures {
     /** Only lines of at most this many words are labels; longer lines (table rows, sentences) always stay. */
     private static final int MAX_LABEL_WORDS = 8;
     /**
+     * A title of a drawing is at least this many times larger than the caption: a section heading of body size
+     * just above a figure stays.
+     */
+    private static final float TITLE_SIZE = 1.5f;
+    /** A title of a drawing stands at most this many of its own font sizes above the drawing. */
+    private static final float TITLE_GAP = 2;
+    /**
      * Pages with more drawings or captions are left as they are: the drawings are grouped again for every
      * caption's column, which is quadratic. arXiv pages have at most 7 drawings and 3 captions.
      */
@@ -87,6 +94,7 @@ final class Figures {
         Map<Integer, List<PageGraphics.Box>> drawingsByPage = new HashMap<>();
         Map<Integer, List<PageGraphics.Box>> areasByPage = new HashMap<>();
         Set<Line> captionLines = Collections.newSetFromMap(new IdentityHashMap<>());
+        Map<PageGraphics.Box, Float> captionSizes = new HashMap<>();
         for (List<Line> paragraph : captions) {
             captionLines.addAll(paragraph);
             Line caption = paragraph.get(0);
@@ -95,7 +103,9 @@ final class Figures {
             }
             List<PageGraphics.Box> drawings = drawingsByPage.computeIfAbsent(caption.page(),
                     page -> drawings(graphicsByPage.getOrDefault(page, List.of())));
-            areasByPage.computeIfAbsent(caption.page(), page -> new ArrayList<>()).addAll(areas(paragraph, drawings));
+            List<PageGraphics.Box> areas = areas(paragraph, drawings);
+            areas.forEach(area -> captionSizes.put(area, caption.fontSize()));
+            areasByPage.computeIfAbsent(caption.page(), page -> new ArrayList<>()).addAll(areas);
         }
         if (areasByPage.isEmpty()) {
             return lines;
@@ -104,7 +114,7 @@ final class Figures {
         return lines.stream().filter(line -> line.isTable() || captionLines.contains(line)
                 || words(line) > MAX_LABEL_WORDS || rowLabels.contains(line)
                 || areasByPage.getOrDefault(line.page(), List.of()).stream()
-                        .noneMatch(area -> area.contains(line.pageX(), line.pageY()))).toList();
+                        .noneMatch(area -> area.contains(line.pageX(), line.pageY()) || titleOf(area, line, captionSizes.get(area)))).toList();
     }
 
     /** The areas of the figure above the caption, else below it; empty when there is none. */
@@ -176,6 +186,17 @@ final class Figures {
 
     private static long baseline(Line line) {
         return (long) line.page() << 32 | Math.round(line.pageY() * 10) & 0xffffffffL;
+    }
+
+    /**
+     * Whether the line is a title of the drawing in a font larger than its caption, above the area by at most
+     * {@link #TITLE_GAP} of its own font sizes (arXiv 1706.03762: "Input-Input Layer5" in 19 pt, 30 pt above
+     * the attention plots).
+     */
+    private static boolean titleOf(PageGraphics.Box area, Line line, float captionSize) {
+        return !line.rotated() && line.fontSize() >= TITLE_SIZE * captionSize && line.pageY() < area.top() && area.top() - line.pageY() <= TITLE_GAP * line.fontSize()
+                // over the drawing: it may start a point left of it (page 15 there)
+                && line.pageX() <= area.right() && line.pageX() + line.width() >= area.left();
     }
 
     /** The words of the line, by its word list or else by its text. */

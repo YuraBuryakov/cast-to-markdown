@@ -219,6 +219,7 @@ LaTeX and similar tools draw tables as a grid of rules, without tags.
 
 **Can**
 - In untagged PDFs (LaTeX), the labels of a vector figure (axis labels, diagram boxes, vertical axis titles) are left out when the figure has a caption `Figure N.`, `Figure N:` or `Fig. N.` right above or below it; the caption stays, once.
+- A title of the drawing in a much larger font just above it is removed too (`Input-Input Layer5` over the attention plots of arXiv 1706.03762); a heading of body size above a figure stays. Tested by `FiguresTest`.
 - Labels beside the drawing are found within the caption's width (arXiv Figure 2: `F(x) + x` left of the blocks).
 - A figure drawn in several pieces (columns of a diagram, a column cut by text) is one figure, within the caption's column; a frame touching the caption still belongs to it.
 - Only lines of at most 8 words are labels: longer lines in a figure (rows of a table drawn as a figure, sentences) always stay.
@@ -229,7 +230,7 @@ LaTeX and similar tools draw tables as a grid of rules, without tags.
 
 **Cannot**
 - A figure without such a caption keeps its text; rotated pages are skipped.
-- Labels more than one caption font size above or below the drawing stay (arXiv Figure 3: the network names over its columns).
+- Labels more than one caption font size above or below the drawing stay (arXiv Figure 3: the network names over its columns), unless a line is in a font at least 1.5 times the caption's and at most two of its own font sizes above the drawing. Tested by `FiguresTest`.
 - A short label line inside a table drawn as a figure is removed with the other labels unless it is a row label on the baseline of a longer row (column headers such as `Lookup (ns)`, labels spanning rows).
 - Figures are not kept as images.
 

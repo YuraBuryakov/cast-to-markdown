@@ -144,6 +144,26 @@ class FiguresTest {
     }
 
     @Test
+    void largeTitleJustAboveTheDrawingIsRemoved() {
+        // arXiv 1706.03762 Figure 4: "Input-Input Layer5" in 19 pt, 30 pt above the plots, caption in 9 pt
+        List<Line> lines = List.of(line(107, 115.5f, 19, "Input-Input Layer5"),
+                line(72, 225, 9, "Figure 4: Two attention heads."));
+
+        assertThat(texts(Figures.remove(lines, Map.of(1, List.of(box(120, 146, 300, 200))))))
+                .containsExactly("Figure 4: Two attention heads.");
+    }
+
+    @Test
+    void headingOfBodySizeAboveTheDrawingStays() {
+        // a section heading in 11 pt right above a figure is not the figure's title
+        List<Line> lines = List.of(line(108, 120, 11, "Attention Visualizations"),
+                line(72, 225, 9, "Figure 3: An example."));
+
+        assertThat(texts(Figures.remove(lines, Map.of(1, List.of(box(120, 146, 300, 200))))))
+                .containsExactly("Attention Visualizations", "Figure 3: An example.");
+    }
+
+    @Test
     void labelsBesideTheDrawingWithinTheCaptionWidthAreRemoved() {
         // arXiv Figure 2: "F(x)" stands 31 points left of the blocks, still within the caption's width
         List<Line> lines = List.of(line(98, 114, "F(x)"), line(20, 120, "margin note"), line(107, 147, "F(x) + x"),
