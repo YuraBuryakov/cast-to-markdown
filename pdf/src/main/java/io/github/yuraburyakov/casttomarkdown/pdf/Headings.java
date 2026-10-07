@@ -36,6 +36,13 @@ final class Headings {
             + "|\u00a7\\s*\\d{1,3}((?:\\.\\d{1,2})*)\\.?)"
             + "(?=[\\s\u2014:])");
 
+    /** A date alone: "1 October 2026", "October 1, 2026", "May 2024", "2026-10-01". */
+    private static final Pattern DATE = Pattern.compile("(?i)(?:\\d{1,2}(?:st|nd|rd|th)?\\s+)?"
+            + "(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\.?(?:\\s+\\d{1,2}(?:st|nd|rd|th)?,?)?\\s+\\d{4}"
+            + "|\\d{4}-\\d{2}-\\d{2}");
+    /** An e-mail address, also the {@code {kahe, v-xiangz}@microsoft.com} of a paper's authors. */
+    private static final Pattern EMAIL = Pattern.compile("[\\w.}-]@[\\w-]+\\.[\\w.]+");
+
     /** Arabic section number; group 1 is the top-level number. */
     private static final Pattern TOP_NUMBER = Pattern.compile("^(\\d{1,2})(?:\\.\\d{1,2})*\\.?(?=[\\s\\u2014:])");
 
@@ -95,7 +102,30 @@ final class Headings {
             headings[i] = candidate && followedByText;
         }
         dropNumbersOutOfSequence(paragraphs, headings);
+        dropDatesAndAuthors(paragraphs, headings);
         return headings;
+    }
+
+    /**
+     * Large text of a title page that is not a heading: a date alone ("1 October 2026" under a gov.uk title)
+     * and the authors right after the title of the first page when an e-mail address follows them
+     * ("Kaiming He Xiangyu Zhang ... Microsoft Research" in arXiv 1512.03385).
+     */
+    private static void dropDatesAndAuthors(List<List<Line>> paragraphs, boolean[] headings) {
+        for (int i = 0; i < paragraphs.size(); i++) {
+            if (headings[i] && DATE.matcher(text(paragraphs.get(i))).matches()) {
+                headings[i] = false;
+            }
+        }
+        int title = 0;
+        while (title < headings.length && !headings[title]) {
+            title++;
+        }
+        int authors = title + 1;
+        if (authors + 1 < paragraphs.size() && paragraphs.get(title).get(0).page() == 1 && headings[authors]
+                && !headings[authors + 1] && EMAIL.matcher(text(paragraphs.get(authors + 1))).find()) {
+            headings[authors] = false;
+        }
     }
 
     /**

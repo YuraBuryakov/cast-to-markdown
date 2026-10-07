@@ -225,6 +225,36 @@ class PdfConverterHeadingsTest {
     }
 
     @Test
+    void dateUnderTheTitleIsNoHeading() {
+        // word365-taxi.pdf (gov.uk): the date in the size of the title
+        List<Line> lines = List.of(
+                line(100, 16, "Guidance for licensing authorities"),
+                line(150, 16, "1 October 2026"),
+                line(200, 11, BODY),
+                line(214, 11, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines)).startsWith("# Guidance for licensing authorities\n\n1 October 2026\n\n");
+    }
+
+    @Test
+    void authorsBeforeTheirAddressesAreNoHeading() {
+        // arXiv 1512.03385: authors in 12 pt between the 14 pt title and the e-mail addresses, body 10 pt
+        List<Line> lines = List.of(
+                line(100, 14, "Deep Residual Learning for Image Recognition"),
+                line(130, 12, "Kaiming He Xiangyu Zhang Shaoqing Ren Jian Sun"),
+                line(150, 10, "{kahe, v-xiangz, v-shren, jiansun}@microsoft.com"),
+                line(190, 12, "Abstract"),
+                line(210, 10, BODY),
+                line(222, 10, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo(String.join("\n\n",
+                "# Deep Residual Learning for Image Recognition",
+                "Kaiming He Xiangyu Zhang Shaoqing Ren Jian Sun",
+                "{kahe, v-xiangz, v-shren, jiansun}@microsoft.com",
+                "## Abstract", BODY + "\n" + BODY));
+    }
+
+    @Test
     void titleBeforeTheAuthorsIsAHeading() {
         // arXiv 1712.01208: title 17 pt, authors 11 pt over several lines, body 10 pt
         List<Line> lines = List.of(
