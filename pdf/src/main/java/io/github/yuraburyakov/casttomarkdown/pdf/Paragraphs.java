@@ -100,7 +100,10 @@ final class Paragraphs {
         if (line.page() != previous.page()) {
             return !continuesOnNextPage(previous, line);
         }
-        if (line.y() <= previous.y() || line.sizeKey() != previous.sizeKey()) {
+        if (line.y() <= previous.y()) {
+            return !continuesInNextColumn(previous, line);
+        }
+        if (line.sizeKey() != previous.sizeKey()) {
             return true;
         }
         // A bold numbered heading of body size followed by regular text without extra space (LibreOffice
@@ -131,6 +134,25 @@ final class Paragraphs {
                 // line of a list item with a hanging indent ("II LSTM-like networks ... through a special" /
                 // "architecture unaffected by it.", arXiv 1404.7828)
                 && SENTENCE_END.matcher(previous.text().strip()).find();
+    }
+
+    /**
+     * A sentence cut by the end of a column: the text moves up to the top of the next column and goes on there
+     * in the same style, in lower case or after a hyphen ("yielded simi-" / "larly high performance",
+     * arXiv 1512.00567). Rotated text (the arXiv margin stamp) is never joined.
+     */
+    private static boolean continuesInNextColumn(Line previous, Line line) {
+        String text = line.text().strip();
+        String last = previous.text().strip();
+        return !line.rotated() && !previous.rotated()
+                && line.x() > previous.x()
+                && line.sizeKey() == previous.sizeKey()
+                && line.bold() == previous.bold()
+                && last.length() >= FULL_LINE
+                && !SENTENCE_END.matcher(last).find()
+                && !TOC_ENTRY.matcher(previous.text()).find()
+                && !LIST_ITEM.matcher(line.text()).find()
+                && !text.isEmpty() && (Character.isLowerCase(text.codePointAt(0)) || last.endsWith("-"));
     }
 
     /**

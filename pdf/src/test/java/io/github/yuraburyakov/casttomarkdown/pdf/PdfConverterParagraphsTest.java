@@ -9,6 +9,28 @@ import org.junit.jupiter.api.Test;
 class PdfConverterParagraphsTest {
 
     @Test
+    void sentenceGoesOnInTheNextColumn() {
+        // arXiv 1512.00567: the left column ends "yielded simi-", the right one starts "larly high performance"
+        List<Line> lines = List.of(
+                line(1, 50, 600, 10, "networks. VGGNet [18] and GoogLeNet [20] yielded simi-"),
+                line(1, 308, 72, 10, "larly high performance in the 2014 ILSVRC classification."),
+                line(1, 308, 100, 10, "A new paragraph."));
+
+        // one paragraph; the hyphen stays as "similarly" is not elsewhere in this tiny document (see Hyphens)
+        assertThat(PdfConverter.toMarkdown(lines)).startsWith(
+                "networks. VGGNet [18] and GoogLeNet [20] yielded simi-\nlarly high performance in the 2014 ILSVRC classification.\n\n");
+    }
+
+    @Test
+    void capitalAtTheTopOfTheNextColumnStartsAParagraph() {
+        List<Line> lines = List.of(
+                line(1, 50, 600, 10, "The left column ends with a line that has no full stop"),
+                line(1, 308, 72, 10, "The right column starts a new paragraph."));
+
+        assertThat(PdfConverter.toMarkdown(lines)).contains("full stop\n\nThe right column");
+    }
+
+    @Test
     void itemWithAHangingIndentIsOneParagraph() {
         // arXiv 1404.7828: roman numbered items, the second line indented, the next item back at the margin
         List<Line> lines = List.of(
