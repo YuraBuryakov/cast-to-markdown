@@ -138,9 +138,11 @@ PDFs with a text layer, based on Apache PDFBox.
 **Can**
 - Text repeated at the top or bottom edge of the pages is removed, with page numbers, Roman or Arabic; so is rotated margin text repeated on every page.
 - Repeated text in the middle of a page, and numbers at the page edge that change place, are kept.
+- Running text with words found in one place on many pages also goes from the edge of the other pages, wherever it is there (`Return to Contents` placed elsewhere on the covers). Tested by `PageFurnitureTest`.
 
 **Cannot**
 - Needs at least three pages: in one- or two-page documents headers and footers stay in the text.
+- Text at the page edge that only happens to equal a running header or footer is removed too. Not covered.
 
 **Tests:** `PageFurnitureTest`
 

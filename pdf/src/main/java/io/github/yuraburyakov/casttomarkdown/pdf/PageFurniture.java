@@ -14,6 +14,8 @@ import java.util.regex.Pattern;
  * <p>A line is removed only when both hold: it is at the top or bottom edge of the page (or its text
  * is rotated, like vertical text in a side margin), and the same text, with numbers ignored, is at
  * the edge of many pages. Repetition alone is not enough: tables repeat numbers on every page.
+ * Text with words that is found so, in one place, also goes from the edge of the other pages, wherever it is
+ * there (a link back to the contents on the cover); bare numbers stay tied to their place.
  */
 final class PageFurniture {
 
@@ -41,8 +43,17 @@ final class PageFurniture {
             }
         }
         int minPages = Math.max(MIN_PAGES, (int) Math.ceil(MIN_PAGE_SHARE * pages.size()));
+        // running text with words found in one place is removed at the edge of any page: a cover puts it elsewhere
+        Set<String> runningTexts = new HashSet<>();
+        pagesByKey.forEach((key, keyPages) -> {
+            String text = key.substring(0, key.lastIndexOf('@'));
+            if (keyPages.size() >= minPages && WORD.matcher(text).find()) {
+                runningTexts.add(text);
+            }
+        });
         return lines.stream()
-                .filter(line -> line.isTable() || !atEdge(line) || pagesByKey.get(key(line)).size() < minPages)
+                .filter(line -> line.isTable() || !atEdge(line)
+                        || pagesByKey.get(key(line)).size() < minPages && !runningTexts.contains(text(line)))
                 .toList();
     }
 
@@ -64,7 +75,11 @@ final class PageFurniture {
      * ponytail: positions are rounded to 20 pt, so a header that moves across a bucket border is missed.
      */
     private static String key(Line line) {
+        return text(line) + "@" + Math.round(line.x() / X_BUCKET);
+    }
+
+    private static String text(Line line) {
         String text = NUMBER.matcher(line.text().strip().toLowerCase(Locale.ROOT)).replaceAll("0");
-        return (ROMAN_NUMBER.matcher(text).matches() ? "0" : text) + "@" + Math.round(line.x() / X_BUCKET);
+        return ROMAN_NUMBER.matcher(text).matches() ? "0" : text;
     }
 }

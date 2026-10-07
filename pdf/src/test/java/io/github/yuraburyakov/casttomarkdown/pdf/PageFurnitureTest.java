@@ -84,6 +84,31 @@ class PageFurnitureTest {
         assertThat(PageFurniture.remove(lines)).hasSize(2);
     }
 
+    @Test
+    void removesRunningTextThatMovesOnTheCover() {
+        // other-c7.pdf: "Return to Contents" in the footer of 22 pages, on the front and back cover elsewhere.
+        List<Line> lines = new ArrayList<>();
+        for (int page = 1; page <= 5; page++) {
+            lines.add(line(page, 72, 400, "Body " + page));
+            lines.add(line(page, page == 1 ? 66.6f : 114.6f, 800, "  Return to Contents "));
+        }
+
+        assertThat(texts(PageFurniture.remove(lines))).containsExactly("Body 1", "Body 2", "Body 3", "Body 4", "Body 5");
+    }
+
+    @Test
+    void onlyTextWithWordsLeavesItsPlace() {
+        // "Page 20" elsewhere is the running text; a bare "20" elsewhere may be a chart label and stays
+        List<Line> lines = new ArrayList<>();
+        for (int page = 1; page <= 5; page++) {
+            lines.add(line(page, 295, 800, "Page " + page));
+        }
+        lines.add(line(5, 106, 76, "Page 20"));
+        lines.add(line(5, 106, 90, "20"));
+
+        assertThat(texts(PageFurniture.remove(lines))).containsExactly("20");
+    }
+
     private static Line line(int page, float x, float y, String text) {
         return new Line(page, A4, x, y, 12, false, false, text);
     }
