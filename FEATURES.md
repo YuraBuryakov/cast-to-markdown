@@ -120,6 +120,7 @@ PDFs with a text layer, based on Apache PDFBox.
 - A second plain body size up to 1 pt larger is not treated as an unnumbered heading when it has at least ten long lines, at least half the primary size's long-text weight, and at least ten close, aligned alternations with the primary size. Repeated bold headings and fonts used in separate sections do not establish this second size in the tested cases.
 - Bold body-size text that starts with a section number (`2.1 Scope`) is a heading with the level from the number; `§` headings are split from the text that follows.
 - A heading is at most one level deeper than the one before; a two-line heading is joined; a title in a much larger font may take up to four lines.
+- An unnumbered first heading on the first page is level 1 when no heading has that level, also in the font of the numbered sections (which are level 2). Tested by `PdfConverterHeadingsTest`.
 - A title on the first page in a font at least 1.5 times the body size is a heading also when the authors follow in a font a little larger than the body. Tested by `PdfConverterHeadingsTest`.
 - Not taken for headings: a bold numbered list item out of sequence, a table of contents entry, a long paragraph in a large font, text fragments without words, large text followed by small figure text, a mostly bold first line of a definition, a date alone (`1 October 2026`), and the authors right after a first-page title when e-mail addresses follow them. Tested by `PdfConverterHeadingsTest`.
 

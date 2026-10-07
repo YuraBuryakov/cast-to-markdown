@@ -252,7 +252,27 @@ final class Headings {
                         Math.min(MAX_LEVEL, otherStyles.indexOf(style) + 1));
             }
         }
+        titleOnTop(paragraphs, levels);
         return withoutSkippedLevels(levels);
+    }
+
+    /**
+     * An unnumbered first heading on the first page is the document title, level 1, when no heading has that
+     * level: word365-taxi.pdf sets its title in the font of the numbered sections, which are level 2.
+     */
+    private static void titleOnTop(List<List<Line>> paragraphs, int[] levels) {
+        int first = -1;
+        for (int i = 0; i < levels.length; i++) {
+            if (levels[i] == 1) {
+                return;
+            }
+            if (levels[i] > 0 && first < 0) {
+                first = i;
+            }
+        }
+        if (first >= 0 && paragraphs.get(first).get(0).page() == 1 && !startsWithSectionNumber(text(paragraphs.get(first)))) {
+            levels[first] = 1;
+        }
     }
 
     /**

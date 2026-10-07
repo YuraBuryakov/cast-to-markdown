@@ -225,6 +225,19 @@ class PdfConverterHeadingsTest {
     }
 
     @Test
+    void titleInTheFontOfNumberedSectionsIsLevelOne() {
+        // word365-taxi.pdf: the title and "1. Introduction" share one font; numbered top sections are level 2
+        List<Line> lines = List.of(
+                line(100, 16, "Guidance for licensing authorities"),
+                line(150, 11, BODY),
+                line(200, 16, "1. Introduction"),
+                line(250, 11, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo(String.join("\n\n",
+                "# Guidance for licensing authorities", BODY, "## 1. Introduction", BODY));
+    }
+
+    @Test
     void dateUnderTheTitleIsNoHeading() {
         // word365-taxi.pdf (gov.uk): the date in the size of the title
         List<Line> lines = List.of(
