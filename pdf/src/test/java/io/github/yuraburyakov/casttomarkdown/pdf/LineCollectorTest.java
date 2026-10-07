@@ -95,6 +95,23 @@ class LineCollectorTest {
     }
 
     @Test
+    void justifiedGapAroundASpaceGivesOneSpace() throws IOException {
+        // LibreOffice 7.3 (tdf-statutes.pdf): the space character is narrower than the stretched gap
+        PDType1Font font = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+        float x = 100;
+        float the = x + font.getStringWidth("charge.") / 1000 * 12 + 2;
+        float foundation = the + font.getStringWidth(" The ") / 1000 * 12 + 4;
+        Path pdf = TestPdf.builder()
+                .page()
+                .line(x, 700, "charge.")
+                .line(the, 700, " The ")
+                .line(foundation, 700, "foundation")
+                .writeTo(dir.resolve("justified.pdf"));
+
+        assertThat(lines(pdf)).extracting(Line::text).containsExactly("charge. The foundation");
+    }
+
+    @Test
     void longLineWithManySpacesTakesLinearTime() throws IOException {
         // a hostile page: one string of 60 000 characters, half of them spaces
         Path pdf = TestPdf.builder().page().line(10, 700, "a ".repeat(30_000)).writeTo(dir.resolve("long.pdf"));

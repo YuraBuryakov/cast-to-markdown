@@ -100,6 +100,8 @@ final class LineCollector extends PDFTextStripper {
     /** Invisible characters of the page, kept back until it is known whether the page has visible ones. */
     private final List<TextPosition> invisible = new ArrayList<>();
     private boolean visibleOnPage;
+    /** Whether a word separator was written since the last string: a space the next string starts with is one. */
+    private boolean afterSeparator;
 
     private LineCollector(TaggedTables tables, boolean untagged) {
         this.tables = tables;
@@ -219,6 +221,16 @@ final class LineCollector extends PDFTextStripper {
             positions = kept;
             string = unicode(kept);
         }
+        // the word separator PDFBox wrote for the gap already stands for the space this string starts with
+        if (afterSeparator && string.equals(unicode(positions))) {
+            int blank = 0;
+            while (blank < positions.size() && positions.get(blank).getUnicode().isBlank()) {
+                blank++;
+            }
+            positions = positions.subList(blank, positions.size());
+            string = unicode(positions);
+        }
+        afterSeparator = false;
         for (TextPosition position : positions) {
             if (first == null) {
                 first = position;
@@ -429,8 +441,17 @@ final class LineCollector extends PDFTextStripper {
 
     @Override
     protected void writeWordSeparator() {
-        currentText().append(getWordSeparator());
-        otherText.append(getWordSeparator());
+        // a justified line (LibreOffice 7.3): the gap after a space character is wider than the space, and PDFBox
+        // writes a separator for it as well ("The  foundation  promotes")
+        if (!endsWithBlank(currentText())) {
+            currentText().append(getWordSeparator());
+            otherText.append(getWordSeparator());
+        }
+        afterSeparator = true;
+    }
+
+    private static boolean endsWithBlank(CharSequence text) {
+        return text.length() > 0 && Character.isWhitespace(text.charAt(text.length() - 1));
     }
 
     @Override
@@ -476,6 +497,7 @@ final class LineCollector extends PDFTextStripper {
         otherChars = 0;
         otherText.setLength(0);
         severalTables = false;
+        afterSeparator = false;
     }
 
     /**
