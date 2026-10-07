@@ -86,6 +86,7 @@ PDFs with a text layer, based on Apache PDFBox.
 - A paragraph's lines stay on separate lines; paragraphs and pages are separated by a blank line.
 - A new paragraph starts after a gap larger than the usual line pitch for that font size, at a first-line indent after a line that ends a sentence, when the font size changes, and when the text moves up (next column).
 - A sentence cut by the end of a page stays one paragraph; a finished sentence or list item on the next page starts a new one.
+- A sentence cut by the end of a page goes on from any column of the next page when it continues in lower case or after a hyphen (right column to the left one in two-column papers: arXiv 1608.06993, 1512.03385). Tested by `PdfConverterParagraphsTest`.
 - A list item cut by the end of a page goes on at its hanging indent on the next page, in lower case (tdf-statutes.pdf). Tested by `PdfConverterParagraphsTest`.
 - A sentence cut by the end of a column goes on at the top of the next column when it continues in lower case or after a hyphen (arXiv 1512.00567, 1608.06993, 1810.04805). Tested by `PdfConverterParagraphsTest`.
 - A line that starts with a raised footnote number keeps the baseline of its text, so a two-line footnote stays one paragraph (arXiv 1712.01208, 1810.04805). Tested by `LineCollectorTest`.

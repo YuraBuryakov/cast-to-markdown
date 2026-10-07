@@ -167,7 +167,8 @@ final class Paragraphs {
         return line.page() == previous.page() + 1
                 && line.sizeKey() == previous.sizeKey()
                 && line.bold() == previous.bold()
-                && (Math.abs(line.x() - previous.x()) < INDENT * line.fontSize() || hangingGoesOn(previous, line))
+                && (Math.abs(line.x() - previous.x()) < INDENT * line.fontSize() || hangingGoesOn(previous, line)
+                        || goesOnInLowerCase(previous, line))
                 && previous.text().strip().length() >= FULL_LINE
                 && !SENTENCE_END.matcher(previous.text().strip()).find()
                 && !TOC_ENTRY.matcher(previous.text()).find()
@@ -184,6 +185,16 @@ final class Paragraphs {
         return LIST_ITEM.matcher(previous.text()).find()
                 && line.x() > previous.x() && line.x() - previous.x() <= HANGING * line.fontSize()
                 && !text.isEmpty() && Character.isLowerCase(text.codePointAt(0));
+    }
+
+    /**
+     * The line goes on with a lower-case letter, or after a hyphen, from another column: two-column papers end
+     * a page in the right column and go on at the left of the next page ("direct connections be-" / "tween the
+     * surrounding layers", arXiv 1608.06993).
+     */
+    private static boolean goesOnInLowerCase(Line previous, Line line) {
+        String text = line.text().strip();
+        return !text.isEmpty() && (Character.isLowerCase(text.codePointAt(0)) || previous.text().strip().endsWith("-"));
     }
 
     /** Median distance between consecutive lines of the same font size, per font size. */

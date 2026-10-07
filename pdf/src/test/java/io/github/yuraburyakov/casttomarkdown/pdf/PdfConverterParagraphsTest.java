@@ -9,6 +9,16 @@ import org.junit.jupiter.api.Test;
 class PdfConverterParagraphsTest {
 
     @Test
+    void sentenceGoesOnFromTheRightColumnToTheLeftOneOfTheNextPage() {
+        // arXiv 1608.06993 pages 7-8: "direct connections be-" at x 308.9, "tween the surrounding" at x 50.1
+        List<Line> lines = List.of(
+                line(1, 308.9, 711, 10, "are randomly dropped, which creates direct connections be-"),
+                line(2, 50.1, 82, 10, "tween the surrounding layers. As the pooling layers are"));
+
+        assertThat(PdfConverter.toMarkdown(lines)).doesNotContain("\n\n");
+    }
+
+    @Test
     void listItemGoesOnAtItsHangingIndentOnTheNextPage() {
         // tdf-statutes.pdf: the item starts at 57.3 pt on page 1, its next line is at 68 pt on page 2
         List<Line> lines = List.of(
