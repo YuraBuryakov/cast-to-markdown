@@ -154,6 +154,16 @@ class FiguresTest {
     }
 
     @Test
+    void largeTitleBetweenTwoPlotsStartingLeftOfThemIsRemoved() {
+        // arXiv 1706.03762 page 15: the second "Input-Input Layer5" sits between the plots, 1.2 pt left of the area
+        List<Line> lines = List.of(line(106.8f, 160, 19, "Input-Input Layer5"),
+                line(108, 260, 9, "Figure 5: Many of the attention heads."));
+
+        assertThat(texts(Figures.remove(lines, Map.of(1, List.of(box(120, 100, 300, 150), box(120, 170, 300, 240))))))
+                .containsExactly("Figure 5: Many of the attention heads.");
+    }
+
+    @Test
     void headingOfBodySizeAboveTheDrawingStays() {
         // a section heading in 11 pt right above a figure is not the figure's title
         List<Line> lines = List.of(line(108, 120, 11, "Attention Visualizations"),

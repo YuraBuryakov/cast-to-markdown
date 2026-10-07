@@ -189,12 +189,12 @@ final class Figures {
     }
 
     /**
-     * Whether the line is a title of the drawing in a font larger than its caption, above the area by at most
-     * {@link #TITLE_GAP} of its own font sizes (arXiv 1706.03762: "Input-Input Layer5" in 19 pt, 30 pt above
+     * Whether the line is a title of the drawing in a font larger than its caption, in the area or above it by
+     * at most {@link #TITLE_GAP} of its own font sizes, over it even when it starts a point left of it (arXiv 1706.03762: "Input-Input Layer5" in 19 pt, 30 pt above
      * the attention plots).
      */
     private static boolean titleOf(PageGraphics.Box area, Line line, float captionSize) {
-        return !line.rotated() && line.fontSize() >= TITLE_SIZE * captionSize && line.pageY() < area.top() && area.top() - line.pageY() <= TITLE_GAP * line.fontSize()
+        return !line.rotated() && line.fontSize() >= TITLE_SIZE * captionSize && line.pageY() <= area.bottom() && area.top() - line.pageY() <= TITLE_GAP * line.fontSize()
                 // over the drawing: it may start a point left of it (page 15 there)
                 && line.pageX() <= area.right() && line.pageX() + line.width() >= area.left();
     }
