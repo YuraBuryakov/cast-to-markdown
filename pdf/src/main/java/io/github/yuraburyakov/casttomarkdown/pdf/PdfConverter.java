@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.cos.COSName;
@@ -46,6 +47,14 @@ import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
  * <p>Stateless and thread-safe: every call works on its own document and collector.
  */
 public final class PdfConverter implements DocumentConverter {
+
+    /**
+     * The end of a link at a line end and the next line starting with a link to the same address; group 2 is
+     * that line's link text with its {@code ](target)}. Addresses with parentheses or in angle brackets are not
+     * matched and stay two links.
+     */
+    private static final Pattern SPLIT_LINK = Pattern.compile(
+            "\\]\\(([^)\\s<>]+)\\)[ \\t]*\\n[ \\t]*\\[((?:\\\\.|[^\\]\\\\\\n])*\\]\\(\\1\\))");
 
     /** Creates the converter; {@link java.util.ServiceLoader} calls it. */
     public PdfConverter() {
@@ -166,9 +175,20 @@ public final class PdfConverter implements DocumentConverter {
                 out.add("#".repeat(levels[i]) + " " + Markdown.escape(Headings.text(paragraph)));
             } else {
                 List<String> texts = Hyphens.join(paragraph.stream().map(Line::text).toList(), words);
-                out.add(texts.stream().map(text -> Lists.markdown(Markdown.escape(text))).collect(Collectors.joining("\n")));
+                out.add(joinSplitLinks(texts.stream().map(text -> Lists.markdown(Markdown.escape(text)))
+                        .collect(Collectors.joining("\n"))));
             }
         }
         return out.toString();
+    }
+
+    /**
+     * A link broken over two lines of a paragraph is one link: {@code [Distributed Computing](u)\n[Environment](u)}
+     * becomes {@code [Distributed Computing\nEnvironment](u)}; Markdown allows a line break in the link text.
+     */
+    static String joinSplitLinks(String paragraph) {
+        String joined = SPLIT_LINK.matcher(paragraph).replaceAll("\n$2");
+        // a link over three lines leaves another pair; each pass joins a line, so this ends
+        return joined.equals(paragraph) ? joined : joinSplitLinks(joined);
     }
 }

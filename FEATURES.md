@@ -166,9 +166,11 @@ PDFs with a text layer, based on Apache PDFBox.
 **Can**
 - Link annotations to web addresses become `[text](url)`, in tagged and untagged PDFs.
 - A link box that ends inside a word does not split the word; internal links, unsafe addresses and links to themselves stay text.
+- A link broken over lines of a paragraph is one link with a line break in its text (`[Distributed Computing\nEnvironment](url)`). Tested by `PdfLinksTest`.
 
 **Cannot**
-- Links inside PDF tables, on rotated pages and on rotated text stay text; a link broken over two lines becomes two links.
+- Links inside PDF tables, on rotated pages and on rotated text stay text.
+- Two links to the same address on following lines of a paragraph are taken for one link, also when they were two (a rare list of two links to one page). Addresses with parentheses stay two links. Not covered.
 
 **Tests:** `PdfLinksTest`, `MarkdownTest`
 

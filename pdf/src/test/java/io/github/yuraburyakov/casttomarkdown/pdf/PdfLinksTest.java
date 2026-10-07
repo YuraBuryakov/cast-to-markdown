@@ -56,4 +56,28 @@ class PdfLinksTest {
                 Visit https://example.org today.
                 """);
     }
+
+    @Test
+    void linkBrokenOverLinesIsOneLink() {
+        // Chrome (Wikipedia): the link box of each line becomes a link of its own
+        assertThat(PdfConverter.joinSplitLinks("""
+                its [Distributed Computing](https://en.wikipedia.org/wiki/DCE)\s
+                [Environment](https://en.wikipedia.org/wiki/DCE) (DCE), and
+                [a](https://example.org/x)
+                [three](https://example.org/x)
+                [lines](https://example.org/x) link"""))
+                .isEqualTo("""
+                        its [Distributed Computing
+                        Environment](https://en.wikipedia.org/wiki/DCE) (DCE), and
+                        [a
+                        three
+                        lines](https://example.org/x) link""");
+    }
+
+    @Test
+    void linksToOtherAddressesOnNextLinesStayApart() {
+        String text = "[first](https://example.org/a)\n[second](https://example.org/b)";
+
+        assertThat(PdfConverter.joinSplitLinks(text)).isEqualTo(text);
+    }
 }
