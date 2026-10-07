@@ -82,10 +82,13 @@ final class LateText {
         // a damaged or hostile page with thousands of pieces on one baseline must not take quadratic time
         for (int i : candidates.subList(0, Math.min(candidates.size(), MAX_TRIES))) {
             Line line = result.get(i);
-            // same size: MUST and MAY of RFC 9562, 1 pt smaller, would also come back, but so would pieces of formulas
-            if (eligible(line) && line.words().size() <= MAX_WORDS && line.sizeKey() == late.sizeKey()
+            // MUST and MAY of RFC 9562 are 1 pt smaller; text of another size only fills a gap between words,
+            // as pieces of formulas in arXiv papers on the same baseline would otherwise join at the line ends
+            boolean sameSize = line.sizeKey() == late.sizeKey();
+            if (eligible(line) && line.words().size() <= MAX_WORDS
+                    && (sameSize || Math.abs(line.fontSize() - late.fontSize()) <= 1)
                     && Math.abs(line.y() - late.y()) < SAME_BASELINE) {
-                Line joined = join(line, late);
+                Line joined = join(line, late, sameSize);
                 if (joined != null) {
                     result.set(i, joined);
                     return true;
@@ -99,14 +102,19 @@ final class LateText {
         return !line.isTable() && !line.rotated() && !line.words().isEmpty();
     }
 
-    /** The line with the late words in their places, or {@code null} when they do not fit. */
-    private static Line join(Line line, Line late) {
+    /**
+     * The line with the late words in their places, or {@code null} when they do not fit; text of another size
+     * ({@code sameSize} false) only goes between two words of the line, a list number before them.
+     */
+    private static Line join(Line line, Line late, boolean sameSize) {
         List<Line.Word> words = line.words();
         int n = words.size();
         int[] slots = new int[late.words().size()];
         for (int w = 0; w < slots.length; w++) {
             slots[w] = slot(words, late.words().get(w));
-            if (slots[w] < 0) {
+            // a list number may come with it ("1. OPTIONAL"): it still goes before the first word
+            if (slots[w] < 0 || !sameSize && (slots[w] == n
+                    || slots[w] == 0 && !MARKER.matcher(late.words().get(w).text()).matches())) {
                 return null;
             }
         }

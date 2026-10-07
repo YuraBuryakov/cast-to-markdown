@@ -104,11 +104,11 @@ PDFs with a text layer, based on Apache PDFBox.
 
 **Can**
 - Text a generator draws after the rest of its line (WeasyPrint: link text such as `[RFC4122]`, numbers of list items) goes back into the line when it sits exactly on the same baseline, in the same font size, and fits a gap between the words, touches the first word, or follows the last word closely. A list number or bullet may stand up to half the font size before the first word. Tested by `PdfLateTextTest`.
+- Text in a font up to 1 pt smaller or larger fills only a gap between two words, with a list number before them (RFC 9562 draws `MUST` and `MAY` 1 pt smaller); after the last word it stays apart, as pieces of formulas would join there. Tested by `LateTextTest`.
 - Text far from the line (the value column of a title block, a page number in a table of contents, the other column) and a row label a few points left of a table row stay apart. Tested by `PdfLateTextTest`.
 
 **Cannot**
-- Text in a smaller or larger font stays apart: RFC 9562 draws `MUST` and `MAY` 1 pt smaller, so they still leave a gap (`UUIDs  be represented`). Not covered.
-- Labels of a reference list (`[C309]`) stay on their own line before the entry. Not covered.
+- Labels of a reference list (`[C309]`) stay on their own line before the entry; so do the quoted keywords of the BCP 14 paragraph and a citation 2.6 pt before the first word of its line. Not covered.
 - In formulas of pdfTeX papers a piece on the same baseline joins its line too; a word split by a hyphen at that line end then stays split (`abil-` / `ity`, arXiv 1512.00567). Not covered.
 
 ### Headings
