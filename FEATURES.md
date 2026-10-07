@@ -269,9 +269,10 @@ Word 2007+ files, based on Apache POI.
 - Headings come from the paragraph styles (`Title`, `Heading 1..6`); bold text without a heading style stays a paragraph.
 - Empty paragraphs are skipped; block syntax at the start of a paragraph or list item is escaped.
 - Not covered by a test: running headers and footers are left out.
+- Body-level content controls (`SDT`) keep their text at the original position, with block syntax escaped on each line; empty controls add no block. Inline controls retain their existing behaviour.
 
 **Cannot**
-- Content controls (`SDT`) at body level are skipped.
+- Internal heading/list/table/link structure inside a body-level SDT is flattened to the text exposed by POI. Its paragraphs become lines of one Markdown text block, rather than separate Markdown paragraphs. Table-of-contents controls are retained as text; SDT is not a signal to discard content.
 
 **Tests:** `DocxConverterTest`
 

@@ -68,8 +68,13 @@ final class DocxRenderer {
                 paragraph(paragraph);
             } else if (element instanceof XWPFTable table) {
                 table(table);
+            } else if (element instanceof XWPFSDT sdt) {
+                String text = sdt.getContent().getText().strip();
+                if (!text.isEmpty()) {
+                    // Preserve content, including TOCs; SDT does not imply disposable text.
+                    block(escapeLines(text), false);
+                }
             }
-            // ponytail: content controls (XWPFSDT) at body level are skipped; Word puts its table of contents there.
         }
         footnoteDefinitions();
         return out.toString();

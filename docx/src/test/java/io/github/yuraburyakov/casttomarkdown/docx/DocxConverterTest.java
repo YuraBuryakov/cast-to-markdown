@@ -31,6 +31,39 @@ class DocxConverterTest {
     private final CastToMarkdown converter = CastToMarkdown.create();
 
     @Test
+    void bodySdtTextStaysInOrderAndInlineSdtIsNotDuplicated() throws IOException {
+        byte[] docx = TestDocx.builder().paragraph("Before")
+                .bodySdt("First content paragraph", "Second content paragraph")
+                .inlineSdt("Inline content").paragraph("After").bytes();
+        assertThat(converter.convert(new ByteArrayInputStream(docx), "content.docx").markdown())
+                .isEqualTo("Before\n\nFirst content paragraph\nSecond content paragraph\n\nInline content\n\nAfter\n");
+    }
+
+    @Test
+    void emptyBodySdtDoesNotAddBlocks() throws IOException {
+        byte[] docx = TestDocx.builder().paragraph("Before").bodySdt().bodySdt("   ")
+                .paragraph("After").bytes();
+        assertThat(converter.convert(new ByteArrayInputStream(docx), "empty.docx").markdown())
+                .isEqualTo("Before\n\nAfter\n");
+    }
+
+    @Test
+    void bodySdtUsesExistingBlockEscapingPolicyForEveryLine() throws IOException {
+        // Inline syntax and list markers intentionally retain the existing Markdown policy/limitations.
+        byte[] docx = TestDocx.builder().bodySdt("# literal", "> literal", "```", "---", "*inline*", "1. literal").bytes();
+        assertThat(converter.convert(new ByteArrayInputStream(docx), "syntax.docx").markdown())
+                .isEqualTo("\\# literal\n\\> literal\n\\```\n\\---\n*inline*\n1. literal\n");
+    }
+
+    @Test
+    void bodySdtSeparatesSurroundingListItems() throws IOException {
+        byte[] docx = TestDocx.builder().bullet(0, "Before").bodySdt("Content")
+                .bullet(0, "After").bytes();
+        assertThat(converter.convert(new ByteArrayInputStream(docx), "list.docx").markdown())
+                .isEqualTo("- Before\n\nContent\n\n- After\n");
+    }
+
+    @Test
     void headingsComeFromParagraphStyles() throws IOException {
         byte[] docx = TestDocx.builder()
                 .styled("Title", "Guidance")

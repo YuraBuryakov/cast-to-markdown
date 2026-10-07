@@ -44,6 +44,20 @@ final class TestDocx {
         return this;
     }
 
+    TestDocx bodySdt(String... paragraphs) {
+        var content = document.getDocument().getBody().addNewSdt().addNewSdtContent();
+        for (String text : paragraphs) {
+            content.addNewP().addNewR().addNewT().setStringValue(text);
+        }
+        return this;
+    }
+
+    TestDocx inlineSdt(String text) {
+        document.createParagraph().getCTP().addNewSdt().addNewSdtContent()
+                .addNewR().addNewT().setStringValue(text);
+        return this;
+    }
+
     TestDocx bullet(int level, String text) {
         if (bulletList == null) {
             bulletList = list(STNumberFormat.BULLET);
