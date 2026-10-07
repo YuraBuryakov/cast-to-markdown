@@ -52,6 +52,8 @@ final class LineCollector extends PDFTextStripper {
     private static final Pattern PRESENTATION_FORMS = Pattern.compile("[\\uFB00-\\uFDFF\\uFE70-\\uFEFF]");
     /** A horizontal gap larger than this share of the font size between two characters of a cell is a space. */
     private static final float WORD_GAP = 0.2f;
+    /** A width scale this share off the height is a stretch of the line (microtype), not a wider font. */
+    private static final float STRETCH = 0.05f;
     /** A space glyph overlapped by a letter over at least this share of its width is drawn over that letter. */
     private static final float COVERED = 0.9f;
     /** A space is compared with this many characters before and after it in the string. */
@@ -238,7 +240,7 @@ final class LineCollector extends PDFTextStripper {
             last = position;
             powerEligible &= position.getDir() == 0 && urlAt(position) == null && !cellOfPosition.containsKey(position);
             if (!position.getUnicode().isBlank()) {
-                charsBySize.merge(position.getFontSizeInPt(), 1, Integer::sum);
+                charsBySize.merge(sizeOf(position), 1, Integer::sum);
                 chars++;
                 if (position.getFont() != lastFont) {
                     lastFont = position.getFont();
@@ -476,7 +478,7 @@ final class LineCollector extends PDFTextStripper {
         if (first != null && !lineText.isBlank()) {
             PDRectangle box = getCurrentPage().getCropBox();
             float pageHeight = getCurrentPage().getRotation() % 180 == 0 ? box.getHeight() : box.getWidth();
-            float fontSize = charsBySize.isEmpty() ? first.getFontSizeInPt() : dominantSize(charsBySize);
+            float fontSize = charsBySize.isEmpty() ? sizeOf(first) : dominantSize(charsBySize);
             int table = tableChars > 0 && otherChars == 0 && !severalTables ? lineTable : -1;
             float width = last.getXDirAdj() + last.getWidthDirAdj() - first.getXDirAdj();
             lines.add(new Line(getCurrentPageNo(), pageHeight, first.getXDirAdj(), first.getYDirAdj(), fontSize,
@@ -518,6 +520,23 @@ final class LineCollector extends PDFTextStripper {
     static float dominantSize(Map<Float, Integer> charsBySize) {
         return Collections.max(charsBySize.entrySet(),
                 Map.Entry.<Float, Integer>comparingByValue().thenComparing(Map.Entry.comparingByKey())).getKey();
+    }
+
+    /**
+     * The font size of the character in whole pt, by its height: PDFBox's {@code getFontSizeInPt()} takes the
+     * width scale, and pdfTeX (microtype) stretches lines a little, so the 9.96 pt body text of arXiv 1706.03762
+     * was 9 pt on one line and 10 pt on the next, and every change started a new paragraph.
+     */
+    private static float sizeOf(TextPosition position) {
+        float height = Math.abs(position.getYScale());
+        float width = Math.abs(position.getXScale());
+        // only a slight stretch as microtype's: a font scaled wider on purpose (Arial Narrow at 125% in Word
+        // headings, other-c7.pdf) keeps PDFBox's size, which the headings of such files are found by
+        if (height == 0 || Math.abs(width - height) > STRETCH * height) {
+            return position.getFontSizeInPt();
+        }
+        // cut to whole points as PDFBox does, so that text that is not stretched keeps the size it had
+        return (int) height;
     }
 
     /** By the font weight in the font descriptor, or by the font name when the weight is not set. */

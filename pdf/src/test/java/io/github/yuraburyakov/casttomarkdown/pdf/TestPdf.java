@@ -78,6 +78,15 @@ final class TestPdf {
         return this;
     }
 
+    /** Text stretched to {@code percent} of its width, as pdfTeX's microtype stretches the lines of a paragraph. */
+    TestPdf stretchedLine(float x, float y, String text, float percent) {
+        if (pages.isEmpty()) {
+            throw new IllegalStateException("Call page() before stretchedLine()");
+        }
+        pages.get(pages.size() - 1).add(new StretchedLine(x, y, text, percent));
+        return this;
+    }
+
     /** Invisible text (rendering mode 3) starting at {@code x}, like the text layer of a scan that went through OCR. */
     TestPdf invisibleLine(float x, float y, String text) {
         if (pages.isEmpty()) {
@@ -216,6 +225,13 @@ final class TestPdf {
                             content.setTextMatrix(Matrix.getRotateInstance(Math.PI / 2, rotated.x(), rotated.y()));
                             content.showText(rotated.text());
                             content.endText();
+                        } else if (item instanceof StretchedLine line) {
+                            // pdfTeX stretches through the text matrix, not with horizontal scaling (Tz)
+                            content.beginText();
+                            content.setFont(font, FONT_SIZE);
+                            content.setTextMatrix(new Matrix(line.percent() / 100, 0, 0, 1, line.x(), line.y()));
+                            content.showText(line.text());
+                            content.endText();
                         } else if (item instanceof InvisibleLine line) {
                             // the rendering mode is graphics state: it outlives the text object
                             content.saveGraphicsState();
@@ -305,7 +321,7 @@ final class TestPdf {
         page.getAnnotations().add(annotation);
     }
 
-    private sealed interface Item permits Line, InvisibleLine, LinkLine, Table, RotatedLine, Shape, Clip {
+    private sealed interface Item permits Line, InvisibleLine, StretchedLine, LinkLine, Table, RotatedLine, Shape, Clip {
     }
 
     /** Clips everything drawn after it on the page to the rectangle, as a placed picture is clipped. */
@@ -325,6 +341,9 @@ final class TestPdf {
     }
 
     private record InvisibleLine(float x, float y, String text) implements Item {
+    }
+
+    private record StretchedLine(float x, float y, String text, float percent) implements Item {
     }
 
     private record Table(float y, boolean keys, String[][] rows) implements Item {

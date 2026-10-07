@@ -86,8 +86,11 @@ final class Headings {
                     && !DOT_LEADER.matcher(text).find();
             // A heading that ends a page relies on PageFurniture: if a running header or footer is not
             // recognized, it follows the heading and the heading is missed.
+            // a title on the first page may be followed by the authors in a font a little larger than the body
+            boolean title = paragraph.get(0).page() == 1 && size >= TITLE_SIZE_RATIO * body;
             boolean followedByText = i == paragraphs.size() - 1
                     || headings[i + 1]
+                    || title
                     || bodySizes.contains(paragraphs.get(i + 1).get(0).sizeKey());
             headings[i] = candidate && followedByText;
         }

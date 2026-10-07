@@ -224,6 +224,20 @@ class PdfConverterHeadingsTest {
                         + "rules and standards for digital identity services.");
     }
 
+    @Test
+    void titleBeforeTheAuthorsIsAHeading() {
+        // arXiv 1712.01208: title 17 pt, authors 11 pt over several lines, body 10 pt
+        List<Line> lines = List.of(
+                line(126.7, 17, "The Case for Learned Index Structures"),
+                line(157.0, 11, "Tim Kraska"),
+                line(171.0, 11, "MIT"),
+                line(184.9, 11, "Cambridge, MA"),
+                line(240, 10, BODY),
+                line(252, 10, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines)).startsWith("# The Case for Learned Index Structures\n\n");
+    }
+
     private static Line line(double y, double fontSize, String text) {
         return new Line(1, 72, (float) y, (float) fontSize, text);
     }

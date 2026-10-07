@@ -112,6 +112,18 @@ class LineCollectorTest {
     }
 
     @Test
+    void slightlyStretchedLineKeepsItsFontSize() throws IOException {
+        // arXiv 1706.03762 (microtype): lines stretched to 98% gave 9 pt instead of 10 and split the paragraph
+        Path pdf = TestPdf.builder()
+                .page()
+                .line(72, 700, "A line as it is set")
+                .stretchedLine(72, 686, "a line stretched a little", 98)
+                .writeTo(dir.resolve("stretched.pdf"));
+
+        assertThat(lines(pdf)).extracting(Line::fontSize).containsExactly(12f, 12f);
+    }
+
+    @Test
     void longLineWithManySpacesTakesLinearTime() throws IOException {
         // a hostile page: one string of 60 000 characters, half of them spaces
         Path pdf = TestPdf.builder().page().line(10, 700, "a ".repeat(30_000)).writeTo(dir.resolve("long.pdf"));
