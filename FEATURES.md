@@ -87,6 +87,7 @@ PDFs with a text layer, based on Apache PDFBox.
 - A new paragraph starts after a gap larger than the usual line pitch for that font size, at a first-line indent, when the font size changes, and when the text moves up (next column).
 - A sentence cut by the end of a page stays one paragraph; a finished sentence or list item on the next page starts a new one.
 - A hanging indent of a list item stays in one paragraph.
+- A sentence at the bottom of a page goes on past the footnotes of that page when the next page carries it on in lower case (or the line ends with a hyphen); the footnotes follow the paragraph (arXiv 1706.03762, 1712.01208, 1404.7828). Tested by `PdfConverterParagraphsTest`.
 - The second line of a centred title is not taken for a first-line indent when the next line is in another font (arXiv 1810.04805). Tested by `PdfConverterHeadingsTest`.
 - Lines that pdfTeX (microtype) stretches a little keep the font size of the paragraph, so they do not start a new paragraph (arXiv 1706.03762). A font scaled wider on purpose keeps the size PDFBox gives it. Tested by `LineCollectorTest`.
 
@@ -98,7 +99,7 @@ PDFs with a text layer, based on Apache PDFBox.
 **Cannot**
 - Text hidden by other means (white on white, covered by a box drawn later, cut by a clipping path drawn with `W`) is still output. Not covered.
 - An OCR layer on a page that also has some visible text (a stamp, a printed page number) is left out with the other invisible text. Not covered.
-- A paragraph split by a footnote at the bottom of a page stays split in two.
+- A sentence cut by a footnote at the bottom of a page stays split when the next page starts with a capital letter, or when the two parts are in different columns. Not covered.
 - Footnotes and floating blocks (figures, tables from another column) can sit between the parts of a sentence.
 
 **Tests:** `PdfConverterParagraphsTest`, `CastToMarkdownTest`

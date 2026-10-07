@@ -43,14 +43,54 @@ final class Paragraphs {
     static List<List<Line>> group(List<Line> lines) {
         Map<Integer, Float> pitches = typicalPitches(lines);
         List<List<Line>> paragraphs = new ArrayList<>();
+        // footnotes between a sentence at the bottom of a page and its end on the next page, put after its paragraph
+        List<Line> footnotes = new ArrayList<>();
+        Line previous = null;
         for (int i = 0; i < lines.size(); i++) {
-            Line next = i + 1 < lines.size() ? lines.get(i + 1) : null;
-            if (i == 0 || startsParagraph(lines.get(i - 1), lines.get(i), next, pitches)) {
+            Line line = lines.get(i);
+            int carriedOn = carriedOnPastFootnotes(lines, i);
+            int nextIndex = carriedOn > 0 ? carriedOn : i + 1;
+            Line next = nextIndex < lines.size() ? lines.get(nextIndex) : null;
+            if (previous == null || startsParagraph(previous, line, next, pitches)) {
+                if (!footnotes.isEmpty()) {
+                    paragraphs.addAll(group(footnotes));
+                    footnotes = new ArrayList<>();
+                }
                 paragraphs.add(new ArrayList<>());
             }
-            paragraphs.get(paragraphs.size() - 1).add(lines.get(i));
+            paragraphs.get(paragraphs.size() - 1).add(line);
+            previous = line;
+            if (carriedOn > 0) {
+                footnotes.addAll(lines.subList(i + 1, carriedOn));
+                i = carriedOn - 1;
+            }
+        }
+        if (!footnotes.isEmpty()) {
+            paragraphs.addAll(group(footnotes));
         }
         return paragraphs;
+    }
+
+    /**
+     * The index of the line that carries on the sentence of line {@code i} on the next page past the smaller lines
+     * at the bottom of its page (footnotes), or {@code -1}: arXiv 1706.03762 page 4 ends "yielding dv-dimensional",
+     * four footnote lines follow, and page 5 goes on "output values". The next line starts in lower case or the
+     * line ends with a hyphen, so a heading or a new paragraph on the next page is not taken for the rest.
+     */
+    private static int carriedOnPastFootnotes(List<Line> lines, int i) {
+        Line line = lines.get(i);
+        int j = i + 1;
+        while (j < lines.size() && lines.get(j).page() == line.page() && !lines.get(j).isTable()
+                && lines.get(j).sizeKey() < line.sizeKey()) {
+            j++;
+        }
+        if (j == i + 1 || j >= lines.size()) {
+            return -1;
+        }
+        Line next = lines.get(j);
+        String text = next.text().strip();
+        boolean goesOn = !text.isEmpty() && (Character.isLowerCase(text.codePointAt(0)) || line.text().strip().endsWith("-"));
+        return goesOn && !next.isTable() && continuesOnNextPage(line, next) ? j : -1;
     }
 
     private static boolean startsParagraph(Line previous, Line line, Line next, Map<Integer, Float> pitches) {

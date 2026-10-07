@@ -9,6 +9,35 @@ import org.junit.jupiter.api.Test;
 class PdfConverterParagraphsTest {
 
     @Test
+    void sentenceGoesOnPastTheFootnotesOfItsPage() {
+        // arXiv 1706.03762 pages 4-5: "yielding dv-dimensional" / four footnote lines in 8 pt / "output values"
+        List<Line> lines = List.of(
+                line(1, 108, 700, 10, "We then perform the attention function in parallel, yielding dv-dimensional"),
+                line(1, 108, 720, 8, "4To illustrate why the dot products get large, assume that the components"),
+                line(1, 108, 730, 8, "of q and k are independent random variables."),
+                line(2, 108, 72, 10, "output values. These are concatenated and once again projected."));
+
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo(String.join("\n\n",
+                "We then perform the attention function in parallel, yielding dv-dimensional\n"
+                        + "output values. These are concatenated and once again projected.",
+                "4To illustrate why the dot products get large, assume that the components\n"
+                        + "of q and k are independent random variables."));
+    }
+
+    @Test
+    void newParagraphOnTheNextPageStaysApartFromTheFootnotes() {
+        // a capital letter on the next page starts a paragraph of its own: the footnotes stay where they are
+        List<Line> lines = List.of(
+                line(1, 108, 700, 10, "The last line of this page ends without any full stop at all"),
+                line(1, 108, 720, 8, "1A footnote."),
+                line(2, 108, 72, 10, "Another paragraph starts on the next page."));
+
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo(String.join("\n\n",
+                "The last line of this page ends without any full stop at all", "1A footnote.",
+                "Another paragraph starts on the next page."));
+    }
+
+    @Test
     void separatesParagraphsByGapRelativeToTypicalLinePitch() {
         // RFC 9562 (WeasyPrint): 13 pt font, line pitch 13.6, paragraph gap 23.6.
         // PDFBox reports a glyph height of 4.28 here and puts every line into its own paragraph.
