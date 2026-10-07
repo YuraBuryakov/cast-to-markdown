@@ -30,6 +30,10 @@ final class LateText {
     private static final float SAME_BASELINE = 0.1f;
     /** A list item number or bullet: text before the first word of a line is one, or touches that word. */
     private static final Pattern MARKER = Pattern.compile("[" + Lists.BULLETS + "]|\\d+[.)]");
+    /** Lines between a line and its late text that a formula puts there, at most. */
+    private static final int FEW_LINES = 2;
+    /** A line ending with a word of letters split by a hyphen. */
+    private static final Pattern SPLIT_WORD = Pattern.compile("(^|\\s)\\p{L}+-\\s*$");
     /** Text before the first or after the last word joins only within this share of the font size. */
     private static final float NEAR_END = 0.5f;
     /** A gap wider than this share of the font size between inserted text and its neighbours is a space. */
@@ -49,12 +53,13 @@ final class LateText {
         // indexes into result by baseline (tenths of a pt) of the current page, newest last
         Map<Integer, List<Integer>> byBaseline = new HashMap<>();
         int page = -1;
-        for (Line line : lines) {
+        for (int l = 0; l < lines.size(); l++) {
+            Line line = lines.get(l);
             if (line.page() != page) {
                 page = line.page();
                 byBaseline.clear();
             }
-            if (!merged(result, byBaseline, line)) {
+            if (!merged(result, byBaseline, line, l + 1 < lines.size() ? lines.get(l + 1) : null)) {
                 byBaseline.computeIfAbsent(baselineKey(line), k -> new ArrayList<>()).add(result.size());
                 result.add(line);
             }
@@ -67,7 +72,7 @@ final class LateText {
     }
 
     /** Whether the line went into an earlier line of its page in {@code result}. */
-    private static boolean merged(List<Line> result, Map<Integer, List<Integer>> byBaseline, Line late) {
+    private static boolean merged(List<Line> result, Map<Integer, List<Integer>> byBaseline, Line late, Line next) {
         if (!eligible(late) || Lists.isMarkerOnly(late)) {
             return false;
         }
@@ -88,7 +93,11 @@ final class LateText {
             if (eligible(line) && line.words().size() <= MAX_WORDS
                     && (sameSize || Math.abs(line.fontSize() - late.fontSize()) <= 1)
                     && Math.abs(line.y() - late.y()) < SAME_BASELINE) {
-                Line joined = join(line, late, sameSize);
+                // a split word with its second half on the next line goes after the end only past many lines (a whole
+                // reference entry of RFC 9562), not past a few (the denominator of a fraction in arXiv 1512.00567)
+                boolean endAllowed = result.size() - 1 - i == 0 || result.size() - 1 - i > FEW_LINES
+                        || !carriesOn(late, next);
+                Line joined = join(line, late, sameSize, endAllowed);
                 if (joined != null) {
                     result.set(i, joined);
                     return true;
@@ -96,6 +105,17 @@ final class LateText {
             }
         }
         return false;
+    }
+
+    /**
+     * Whether the late line ends with a word split by a hyphen that the next line carries on ("abil-" / "ity").
+     * Such a line does not go after the end of an earlier line with a few other lines between: the second half
+     * of the word would stay behind them.
+     */
+    private static boolean carriesOn(Line late, Line next) {
+        // a word of letters only: an address split at its hyphen ("<https://github.com/twitter-") still joins
+        return next != null && SPLIT_WORD.matcher(late.text()).find() && !next.text().isBlank()
+                && Character.isLowerCase(next.text().stripLeading().codePointAt(0));
     }
 
     private static boolean eligible(Line line) {
@@ -106,14 +126,14 @@ final class LateText {
      * The line with the late words in their places, or {@code null} when they do not fit; text of another size
      * ({@code sameSize} false) only goes between two words of the line, a list number before them.
      */
-    private static Line join(Line line, Line late, boolean sameSize) {
+    private static Line join(Line line, Line late, boolean sameSize, boolean endAllowed) {
         List<Line.Word> words = line.words();
         int n = words.size();
         int[] slots = new int[late.words().size()];
         for (int w = 0; w < slots.length; w++) {
             slots[w] = slot(words, late.words().get(w));
             // a list number may come with it ("1. OPTIONAL"): it still goes before the first word
-            if (slots[w] < 0 || !sameSize && (slots[w] == n
+            if (slots[w] < 0 || slots[w] == n && !endAllowed || !sameSize && (slots[w] == n
                     || slots[w] == 0 && !MARKER.matcher(late.words().get(w).text()).matches())) {
                 return null;
             }
