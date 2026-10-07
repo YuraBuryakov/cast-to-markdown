@@ -9,6 +9,18 @@ import org.junit.jupiter.api.Test;
 class PdfConverterParagraphsTest {
 
     @Test
+    void itemWithAHangingIndentIsOneParagraph() {
+        // arXiv 1404.7828: roman numbered items, the second line indented, the next item back at the margin
+        List<Line> lines = List.of(
+                line(1, 118.2, 114.8, 9, "II LSTM-like networks alleviate the problem through a special"),
+                line(1, 129.8, 126.8, 9, "architecture unaffected by it."),
+                line(1, 114.9, 138.8, 9, "III Today's GPU-based computers have a million times the power."));
+
+        assertThat(PdfConverter.toMarkdown(lines)).startsWith(
+                "II LSTM-like networks alleviate the problem through a special\narchitecture unaffected by it.");
+    }
+
+    @Test
     void sentenceGoesOnPastTheFootnotesOfItsPage() {
         // arXiv 1706.03762 pages 4-5: "yielding dv-dimensional" / four footnote lines in 8 pt / "output values"
         List<Line> lines = List.of(

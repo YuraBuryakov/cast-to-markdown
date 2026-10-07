@@ -126,7 +126,11 @@ final class Paragraphs {
                 && next.y() > line.y()
                 && line.x() > previous.x() + indent
                 && Math.abs(next.x() - previous.x()) < indent
-                && !LIST_ITEM.matcher(previous.text()).find();
+                && !LIST_ITEM.matcher(previous.text()).find()
+                // the line before a first-line indent ends the paragraph before; one that goes on is the first
+                // line of a list item with a hanging indent ("II LSTM-like networks ... through a special" /
+                // "architecture unaffected by it.", arXiv 1404.7828)
+                && SENTENCE_END.matcher(previous.text().strip()).find();
     }
 
     /**

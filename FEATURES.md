@@ -84,9 +84,9 @@ PDFs with a text layer, based on Apache PDFBox.
 
 **Can**
 - A paragraph's lines stay on separate lines; paragraphs and pages are separated by a blank line.
-- A new paragraph starts after a gap larger than the usual line pitch for that font size, at a first-line indent, when the font size changes, and when the text moves up (next column).
+- A new paragraph starts after a gap larger than the usual line pitch for that font size, at a first-line indent after a line that ends a sentence, when the font size changes, and when the text moves up (next column).
 - A sentence cut by the end of a page stays one paragraph; a finished sentence or list item on the next page starts a new one.
-- A hanging indent of a list item stays in one paragraph.
+- A hanging indent of a list item stays in one paragraph, also for items numbered `I`, `II` or `[1]`: an indented line after a line that does not end a sentence is no first-line indent (arXiv 1404.7828). Tested by `PdfConverterParagraphsTest`.
 - A sentence at the bottom of a page goes on past the footnotes of that page when the next page carries it on in lower case (or the line ends with a hyphen); the footnotes follow the paragraph (arXiv 1706.03762, 1712.01208, 1404.7828). Tested by `PdfConverterParagraphsTest`.
 - The second line of a centred title is not taken for a first-line indent when the next line is in another font (arXiv 1810.04805). Tested by `PdfConverterHeadingsTest`.
 - Lines that pdfTeX (microtype) stretches a little keep the font size of the paragraph, so they do not start a new paragraph (arXiv 1706.03762). A font scaled wider on purpose keeps the size PDFBox gives it. Tested by `LineCollectorTest`.
