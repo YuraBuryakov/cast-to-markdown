@@ -61,7 +61,7 @@ final class Lists {
         return result;
     }
 
-    private static boolean isMarkerOnly(Line line) {
+    static boolean isMarkerOnly(Line line) {
         return MARKER_ONLY.matcher(line.text()).matches();
     }
 

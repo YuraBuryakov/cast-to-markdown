@@ -107,7 +107,7 @@ final class LineCollector extends PDFTextStripper {
     static Collected collect(PDDocument document, TaggedTables tables) throws IOException {
         LineCollector collector = new LineCollector(tables, document.getDocumentCatalog().getStructureTreeRoot() == null);
         collector.getText(document);
-        return new Collected(placeTables(collector.lines), collector.cellText);
+        return new Collected(placeTables(LateText.insert(collector.lines)), collector.cellText);
     }
 
     /** The first line of each table becomes its placeholder, the other lines of the table are dropped. */
