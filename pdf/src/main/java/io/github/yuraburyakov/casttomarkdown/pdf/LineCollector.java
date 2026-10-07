@@ -69,6 +69,8 @@ final class LineCollector extends PDFTextStripper {
     private boolean powerEligible;
     private final boolean untagged;
     private final Map<Float, Integer> charsBySize = new HashMap<>();
+    /** The baseline of the first character of each size on the line. */
+    private final Map<Float, Float> firstYBySize = new HashMap<>();
     private int boldChars;
     private int chars;
     /**
@@ -260,6 +262,7 @@ final class LineCollector extends PDFTextStripper {
             powerEligible &= position.getDir() == 0 && urlAt(position) == null && !cellOfPosition.containsKey(position);
             if (!position.getUnicode().isBlank()) {
                 charsBySize.merge(sizeOf(position), 1, Integer::sum);
+                firstYBySize.putIfAbsent(sizeOf(position), position.getYDirAdj());
                 chars++;
                 if (position.getFont() != lastFont) {
                     lastFont = position.getFont();
@@ -500,7 +503,9 @@ final class LineCollector extends PDFTextStripper {
             float fontSize = charsBySize.isEmpty() ? sizeOf(first) : dominantSize(charsBySize);
             int table = tableChars > 0 && otherChars == 0 && !severalTables ? lineTable : -1;
             float width = last.getXDirAdj() + last.getWidthDirAdj() - first.getXDirAdj();
-            lines.add(new Line(getCurrentPageNo(), pageHeight, first.getXDirAdj(), first.getYDirAdj(), fontSize,
+            // the baseline of the text, not of a raised footnote number before it ("5We would like to thank")
+            float y = first.getDir() == 0 ? firstYBySize.getOrDefault(fontSize, first.getYDirAdj()) : first.getYDirAdj();
+            lines.add(new Line(getCurrentPageNo(), pageHeight, first.getXDirAdj(), y, fontSize,
                     boldChars * 2 > chars, first.getDir() != 0, lineText, table, width, first.getX(), first.getY(),
                     powerEligible && tableChars == 0 ? ScientificPowers.detect(words, wordGlyphs) : List.copyOf(words)));
         }
@@ -511,6 +516,7 @@ final class LineCollector extends PDFTextStripper {
         wordGlyphs.clear();
         powerEligible = untagged && getCurrentPage().getRotation() % 360 == 0;
         charsBySize.clear();
+        firstYBySize.clear();
         boldChars = 0;
         chars = 0;
         lineTable = -1;

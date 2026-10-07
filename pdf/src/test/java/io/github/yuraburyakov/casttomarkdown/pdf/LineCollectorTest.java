@@ -124,6 +124,20 @@ class LineCollectorTest {
     }
 
     @Test
+    void lineStartingWithARaisedNumberIsOnTheBaselineOfItsText() throws IOException {
+        // arXiv 1712.01208: "5We would like to thank" with the footnote number 3 pt above the text
+        Path pdf = TestPdf.builder()
+                .page()
+                .footnoteLine(72, 700, "5", "We would like to thank Michael Mitzenmacher")
+                .writeTo(dir.resolve("footnote.pdf"));
+
+        Line line = lines(pdf).get(0);
+
+        assertThat(line.text()).isEqualTo("5We would like to thank Michael Mitzenmacher");
+        assertThat(line.y()).isCloseTo(792 - 700, within(0.5f));
+    }
+
+    @Test
     void textOutsideThePageIsLeftOut() throws IOException {
         // arXiv 1712.01208 page 21: a URL runs past the right page edge, its final full stop is not on the page
         Path pdf = TestPdf.builder()

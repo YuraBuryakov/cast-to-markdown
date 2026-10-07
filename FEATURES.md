@@ -88,6 +88,7 @@ PDFs with a text layer, based on Apache PDFBox.
 - A sentence cut by the end of a page stays one paragraph; a finished sentence or list item on the next page starts a new one.
 - A list item cut by the end of a page goes on at its hanging indent on the next page, in lower case (tdf-statutes.pdf). Tested by `PdfConverterParagraphsTest`.
 - A sentence cut by the end of a column goes on at the top of the next column when it continues in lower case or after a hyphen (arXiv 1512.00567, 1608.06993, 1810.04805). Tested by `PdfConverterParagraphsTest`.
+- A line that starts with a raised footnote number keeps the baseline of its text, so a two-line footnote stays one paragraph (arXiv 1712.01208, 1810.04805). Tested by `LineCollectorTest`.
 - A hanging indent of a list item stays in one paragraph, also for items numbered `I`, `II` or `[1]`: an indented line after a line that does not end a sentence is no first-line indent (arXiv 1404.7828). Tested by `PdfConverterParagraphsTest`.
 - A sentence at the bottom of a page goes on past the footnotes of that page when the next page carries it on in lower case (or the line ends with a hyphen); the footnotes follow the paragraph (arXiv 1706.03762, 1712.01208, 1404.7828). Tested by `PdfConverterParagraphsTest`.
 - The second line of a centred title is not taken for a first-line indent when the next line is in another font (arXiv 1810.04805). Tested by `PdfConverterHeadingsTest`.

@@ -78,6 +78,15 @@ final class TestPdf {
         return this;
     }
 
+    /** A footnote line: a raised number in a 6 pt font, then the text, as LaTeX sets a footnote. */
+    TestPdf footnoteLine(float x, float y, String number, String text) {
+        if (pages.isEmpty()) {
+            throw new IllegalStateException("Call page() before footnoteLine()");
+        }
+        pages.get(pages.size() - 1).add(new FootnoteLine(x, y, number, text));
+        return this;
+    }
+
     /** Text stretched to {@code percent} of its width, as pdfTeX's microtype stretches the lines of a paragraph. */
     TestPdf stretchedLine(float x, float y, String text, float percent) {
         if (pages.isEmpty()) {
@@ -225,6 +234,15 @@ final class TestPdf {
                             content.setTextMatrix(Matrix.getRotateInstance(Math.PI / 2, rotated.x(), rotated.y()));
                             content.showText(rotated.text());
                             content.endText();
+                        } else if (item instanceof FootnoteLine line) {
+                            content.beginText();
+                            content.setFont(font, 6);
+                            content.newLineAtOffset(line.x(), line.y() + 3);
+                            content.showText(line.number());
+                            content.setFont(font, FONT_SIZE);
+                            content.newLineAtOffset(font.getStringWidth(line.number()) / 1000 * 6, -3);
+                            content.showText(line.text());
+                            content.endText();
                         } else if (item instanceof StretchedLine line) {
                             // pdfTeX stretches through the text matrix, not with horizontal scaling (Tz)
                             content.beginText();
@@ -321,7 +339,7 @@ final class TestPdf {
         page.getAnnotations().add(annotation);
     }
 
-    private sealed interface Item permits Line, InvisibleLine, StretchedLine, LinkLine, Table, RotatedLine, Shape, Clip {
+    private sealed interface Item permits Line, InvisibleLine, StretchedLine, FootnoteLine, LinkLine, Table, RotatedLine, Shape, Clip {
     }
 
     /** Clips everything drawn after it on the page to the rectangle, as a placed picture is clipped. */
@@ -341,6 +359,9 @@ final class TestPdf {
     }
 
     private record InvisibleLine(float x, float y, String text) implements Item {
+    }
+
+    private record FootnoteLine(float x, float y, String number, String text) implements Item {
     }
 
     private record StretchedLine(float x, float y, String text, float percent) implements Item {
