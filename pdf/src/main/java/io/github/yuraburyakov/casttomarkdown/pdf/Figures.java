@@ -100,8 +100,9 @@ final class Figures {
         if (areasByPage.isEmpty()) {
             return lines;
         }
+        Set<Line> rowLabels = rowLabels(lines);
         return lines.stream().filter(line -> line.isTable() || captionLines.contains(line)
-                || words(line) > MAX_LABEL_WORDS
+                || words(line) > MAX_LABEL_WORDS || rowLabels.contains(line)
                 || areasByPage.getOrDefault(line.page(), List.of()).stream()
                         .noneMatch(area -> area.contains(line.pageX(), line.pageY()))).toList();
     }
@@ -148,6 +149,33 @@ final class Figures {
             }
         }
         return areas;
+    }
+
+    /**
+     * Short lines on the baseline of a longer line, left of it: the labels of the rows of a table drawn as a
+     * figure ("page size: 64" in arXiv 1712.01208 Figure 4), which stay with their rows.
+     * ponytail: compares the lines of a page by baseline in a map; one bucket per tenth of a point.
+     */
+    private static Set<Line> rowLabels(List<Line> lines) {
+        Map<Long, List<Line>> rows = new HashMap<>();
+        for (Line line : lines) {
+            if (!line.rotated() && words(line) > MAX_LABEL_WORDS) {
+                rows.computeIfAbsent(baseline(line), k -> new ArrayList<>()).add(line);
+            }
+        }
+        Set<Line> labels = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (Line line : lines) {
+            if (!line.rotated() && words(line) <= MAX_LABEL_WORDS
+                    && rows.getOrDefault(baseline(line), List.of()).stream()
+                            .anyMatch(row -> row.page() == line.page() && line.pageX() + line.width() < row.pageX())) {
+                labels.add(line);
+            }
+        }
+        return labels;
+    }
+
+    private static long baseline(Line line) {
+        return (long) line.page() << 32 | Math.round(line.pageY() * 10) & 0xffffffffL;
     }
 
     /** The words of the line, by its word list or else by its text. */

@@ -132,6 +132,18 @@ class FiguresTest {
     }
 
     @Test
+    void rowLabelsOfATableDrawnAsAFigureStay() {
+        // arXiv 1712.01208 Figure 4: a table drawn as a figure, its row labels left of the rows on their baseline
+        List<Line> lines = List.of(line(102, 150, "page size: 64"),
+                line(184, 150, "26.23 (2.00x) 277 (0.96x) 172 (62.0%) 25.97 (2.00x) 274"),
+                line(150, 170, "Lookup (ns)"), line(72, 225, "Figure 4: Learned Index vs B-Tree"));
+
+        assertThat(texts(Figures.remove(lines, Map.of(1, List.of(box(100, 140, 300, 200))))))
+                .containsExactly("page size: 64", "26.23 (2.00x) 277 (0.96x) 172 (62.0%) 25.97 (2.00x) 274",
+                        "Figure 4: Learned Index vs B-Tree");
+    }
+
+    @Test
     void labelsBesideTheDrawingWithinTheCaptionWidthAreRemoved() {
         // arXiv Figure 2: "F(x)" stands 31 points left of the blocks, still within the caption's width
         List<Line> lines = List.of(line(98, 114, "F(x)"), line(20, 120, "margin note"), line(107, 147, "F(x) + x"),
