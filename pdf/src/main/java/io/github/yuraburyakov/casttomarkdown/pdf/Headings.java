@@ -17,6 +17,12 @@ final class Headings {
     /** A document title is often longer: up to this many lines when the font is much larger than the body font. */
     private static final int MAX_TITLE_LINES = 4;
     private static final float TITLE_SIZE_RATIO = 1.5f;
+    /** The first paragraph of a document is a title also in a font this much larger than the body. */
+    private static final float FIRST_TITLE_SIZE_RATIO = 1.25f;
+    /** Lines whose centres differ by at most this share of the font size are centred on each other. */
+    private static final float CENTRED = 0.1f;
+    /** Lines of a centred heading are at most this many characters long. */
+    private static final int SHORT_LINE = 40;
     private static final int MAX_LENGTH = 200;
     private static final int MAX_LEVEL = 6;
     /** Bold text may be up to this much smaller than the body font and still be a numbered heading. */
@@ -58,6 +64,25 @@ final class Headings {
         return levels(paragraphs, find(paragraphs));
     }
 
+    /**
+     * Whether the lines are centred on one another and do not all start at one left edge, like a title of
+     * several short lines ("Appendix for “BERT: Pre-training of” ...", arXiv 1810.04805); a justified paragraph
+     * has one left edge, and a centred notice has long lines (the permission note atop arXiv 1706.03762).
+     */
+    private static boolean centred(List<Line> paragraph) {
+        Line first = paragraph.get(0);
+        float tolerance = CENTRED * first.fontSize();
+        boolean shifted = false;
+        for (Line line : paragraph) {
+            if (line.width() <= 0 || line.text().strip().length() > SHORT_LINE
+                    || Math.abs(line.x() + line.width() / 2 - (first.x() + first.width() / 2)) > tolerance) {
+                return false;
+            }
+            shifted |= Math.abs(line.x() - first.x()) > tolerance;
+        }
+        return paragraph.size() > 1 && shifted;
+    }
+
     /** Lines of a heading joined into one line. */
     static String text(List<Line> paragraph) {
         return paragraph.stream().map(line -> line.text().strip()).collect(Collectors.joining(" "));
@@ -87,14 +112,16 @@ final class Headings {
             // after "1. Introduction") passes as a heading; out-of-sequence ones are dropped below.
             boolean candidate = !paragraph.get(0).isTable()
                     && (size > body || boldNumbered || numbered && size > primaryBody)
-                    && paragraph.size() <= (size >= TITLE_SIZE_RATIO * body ? MAX_TITLE_LINES : MAX_LINES)
+                    && paragraph.size() <= (size >= TITLE_SIZE_RATIO * body || centred(paragraph) ? MAX_TITLE_LINES : MAX_LINES)
                     && text.length() <= MAX_LENGTH
                     && (numbered || WORD.matcher(text).find())
                     && !DOT_LEADER.matcher(text).find();
             // A heading that ends a page relies on PageFurniture: if a running header or footer is not
             // recognized, it follows the heading and the heading is missed.
             // a title on the first page may be followed by the authors in a font a little larger than the body
-            boolean title = paragraph.get(0).page() == 1 && size >= TITLE_SIZE_RATIO * body;
+            // so may the first paragraph of the document in any font larger than the body (arXiv 1810.04805)
+            boolean title = paragraph.get(0).page() == 1
+                    && (size >= TITLE_SIZE_RATIO * body || i == 0 && size >= FIRST_TITLE_SIZE_RATIO * body);
             boolean followedByText = i == paragraphs.size() - 1
                     || headings[i + 1]
                     || title

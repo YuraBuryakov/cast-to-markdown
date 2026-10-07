@@ -225,6 +225,48 @@ class PdfConverterHeadingsTest {
     }
 
     @Test
+    void centredTitleIsOneHeadingBeforeTheAuthors() {
+        // arXiv 1810.04805: a 14 pt title in two centred lines, authors in 11 pt, body 10 pt
+        List<Line> lines = List.of(
+                wide(116.5, 81.7, 14, 365, "BERT: Pre-training of Deep Bidirectional Transformers for"),
+                wide(220.9, 97.6, 14, 156, "Language Understanding"),
+                wide(121.8, 140.0, 11, 357, "Jacob Devlin Ming-Wei Chang Kenton Lee Kristina Toutanova"),
+                wide(107.8, 167.9, 11, 385, "{jacobdevlin,mingweichang}@google.com"),
+                line(240, 10, BODY),
+                line(252, 10, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines))
+                .startsWith("# BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding\n\n");
+    }
+
+    @Test
+    void centredHeadingMayTakeThreeShortLines() {
+        // arXiv 1810.04805: the 11 pt appendix title in three centred lines, body 10 pt
+        List<Line> lines = List.of(
+                line(100, 10, BODY),
+                wide(85.9, 678.4, 11, 190, "Appendix for “BERT: Pre-training of"),
+                wide(88.2, 691.9, 11, 186, "Deep Bidirectional Transformers for"),
+                wide(98.0, 705.5, 11, 166, "Language Understanding”"),
+                line(730, 10, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines)).contains(
+                "\n\n# Appendix for “BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding”\n\n");
+    }
+
+    @Test
+    void centredNoticeOfLongLinesIsNoHeading() {
+        // arXiv 1706.03762: a centred permission note in 10 pt above the title, body 9 pt
+        List<Line> lines = List.of(
+                wide(110, 60, 10, 390, "Provided proper attribution is provided, Google hereby grants permission to"),
+                wide(112, 72, 10, 386, "reproduce the tables and figures in this paper solely for use in journalistic or"),
+                wide(250, 84, 10, 110, "scholarly works."),
+                line(140, 9, BODY),
+                line(152, 9, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines)).doesNotContain("#");
+    }
+
+    @Test
     void titleInTheFontOfNumberedSectionsIsLevelOne() {
         // word365-taxi.pdf: the title and "1. Introduction" share one font; numbered top sections are level 2
         List<Line> lines = List.of(
@@ -283,6 +325,11 @@ class PdfConverterHeadingsTest {
 
     private static Line line(double y, double fontSize, String text) {
         return new Line(1, 72, (float) y, (float) fontSize, text);
+    }
+
+    private static Line wide(double x, double y, double fontSize, double width, String text) {
+        return new Line(1, 792, (float) x, (float) y, (float) fontSize, false, false, text, -1, (float) width,
+                (float) x, (float) y);
     }
 
     private static Line bold(double y, double fontSize, String text) {

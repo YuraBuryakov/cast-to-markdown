@@ -78,8 +78,11 @@ final class Paragraphs {
         // First-line indent: this line is shifted right, the next one returns to the previous margin.
         // A list item's hanging indent looks the same, so lines after a list marker are excluded.
         float indent = INDENT * size;
+        // The next line in another font is another paragraph: the second line of a centred title is not
+        // indented (arXiv 1810.04805, the authors after it start at the title's left edge).
         return next != null
                 && next.page() == line.page()
+                && next.sizeKey() == line.sizeKey()
                 && next.y() > line.y()
                 && line.x() > previous.x() + indent
                 && Math.abs(next.x() - previous.x()) < indent
