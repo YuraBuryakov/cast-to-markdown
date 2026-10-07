@@ -51,6 +51,8 @@ final class LineCollector extends PDFTextStripper {
     private static final Pattern PRESENTATION_FORMS = Pattern.compile("[\\uFB00-\\uFDFF\\uFE70-\\uFEFF]");
     /** A horizontal gap larger than this share of the font size between two characters of a cell is a space. */
     private static final float WORD_GAP = 0.2f;
+    /** A space glyph overlapped by a letter over at least this share of its width is drawn over that letter. */
+    private static final float COVERED = 0.9f;
 
     private final List<Line> lines = new ArrayList<>();
     private final StringBuilder text = new StringBuilder();
@@ -183,6 +185,11 @@ final class LineCollector extends PDFTextStripper {
 
     @Override
     protected void writeString(String string, List<TextPosition> positions) {
+        List<TextPosition> kept = withoutCoveredSpaces(positions);
+        if (kept.size() < positions.size() && string.equals(unicode(positions))) {
+            positions = kept;
+            string = unicode(kept);
+        }
         for (TextPosition position : positions) {
             if (first == null) {
                 first = position;
@@ -212,6 +219,47 @@ final class LineCollector extends PDFTextStripper {
         }
         addWords(positions);
         appendText(string, positions);
+    }
+
+    /**
+     * The characters without spaces drawn over another character: LibreOffice 7.3 draws spaces over the letters
+     * of a link ({@code "http  s  ://"} for {@code https://}). A space counts as covered when a letter or digit
+     * overlaps at least {@link #COVERED} of its width.
+     * ponytail: compares every space with every character of the string; strings are one line at most.
+     */
+    private static List<TextPosition> withoutCoveredSpaces(List<TextPosition> positions) {
+        List<TextPosition> kept = new ArrayList<>(positions.size());
+        for (TextPosition position : positions) {
+            if (!position.getUnicode().isBlank() || !covered(position, positions)) {
+                kept.add(position);
+            }
+        }
+        return kept;
+    }
+
+    private static boolean covered(TextPosition space, List<TextPosition> positions) {
+        float left = space.getXDirAdj();
+        float right = left + space.getWidthDirAdj();
+        for (TextPosition other : positions) {
+            // a letter or digit: the dots of a table of contents leader also start over the space before them
+            if (Character.isLetterOrDigit(other.getUnicode().codePointAt(0))
+                    && Math.abs(other.getYDirAdj() - space.getYDirAdj()) < 0.1f) {
+                float overlap = Math.min(right, other.getXDirAdj() + other.getWidthDirAdj())
+                        - Math.max(left, other.getXDirAdj());
+                if (overlap >= COVERED * (right - left)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static String unicode(List<TextPosition> positions) {
+        StringBuilder text = new StringBuilder();
+        for (TextPosition position : positions) {
+            text.append(position.getUnicode());
+        }
+        return text.toString();
     }
 
     /** The words of a string: PDFBox passes the text between its word gaps, which may hold spaces. */

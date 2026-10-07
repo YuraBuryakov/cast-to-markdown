@@ -73,6 +73,25 @@ class LineCollectorTest {
         assertThat(line.pageY()).isCloseTo(392f, within(12f));
     }
 
+    @Test
+    void spaceDrawnOverALetterIsNoSpace() throws IOException {
+        // LibreOffice 7.3 (tdf-statutes.pdf): spaces over the "p" and the "s" of a link, "http  s  ://..."
+        PDType1Font font = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+        float x = 100;
+        float s = x + font.getStringWidth("http") / 1000 * 12;
+        float colon = s + font.getStringWidth("s") / 1000 * 12;
+        Path pdf = TestPdf.builder()
+                .page()
+                .line(x, 700, "http")
+                .line(s - 3.3f, 700, " ")
+                .line(s, 700, "s")
+                .line(s + 0.1f, 700, " ")
+                .line(colon, 700, "://example.org")
+                .writeTo(dir.resolve("covered.pdf"));
+
+        assertThat(lines(pdf)).extracting(Line::text).containsExactly("https://example.org");
+    }
+
     private static List<Line> lines(Path pdf) throws IOException {
         try (PDDocument document = Loader.loadPDF(pdf.toFile())) {
             return LineCollector.collect(document, TaggedTables.read(document)).lines();

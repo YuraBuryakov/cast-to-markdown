@@ -88,7 +88,10 @@ PDFs with a text layer, based on Apache PDFBox.
 - A sentence cut by the end of a page stays one paragraph; a finished sentence or list item on the next page starts a new one.
 - A hanging indent of a list item stays in one paragraph.
 
+- A space drawn over a letter or digit gives no space (LibreOffice 7.3 draws spaces over the letters of a link: `http  s  ://` becomes `https://`). Tested by `LineCollectorTest`.
+
 **Cannot**
+- A justified line keeps two spaces where the space character is narrower than the gap PDFBox sees between the words (LibreOffice 7.3, `The  foundation  promotes`). Not covered.
 - A paragraph split by a footnote at the bottom of a page stays split in two.
 - Footnotes and floating blocks (figures, tables from another column) can sit between the parts of a sentence.
 
