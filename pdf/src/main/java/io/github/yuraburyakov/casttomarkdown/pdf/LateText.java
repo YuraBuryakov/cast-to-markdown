@@ -2,7 +2,9 @@ package io.github.yuraburyakov.casttomarkdown.pdf;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -17,7 +19,7 @@ import java.util.stream.Stream;
  * <p>Sorting the whole page by position would do it too, but mixes the lines of two columns (Experiment 01).
  * Text far from the ends of the line (the value column of a title block, a page number in a table of contents,
  * the other column) stays where it is.
- * ponytail: compares every line with the earlier lines of its page; fine for normal pages.
+ * ponytail: tries only the last {@link #MAX_TRIES} lines on the same baseline.
  */
 final class LateText {
 
@@ -34,29 +36,52 @@ final class LateText {
     private static final float SPACE = 0.1f;
     /** Words may overlap their neighbours by this much (pt), as rounded positions do. */
     private static final float SLACK = 0.5f;
+    /** At most this many earlier lines on the same baseline are tried, newest first. */
+    private static final int MAX_TRIES = 8;
+    /** A line with more words takes no late text: real lines have far fewer, and joining is linear in them. */
+    private static final int MAX_WORDS = 300;
 
     private LateText() {
     }
 
     static List<Line> insert(List<Line> lines) {
         List<Line> result = new ArrayList<>(lines.size());
+        // indexes into result by baseline (tenths of a pt) of the current page, newest last
+        Map<Integer, List<Integer>> byBaseline = new HashMap<>();
+        int page = -1;
         for (Line line : lines) {
-            if (!merged(result, line)) {
+            if (line.page() != page) {
+                page = line.page();
+                byBaseline.clear();
+            }
+            if (!merged(result, byBaseline, line)) {
+                byBaseline.computeIfAbsent(baselineKey(line), k -> new ArrayList<>()).add(result.size());
                 result.add(line);
             }
         }
         return result;
     }
 
-    /** Whether the line went into an earlier line of {@code result}. */
-    private static boolean merged(List<Line> result, Line late) {
+    private static int baselineKey(Line line) {
+        return Math.round(line.y() * 10);
+    }
+
+    /** Whether the line went into an earlier line of its page in {@code result}. */
+    private static boolean merged(List<Line> result, Map<Integer, List<Integer>> byBaseline, Line late) {
         if (!eligible(late) || Lists.isMarkerOnly(late)) {
             return false;
         }
-        for (int i = result.size() - 1; i >= 0 && result.get(i).page() == late.page(); i--) {
+        List<Integer> candidates = new ArrayList<>();
+        int key = baselineKey(late);
+        for (int k = key - 1; k <= key + 1; k++) {
+            candidates.addAll(byBaseline.getOrDefault(k, List.of()));
+        }
+        candidates.sort(Comparator.reverseOrder());
+        // a damaged or hostile page with thousands of pieces on one baseline must not take quadratic time
+        for (int i : candidates.subList(0, Math.min(candidates.size(), MAX_TRIES))) {
             Line line = result.get(i);
             // same size: MUST and MAY of RFC 9562, 1 pt smaller, would also come back, but so would pieces of formulas
-            if (eligible(line) && line.sizeKey() == late.sizeKey()
+            if (eligible(line) && line.words().size() <= MAX_WORDS && line.sizeKey() == late.sizeKey()
                     && Math.abs(line.y() - late.y()) < SAME_BASELINE) {
                 Line joined = join(line, late);
                 if (joined != null) {

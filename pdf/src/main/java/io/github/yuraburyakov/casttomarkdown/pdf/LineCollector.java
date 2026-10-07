@@ -53,6 +53,8 @@ final class LineCollector extends PDFTextStripper {
     private static final float WORD_GAP = 0.2f;
     /** A space glyph overlapped by a letter over at least this share of its width is drawn over that letter. */
     private static final float COVERED = 0.9f;
+    /** A space is compared with this many characters before and after it in the string. */
+    private static final int COVER_WINDOW = 8;
 
     private final List<Line> lines = new ArrayList<>();
     private final StringBuilder text = new StringBuilder();
@@ -225,22 +227,25 @@ final class LineCollector extends PDFTextStripper {
      * The characters without spaces drawn over another character: LibreOffice 7.3 draws spaces over the letters
      * of a link ({@code "http  s  ://"} for {@code https://}). A space counts as covered when a letter or digit
      * overlaps at least {@link #COVERED} of its width.
-     * ponytail: compares every space with every character of the string; strings are one line at most.
+     * Only characters up to {@link #COVER_WINDOW} places away in the string are compared: in the PDF above the
+     * covered letter is 4 places from its space, and a string of a hostile page may be very long.
      */
     private static List<TextPosition> withoutCoveredSpaces(List<TextPosition> positions) {
         List<TextPosition> kept = new ArrayList<>(positions.size());
-        for (TextPosition position : positions) {
-            if (!position.getUnicode().isBlank() || !covered(position, positions)) {
-                kept.add(position);
+        for (int i = 0; i < positions.size(); i++) {
+            if (!positions.get(i).getUnicode().isBlank() || !covered(i, positions)) {
+                kept.add(positions.get(i));
             }
         }
         return kept;
     }
 
-    private static boolean covered(TextPosition space, List<TextPosition> positions) {
+    private static boolean covered(int index, List<TextPosition> positions) {
+        TextPosition space = positions.get(index);
         float left = space.getXDirAdj();
         float right = left + space.getWidthDirAdj();
-        for (TextPosition other : positions) {
+        int to = Math.min(positions.size(), index + COVER_WINDOW + 1);
+        for (TextPosition other : positions.subList(Math.max(0, index - COVER_WINDOW), to)) {
             // a letter or digit: the dots of a table of contents leader also start over the space before them
             if (Character.isLetterOrDigit(other.getUnicode().codePointAt(0))
                     && Math.abs(other.getYDirAdj() - space.getYDirAdj()) < 0.1f) {

@@ -2,9 +2,11 @@ package io.github.yuraburyakov.casttomarkdown.pdf;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import org.apache.pdfbox.Loader;
@@ -90,6 +92,16 @@ class LineCollectorTest {
                 .writeTo(dir.resolve("covered.pdf"));
 
         assertThat(lines(pdf)).extracting(Line::text).containsExactly("https://example.org");
+    }
+
+    @Test
+    void longLineWithManySpacesTakesLinearTime() throws IOException {
+        // a hostile page: one string of 60 000 characters, half of them spaces
+        Path pdf = TestPdf.builder().page().line(10, 700, "a ".repeat(30_000)).writeTo(dir.resolve("long.pdf"));
+
+        List<Line> lines = assertTimeoutPreemptively(Duration.ofSeconds(10), () -> lines(pdf));
+
+        assertThat(lines).hasSize(1);
     }
 
     private static List<Line> lines(Path pdf) throws IOException {
