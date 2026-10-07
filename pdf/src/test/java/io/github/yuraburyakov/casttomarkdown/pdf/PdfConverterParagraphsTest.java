@@ -9,6 +9,18 @@ import org.junit.jupiter.api.Test;
 class PdfConverterParagraphsTest {
 
     @Test
+    void listItemGoesOnAtItsHangingIndentOnTheNextPage() {
+        // tdf-statutes.pdf: the item starts at 57.3 pt on page 1, its next line is at 68 pt on page 2
+        List<Line> lines = List.of(
+                line(1, 57.3, 776.7, 10, "- Intellectual and professional support for the persons who distribute the software or relevant"),
+                line(2, 68, 65.6, 10, "documentation, or contribute in any other way thereto;"));
+
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo(
+                "- Intellectual and professional support for the persons who distribute the software or relevant\n"
+                        + "documentation, or contribute in any other way thereto;");
+    }
+
+    @Test
     void sentenceGoesOnInTheNextColumn() {
         // arXiv 1512.00567: the left column ends "yielded simi-", the right one starts "larly high performance"
         List<Line> lines = List.of(

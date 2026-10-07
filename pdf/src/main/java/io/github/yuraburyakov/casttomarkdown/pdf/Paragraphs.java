@@ -21,6 +21,8 @@ final class Paragraphs {
     private static final float DEFAULT_PITCH = 1.2f;
     /** A horizontal shift larger than this many font sizes counts as an indent. */
     private static final float INDENT = 0.5f;
+    /** A hanging indent of a list item is at most this many font sizes. */
+    private static final float HANGING = 3;
     private static final Pattern LIST_ITEM = Pattern.compile("^\\s*([" + Lists.BULLETS + "*-]|\\d+[.)])\\s");
     /** End of a sentence or of a heading, list lead-in or quotation. */
     private static final Pattern SENTENCE_END = Pattern.compile("[.!?:;\"”’)\\]]$");
@@ -165,11 +167,23 @@ final class Paragraphs {
         return line.page() == previous.page() + 1
                 && line.sizeKey() == previous.sizeKey()
                 && line.bold() == previous.bold()
-                && Math.abs(line.x() - previous.x()) < INDENT * line.fontSize()
+                && (Math.abs(line.x() - previous.x()) < INDENT * line.fontSize() || hangingGoesOn(previous, line))
                 && previous.text().strip().length() >= FULL_LINE
                 && !SENTENCE_END.matcher(previous.text().strip()).find()
                 && !TOC_ENTRY.matcher(previous.text()).find()
                 && !LIST_ITEM.matcher(line.text()).find();
+    }
+
+    /**
+     * The first line of a list item goes on at the hanging indent of the item, in lower case (tdf-statutes.pdf:
+     * "- Intellectual and professional support ... or relevant" at 57 pt, "documentation, or contribute" at 68 pt
+     * on the next page).
+     */
+    private static boolean hangingGoesOn(Line previous, Line line) {
+        String text = line.text().strip();
+        return LIST_ITEM.matcher(previous.text()).find()
+                && line.x() > previous.x() && line.x() - previous.x() <= HANGING * line.fontSize()
+                && !text.isEmpty() && Character.isLowerCase(text.codePointAt(0));
     }
 
     /** Median distance between consecutive lines of the same font size, per font size. */
