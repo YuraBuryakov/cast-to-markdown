@@ -114,6 +114,7 @@ PDFs with a text layer, based on Apache PDFBox.
 - Text a generator draws after the rest of its line (WeasyPrint: link text such as `[RFC4122]`, numbers of list items) goes back into the line when it sits exactly on the same baseline, in the same font size, and fits a gap between the words, touches the first word, or follows the last word closely. A list number or bullet may stand up to half the font size before the first word. Tested by `PdfLateTextTest`.
 - Text in a font up to 1 pt smaller or larger fills only a gap between two words, with a list number before them (RFC 9562 draws `MUST` and `MAY` 1 pt smaller); after the last word it stays apart, as pieces of formulas would join there. Tested by `LateTextTest`.
 - Text ending with a word split by a hyphen that the next line carries on does not go after the end of a line a few lines back (arXiv 1512.00567: `abil-` / `ity` across the denominator of a fraction stays one word). Tested by `LateTextTest`.
+- A whole line drawn after the lines below it goes back between them when it lies between two following lines, starts at the lower one's left edge and is in its font size or a larger one (WeasyPrint: the linked title of an RFC 9562 reference, a late heading above its text). Tested by `LateTextTest`.
 - Text far from the line (the value column of a title block, a page number in a table of contents, the other column) and a row label a few points left of a table row stay apart. Tested by `PdfLateTextTest`.
 
 **Cannot**

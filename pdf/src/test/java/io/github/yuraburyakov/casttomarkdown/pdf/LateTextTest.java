@@ -60,6 +60,30 @@ class LateTextTest {
         assertThat(LateText.insert(List.of(line, denominator, late, next))).hasSize(4);
     }
 
+    @Test
+    void wholeLinesDrawnLaterGoBackBetweenTheLinesAroundThem() {
+        // RFC 9562 page 36: the title lines of reference [X667] (a link) are drawn after the rest of the entry
+        Line label = at(81.2f, line(10, "[X667] ITU-T, \"Information technology - Procedures for",
+                new Line.Word("[X667]", 103.5f, 135f)));
+        Line rest = at(122.0f, line(10, "components\", ISO/IEC 9834-8:2004", new Line.Word("components\",", 145.9f, 200f)));
+        Line year = at(135.6f, line(10, "2004.", new Line.Word("2004.", 145.9f, 170f)));
+        Line title1 = at(94.8f, line(10, "the operation of OSI Registration Authorities", new Line.Word("the", 145.9f, 160f)));
+        Line title2 = at(108.4f, line(10, "Universally Unique Identifiers (UUIDs)", new Line.Word("Universally", 145.9f, 190f)));
+
+        assertThat(LateText.insert(List.of(label, rest, year, title1, title2))).extracting(Line::y)
+                .containsExactly(81.2f, 94.8f, 108.4f, 122.0f, 135.6f);
+    }
+
+    @Test
+    void lateLineInAnotherColumnStaysWhereItIs() {
+        // the right column comes after the left one; its lines start elsewhere, so they are not moved into it
+        Line left1 = at(100, line(10, "left one", new Line.Word("left", 50, 70)));
+        Line left2 = at(140, line(10, "left two", new Line.Word("left", 50, 70)));
+        Line right = at(120, line(10, "right one", new Line.Word("right", 308, 330)));
+
+        assertThat(LateText.insert(List.of(left1, left2, right))).containsExactly(left1, left2, right);
+    }
+
     private static Line at(float y, Line line) {
         return new Line(line.page(), line.pageHeight(), line.x(), y, line.fontSize(), false, false, line.text(), -1,
                 line.width(), line.pageX(), y, line.words());

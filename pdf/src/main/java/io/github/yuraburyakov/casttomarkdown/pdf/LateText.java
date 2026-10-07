@@ -42,6 +42,8 @@ final class LateText {
     private static final float SLACK = 0.5f;
     /** At most this many earlier lines on the same baseline are tried, newest first. */
     private static final int MAX_TRIES = 8;
+    /** A whole late line goes back at most this many lines. */
+    private static final int LOOK_BACK = 6;
     /** A line with more words takes no late text: real lines have far fewer, and joining is linear in them. */
     private static final int MAX_WORDS = 300;
 
@@ -62,6 +64,38 @@ final class LateText {
             if (!merged(result, byBaseline, line, l + 1 < lines.size() ? lines.get(l + 1) : null)) {
                 byBaseline.computeIfAbsent(baselineKey(line), k -> new ArrayList<>()).add(result.size());
                 result.add(line);
+            }
+        }
+        return lateLinesInPlace(result);
+    }
+
+    /**
+     * Whole lines drawn after the lines below them go back between them: WeasyPrint draws the title of a reference
+     * (a link) after the rest of the entry, so "the operation of OSI Registration Authorities" (y 94.8) came after
+     * "components", ISO/IEC 9834-8:2004" (y 122.0) in RFC 9562. Such a line goes between two lines that follow each
+     * other, a few lines back on its page, when it lies between them, starts at the lower one's left edge and has its
+     * font size or a larger one (a heading drawn late above its text, "3.2. Abbreviations" there). Done after the
+     * baseline indexes above are used, as it moves lines.
+     * ponytail: looks at most {@link #LOOK_BACK} lines back.
+     */
+    private static List<Line> lateLinesInPlace(List<Line> lines) {
+        List<Line> result = new ArrayList<>(lines.size());
+        for (Line line : lines) {
+            int at = -1;
+            for (int i = result.size() - 2; i >= 0 && i >= result.size() - 1 - LOOK_BACK; i--) {
+                Line above = result.get(i);
+                Line below = result.get(i + 1);
+                if (above.page() == line.page() && below.page() == line.page() && eligible(line) && eligible(below)
+                        && above.y() < line.y() && line.y() < below.y()
+                        && Math.abs(line.x() - below.x()) < SLACK && line.sizeKey() >= below.sizeKey()) {
+                    at = i + 1;
+                    break;
+                }
+            }
+            if (at < 0) {
+                result.add(line);
+            } else {
+                result.add(at, line);
             }
         }
         return result;
