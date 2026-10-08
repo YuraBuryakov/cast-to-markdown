@@ -184,7 +184,8 @@ final class ScientificPowers {
             return line;
         }
         return new Line(line.page(), line.pageHeight(), line.x(), line.y(), line.fontSize(), line.bold(),
-                line.rotated(), text.toString(), line.table(), line.width(), line.pageX(), line.pageY(), List.copyOf(words));
+                line.rotated(), text.toString(), line.table(), line.width(), line.pageX(), line.pageY(), List.copyOf(words),
+                line.heading());
     }
 
     private static boolean blocked(Line line, Line.Word word, Power power, List<PageGraphics.Box> rules) {

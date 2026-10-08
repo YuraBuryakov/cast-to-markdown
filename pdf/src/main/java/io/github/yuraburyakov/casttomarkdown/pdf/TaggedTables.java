@@ -21,6 +21,8 @@ import org.apache.pdfbox.pdmodel.documentinterchange.logicalstructure.PDStructur
  * the text of every cell in reading order, and {@link #markdown} turns the cells into a Markdown table.
  *
  * <p>Untagged PDFs (LaTeX, WeasyPrint, old files) have no tables here; their table text stays ordinary text.
+ *
+ * <p>It also finds the marked content of headings ({@code H1} to {@code H6}), for {@link Headings}.
  */
 final class TaggedTables {
 
@@ -41,6 +43,8 @@ final class TaggedTables {
     private final List<List<List<Integer>>> tables = new ArrayList<>();
     /** Cell id of each piece of marked content (page and MCID, see {@link #key}). */
     private final Map<Long, Integer> cellByKey = new HashMap<>();
+    /** Heading level (1 to 6) of each piece of marked content inside a heading element. */
+    private final Map<Long, Integer> headingByKey = new HashMap<>();
     /** Table index of each cell id. */
     private final List<Integer> tableByCell = new ArrayList<>();
     /**
@@ -94,6 +98,16 @@ final class TaggedTables {
         return cellByKey.getOrDefault(key, -1);
     }
 
+    /** Level of the heading element the marked content belongs to, or 0. */
+    int headingOf(long key) {
+        return headingByKey.getOrDefault(key, 0);
+    }
+
+    /** Whether the text has to be followed by its marked content: there are tables or headings. */
+    boolean hasMarkedContent() {
+        return !tables.isEmpty() || !headingByKey.isEmpty();
+    }
+
     int tableOfCell(int cell) {
         return tableByCell.get(cell);
     }
@@ -144,8 +158,13 @@ final class TaggedTables {
         for (Object kid : node.getKids()) {
             if (kid instanceof PDStructureElement element && enter(element, depth)) {
                 PDPage page = element.getPage() != null ? element.getPage() : inheritedPage;
-                if ("Table".equals(type(element))) {
+                String type = type(element);
+                if ("Table".equals(type)) {
                     addTable(element, page, depth + 1);
+                } else if (type != null && type.matches("H[1-6]")) {
+                    List<Long> keys = new ArrayList<>();
+                    collectKeys(element, page, keys, depth + 1);
+                    keys.forEach(key -> headingByKey.put(key, type.charAt(1) - '0'));
                 } else {
                     findTables(element, page, depth + 1);
                 }

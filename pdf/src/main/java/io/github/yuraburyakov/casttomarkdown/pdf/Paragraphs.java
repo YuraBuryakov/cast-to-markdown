@@ -99,6 +99,13 @@ final class Paragraphs {
         if (line.isTable() || previous.isTable()) {
             return true;
         }
+        // A heading of a tagged PDF ends with its element: Typst sets the entries of API documentation in the font
+        // of the text below them ("lang str" / "The primary language"). Only after a short line: NIST tags whole
+        // sections as H1, and the element ends in the middle of a sentence.
+        if (previous.heading() > 0 && line.heading() == 0
+                && previous.text().strip().split("\\s+").length <= Headings.MAX_TAGGED_WORDS) {
+            return true;
+        }
         if (line.page() != previous.page()) {
             return !continuesOnNextPage(previous, line);
         }

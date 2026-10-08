@@ -25,6 +25,10 @@ final class Headings {
     private static final int SHORT_LINE = 40;
     private static final int MAX_LENGTH = 200;
     private static final int MAX_LEVEL = 6;
+    /** Words of a heading that only the structure tree of a tagged PDF makes one (see {@link #taggedLevels}). */
+    static final int MAX_TAGGED_WORDS = 12;
+    /** A caption, "Figure 4-1 Digital Identity Model" (NIST tags it {@code H1}). */
+    private static final Pattern CAPTION = Pattern.compile("^(Figure|Fig\\.|Table)\\s*\\d+");
     /** Bold text may be up to this much smaller than the body font and still be a numbered heading. */
     private static final float BOLD_MAX_SIZE_BELOW_BODY = 1.5f;
     /** A heading without a section number has at least one real word; rotated or scattered text gives only fragments. */
@@ -65,7 +69,30 @@ final class Headings {
 
     /** Heading level ({@code 1} for {@code #}) of each paragraph, {@code 0} for a paragraph that is not a heading. */
     static int[] levels(List<List<Line>> paragraphs) {
-        return levels(paragraphs, find(paragraphs));
+        boolean[] headings = find(paragraphs);
+        return levels(paragraphs, headings, taggedLevels(paragraphs, headings));
+    }
+
+    /**
+     * The level of each paragraph that only the structure tree of a tagged PDF makes a heading, else 0: all its
+     * lines are in a heading element ({@code H1} to {@code H6}, see {@link Line#heading()}) and it reads like
+     * one: at most {@link #MAX_TAGGED_WORDS} words, no full stop at the end, no caption. Typst sets the entries of
+     * API documentation as headings in the font of the text. Generators also tag other text as headings: InDesign
+     * body text without a paragraph style ({@code H2}), Word a sentence (other-c1) or a caption (NIST). Headings
+     * the fonts find keep the level of their font.
+     */
+    private static int[] taggedLevels(List<List<Line>> paragraphs, boolean[] headings) {
+        int[] levels = new int[paragraphs.size()];
+        for (int i = 0; i < paragraphs.size(); i++) {
+            List<Line> paragraph = paragraphs.get(i);
+            String text = text(paragraph);
+            if (!headings[i] && paragraph.stream().allMatch(line -> line.heading() > 0)
+                    && paragraph.size() <= MAX_LINES && text.split("\\s+").length <= MAX_TAGGED_WORDS
+                    && !text.endsWith(".") && !CAPTION.matcher(text).find()) {
+                levels[i] = paragraph.get(0).heading();
+            }
+        }
+        return levels;
     }
 
     /**
@@ -275,7 +302,7 @@ final class Headings {
      * headings in the same font (e.g. "Abstract" next to "1. Introduction"); otherwise headings in other
      * fonts are ranked by size, largest first.
      */
-    private static int[] levels(List<List<Line>> paragraphs, boolean[] headings) {
+    private static int[] levels(List<List<Line>> paragraphs, boolean[] headings, int[] tagged) {
         int[] levels = new int[paragraphs.size()];
         Map<Integer, Integer> numberedLevelByStyle = new HashMap<>();
         for (int i = 0; i < paragraphs.size(); i++) {
@@ -283,6 +310,11 @@ final class Headings {
             if (depth > 0) {
                 levels[i] = Math.min(MAX_LEVEL, depth + 1);
                 numberedLevelByStyle.merge(paragraphs.get(i).get(0).styleKey(), levels[i], Math::min);
+            }
+        }
+        for (int i = 0; i < paragraphs.size(); i++) {
+            if (tagged[i] > 0) {
+                levels[i] = tagged[i];
             }
         }
         List<Integer> otherStyles = new ArrayList<>(); // fonts of headings with no numbered heading, largest first
@@ -326,16 +358,22 @@ final class Headings {
     /**
      * A heading goes at most one level deeper than the heading before it: fonts are ranked over the whole
      * document, and a font that never meets the deeper one in the same section left a gap
-     * ({@code ##} then {@code ####} in an InDesign PDF). The first heading keeps its level.
+     * ({@code ##} then {@code ####} in an InDesign PDF). A heading of the level of the one before gets its level
+     * too, and a higher one goes no deeper than it: two {@code H3} after an {@code H1} are both {@code ##}.
+     * The first heading keeps its level.
      */
     private static int[] withoutSkippedLevels(int[] levels) {
         int previous = 0;
+        int previousLevel = 0;
         for (int i = 0; i < levels.length; i++) {
             if (levels[i] > 0) {
+                int level = levels[i];
                 if (previous > 0) {
-                    levels[i] = Math.min(levels[i], previous + 1);
+                    levels[i] = level > previous ? Math.min(level, previousLevel + 1)
+                            : level == previous ? previousLevel : Math.min(level, previousLevel);
                 }
-                previous = levels[i];
+                previous = level;
+                previousLevel = levels[i];
             }
         }
         return levels;

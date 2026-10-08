@@ -53,7 +53,7 @@ final class Lists {
                 result.set(item, new Line(text.page(), text.pageHeight(), marker.x(), text.y(), text.fontSize(),
                         text.bold(), text.rotated(), marker.text().strip() + " " + text.text().strip(), -1,
                         text.x() + text.width() - marker.x(), marker.pageX(), marker.pageY(),
-                        Stream.concat(marker.words().stream(), text.words().stream()).toList()));
+                        Stream.concat(marker.words().stream(), text.words().stream()).toList(), text.heading()));
                 result.remove(m);
                 m--;
             }

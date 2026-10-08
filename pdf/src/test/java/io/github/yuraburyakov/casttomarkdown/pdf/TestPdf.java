@@ -175,6 +175,18 @@ final class TestPdf {
         return this;
     }
 
+    /**
+     * A line in marked content with its MCID, under a structure element of {@code type} ({@code "H3"}, {@code "P"}),
+     * as Word or Typst tag a paragraph or a heading.
+     */
+    TestPdf taggedLine(float y, String type, String text) {
+        if (pages.isEmpty()) {
+            throw new IllegalStateException("Call page() before taggedLine()");
+        }
+        pages.get(pages.size() - 1).add(new TaggedLine(y, type, text));
+        return this;
+    }
+
     /** Draws a picture on the current page; a page with only a picture looks like a scanned page. */
     TestPdf image() {
         if (pages.isEmpty()) {
@@ -210,7 +222,7 @@ final class TestPdf {
         try (PDDocument document = new PDDocument()) {
             PDType1Font font = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
             PDStructureElement documentElement = null;
-            if (pages.stream().flatMap(List::stream).anyMatch(Table.class::isInstance)) {
+            if (pages.stream().flatMap(List::stream).anyMatch(item -> item instanceof Table || item instanceof TaggedLine)) {
                 PDStructureTreeRoot root = new PDStructureTreeRoot();
                 document.getDocumentCatalog().setStructureTreeRoot(root);
                 documentElement = new PDStructureElement(StandardStructureTypes.DOCUMENT, root);
@@ -227,6 +239,20 @@ final class TestPdf {
                     for (Item item : pages.get(i)) {
                         if (item instanceof Table table) {
                             mcid = drawTable(content, font, page, documentElement, table, mcid);
+                        } else if (item instanceof TaggedLine line) {
+                            PDStructureElement element = new PDStructureElement(line.type(), documentElement);
+                            element.setPage(page);
+                            documentElement.appendKid(element);
+                            COSDictionary properties = new COSDictionary();
+                            properties.setInt(COSName.MCID, mcid++);
+                            content.beginMarkedContent(COSName.getPDFName(line.type()), PDPropertyList.create(properties));
+                            content.beginText();
+                            content.setFont(font, FONT_SIZE);
+                            content.newLineAtOffset(LEFT_MARGIN, line.y());
+                            content.showText(line.text());
+                            content.endText();
+                            content.endMarkedContent();
+                            element.appendKid(new PDMarkedContent(COSName.getPDFName(line.type()), properties));
                         } else if (item instanceof LinkLine link) {
                             drawLink(document, content, font, page, link);
                         } else if (item instanceof Clip clip) {
@@ -380,7 +406,7 @@ final class TestPdf {
         page.getAnnotations().add(annotation);
     }
 
-    private sealed interface Item permits Line, InvisibleLine, StretchedLine, FootnoteLine, ScriptLine, LinkLine, Table, RotatedLine, Shape, Clip {
+    private sealed interface Item permits Line, TaggedLine, InvisibleLine, StretchedLine, FootnoteLine, ScriptLine, LinkLine, Table, RotatedLine, Shape, Clip {
     }
 
     /** Clips everything drawn after it on the page to the rectangle, as a placed picture is clipped. */
@@ -410,6 +436,9 @@ final class TestPdf {
     }
 
     private record StretchedLine(float x, float y, String text, float percent) implements Item {
+    }
+
+    private record TaggedLine(float y, String type, String text) implements Item {
     }
 
     private record Table(float y, boolean keys, String[][] rows) implements Item {

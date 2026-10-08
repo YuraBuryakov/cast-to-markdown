@@ -129,18 +129,20 @@ PDFs with a text layer, based on Apache PDFBox.
 - Text larger than the body font is a heading; levels follow the font sizes, largest first.
 - A second plain body size up to 1 pt larger is not treated as an unnumbered heading when it has at least ten long lines, at least half the primary size's long-text weight, and at least ten close, aligned alternations with the primary size. Repeated bold headings and fonts used in separate sections do not establish this second size in the tested cases.
 - Bold body-size text that starts with a section number (`2.1 Scope`) is a heading with the level from the number; `§` headings are split from the text that follows.
-- A heading is at most one level deeper than the one before; a two-line heading is joined; a title in a much larger font may take up to four lines.
+- A heading is at most one level deeper than the one before, and a heading of the level of the one before gets its level (`Updating your online application` after `Online applications` in an InDesign PDF, both level 2 in its outline); a two-line heading is joined; a title in a much larger font may take up to four lines. Tested by `PdfTaggedHeadingsTest`.
 - A heading of up to four short centred lines is one heading (`Appendix for “BERT: ...”`); a centred notice of long lines is not a heading. Tested by `PdfConverterHeadingsTest`.
 - `Abstract` alone on a line is a heading on the first two pages in any font (arXiv sets it in the small font of the abstract), and bold on any page (NIST). Tested by `PdfConverterHeadingsTest`.
 - An unnumbered first heading on the first page is level 1 when no heading has that level, also in the font of the numbered sections (which are level 2). Tested by `PdfConverterHeadingsTest`.
 - A title on the first page in a font at least 1.5 times the body size, or the first paragraph of the document in a font at least 1.25 times the body size, is a heading also when the authors follow in a font a little larger than the body. Tested by `PdfConverterHeadingsTest`.
+- In a tagged PDF a paragraph whose lines are all in a heading element (`H1` to `H6`) is a heading of that level, also in the font of the text (Typst API documentation: 81 of its 98 outline entries, 10 before; the Wikipedia subheadings printed by Chrome). Only when it reads like a heading, as generators tag other text as headings too: at most 12 words, no full stop at the end, no `Figure`/`Table N` caption (InDesign tags unstyled body text as `H2`, NIST whole sections as `H1`). A short heading line ends its paragraph where the element ends. Tested by `PdfTaggedHeadingsTest`.
 - Not taken for headings: a bold numbered list item out of sequence, a table of contents entry, a long paragraph in a large font, text fragments without words, large text followed by small figure text, a mostly bold first line of a definition, a date alone (`1 October 2026`), and the authors right after a first-page title when e-mail addresses follow them. Tested by `PdfConverterHeadingsTest`.
 
 **Cannot**
 - Bold headings without a number in body size are not found, except `Abstract`; a title on a cover page may not be found.
+- A short text that a generator tags as a heading although it is none becomes a heading (the header row of a table in other-c6). Not covered.
 - The mixed-body thresholds are conservative heuristics, not a general font classifier. This change does not repair arbitrary paragraph splitting or every missing heading.
 
-**Tests:** `PdfConverterHeadingsTest`, `HeadingsBodyFontsTest`
+**Tests:** `PdfConverterHeadingsTest`, `HeadingsBodyFontsTest`, `PdfTaggedHeadingsTest`
 
 ### Bullet lists
 

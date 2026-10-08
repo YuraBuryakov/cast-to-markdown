@@ -87,6 +87,11 @@ final class LineCollector extends PDFTextStripper {
     /** MCIDs of the open marked-content sequences; {@code -1} for a sequence without one. */
     private final Deque<Integer> mcids = new ArrayDeque<>();
     private final Map<TextPosition, Integer> cellOfPosition = new IdentityHashMap<>();
+    /** Heading level of the characters inside a heading element of a tagged PDF. */
+    private final Map<TextPosition, Integer> headingOfPosition = new IdentityHashMap<>();
+    /** Characters of the line inside a heading element, and the level of the last one. */
+    private int headingChars;
+    private int headingLevel;
     private final Map<Integer, StringBuilder> cellText = new HashMap<>();
     private final Map<Integer, LastPosition> lastCellPosition = new HashMap<>();
     /** URI links of the current page; empty on rotated pages. */
@@ -113,7 +118,7 @@ final class LineCollector extends PDFTextStripper {
     private LineCollector(TaggedTables tables, boolean untagged) {
         this.tables = tables;
         this.untagged = untagged;
-        if (!tables.isEmpty()) {
+        if (tables.hasMarkedContent()) {
             addOperator(new BeginMarkedContentSequenceWithProperties(this));
             addOperator(new BeginMarkedContentSequence(this));
             addOperator(new EndMarkedContentSequence(this));
@@ -148,6 +153,7 @@ final class LineCollector extends PDFTextStripper {
         powerEligible = untagged && page.getRotation() % 360 == 0;
         // the previous page is written out already; keep only this page's positions
         cellOfPosition.clear();
+        headingOfPosition.clear();
         readLinks(page);
         super.startPage(page);
     }
@@ -193,6 +199,10 @@ final class LineCollector extends PDFTextStripper {
             int cell = tables.cellOf(TaggedTables.key(getCurrentPageNo(), mcids.peek()));
             if (cell >= 0) {
                 cellOfPosition.put(position, cell);
+            }
+            int heading = tables.headingOf(TaggedTables.key(getCurrentPageNo(), mcids.peek()));
+            if (heading > 0) {
+                headingOfPosition.put(position, heading);
             }
         }
         if (clippedAway(position)) {
@@ -276,6 +286,11 @@ final class LineCollector extends PDFTextStripper {
                     lastFontBold = isBold(lastFont);
                 }
                 boldChars += lastFontBold ? 1 : 0;
+                Integer heading = headingOfPosition.get(position);
+                if (heading != null) {
+                    headingChars++;
+                    headingLevel = heading;
+                }
             }
             Integer cell = cellOfPosition.get(position);
             if (cell != null) {
@@ -592,7 +607,8 @@ final class LineCollector extends PDFTextStripper {
             float y = first.getDir() == 0 ? firstYBySize.getOrDefault(fontSize, first.getYDirAdj()) : first.getYDirAdj();
             lines.add(new Line(getCurrentPageNo(), pageHeight, first.getXDirAdj(), y, fontSize,
                     boldChars * 2 > chars, first.getDir() != 0, lineText, table, width, first.getX(), first.getY(),
-                    powerEligible && tableChars == 0 ? ScientificPowers.detect(words, wordGlyphs) : List.copyOf(words)));
+                    powerEligible && tableChars == 0 ? ScientificPowers.detect(words, wordGlyphs) : List.copyOf(words),
+                    headingChars * 2 > chars ? headingLevel : 0));
         }
         text.setLength(0);
         first = null;
@@ -604,6 +620,8 @@ final class LineCollector extends PDFTextStripper {
         firstYBySize.clear();
         boldChars = 0;
         chars = 0;
+        headingChars = 0;
+        headingLevel = 0;
         lineTable = -1;
         tableChars = 0;
         otherChars = 0;

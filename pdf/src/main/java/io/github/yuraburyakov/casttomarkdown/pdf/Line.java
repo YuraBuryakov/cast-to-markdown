@@ -12,9 +12,10 @@ import java.util.List;
  * starts on the page (y downwards), the same as {@code x} and {@code y} for horizontal text.
  * {@code width} runs from the start of the first character to the end of the last one, 0 when unknown.
  * {@code words} are the words of the line with their extent along the text, as {@code x}; empty when unknown.
+ * {@code heading} is the level of the heading element of a tagged PDF the line is in (1 to 6), or 0.
  */
 record Line(int page, float pageHeight, float x, float y, float fontSize, boolean bold, boolean rotated, String text,
-        int table, float width, float pageX, float pageY, List<Word> words) {
+        int table, float width, float pageX, float pageY, List<Word> words, int heading) {
 
     /** A word of the line, from the start of its first character to the end of its last one. */
     record Word(String text, float left, float right, ScientificPowers.Power power) {
@@ -29,6 +30,11 @@ record Line(int page, float pageHeight, float x, float y, float fontSize, boolea
     Line(int page, float pageHeight, float x, float y, float fontSize, boolean bold, boolean rotated, String text,
             int table) {
         this(page, pageHeight, x, y, fontSize, bold, rotated, text, table, 0, x, y);
+    }
+
+    Line(int page, float pageHeight, float x, float y, float fontSize, boolean bold, boolean rotated, String text,
+            int table, float width, float pageX, float pageY, List<Word> words) {
+        this(page, pageHeight, x, y, fontSize, bold, rotated, text, table, width, pageX, pageY, words, 0);
     }
 
     Line(int page, float pageHeight, float x, float y, float fontSize, boolean bold, boolean rotated, String text,

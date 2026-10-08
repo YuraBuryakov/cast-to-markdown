@@ -228,7 +228,8 @@ final class LateText {
         float right = Math.max(line.x() + line.width(), late.x() + late.width());
         return new Line(line.page(), line.pageHeight(), x, line.y(), line.fontSize(), line.bold(), false,
                 out.toString(), -1, right - x,
-                startsEarlier ? late.pageX() : line.pageX(), startsEarlier ? late.pageY() : line.pageY(), allWords);
+                startsEarlier ? late.pageX() : line.pageX(), startsEarlier ? late.pageY() : line.pageY(), allWords,
+                line.heading());
     }
 
     private static boolean allEqual(int[] slots) {
