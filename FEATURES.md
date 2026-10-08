@@ -169,11 +169,11 @@ PDFs with a text layer, based on Apache PDFBox.
 
 **Can**
 - A word is never cut by a line break: the rest of it moves up to the line with the hyphen (`high-` / `level` becomes `high-level`), also inside a link broken over lines (arXiv 1810.04805) and when Word draws a space after the hyphen. Tested by `HyphensTest`, `PdfLinksTest.wordSplitInsideALinkBrokenOverLinesIsJoined`.
-- The hyphen goes when the document writes the word without it elsewhere (`learn-` / `ing`) or the rest is an ending that is no word (`surpris-` / `ing`, `represen-` / `tations`: -ing, -tion, -sion, -ity, -ment, -ness, -able, -ible, -ics). It stays when the document writes the word with it elsewhere (`multi-layer`), when it writes both forms, and in every other case. Tested by `HyphensTest`.
-- On 270 hand-labelled breaks of the sample corpus (193 word breaks, 63 compounds, 14 unclear) no compound lost its hyphen; OpenDataLoader 2.5.12 loses it in 24 compounds. Tested by `HyphensTest.labelledBreaksOfTheSampleCorpus` (a sample of each class).
+- The hyphen goes when the document writes the word without it elsewhere (`learn-` / `ing`), when the rest is an ending that is no word (`surpris-` / `ing`, `represen-` / `tations`: -ing, -tion, -sion, -ity, -ment, -ness, -able, -ible, -ics), or when the word without it is in the English word list and the rest is not (`sur-` / `prisingly`, `computa-` / `tional`). The list is SCOWL size 35, 40,200 American and British words, 105 KB in the jar and about 0.5 MB on the heap once read (`words.txt.gz`, notice in `words-LICENSE.txt`). It stays when the document writes the word with it elsewhere (`multi-layer`), when it writes both forms, and in every other case. Tested by `HyphensTest`.
+- On 270 hand-labelled breaks of the sample corpus (193 word breaks, 63 compounds, 14 unclear) 128 word breaks lose the hyphen (66%) and no compound does; OpenDataLoader 2.5.12 loses it in 24 compounds. Tested by `HyphensTest.labelledBreaksOfTheSampleCorpus` (a sample of each class).
 
 **Cannot**
-- A word break the document does not show keeps its hyphen: `sur-prisingly`, `multi-plicative`, `computa-tional`. Of the 193 labelled word breaks 30 lose the hyphen (16%) and 163 keep it. No rule from the document alone stays within 2% wrong on compounds while joining more: "the rest is not a word of the document" joins 93% of word breaks but drops the hyphen of 21% of compounds (`sequence-aligned`, `right-side`). An English word list would join about half at no compound error; it is a new dependency and not decided (Q-PDF-HYPH). Not covered.
+- A word break whose rest is an English word, or whose word is not in the list, keeps its hyphen: `in-side`, `for-ward`, `neurobio-logical`, names such as `Bel-mont`. Of the 193 labelled word breaks 65 keep it. A larger list does not help: SCOWL 70 joins as many (128), the 370,000-word dwyl list fewer (113), as more fragments count as words there. Not covered.
 
 **Tests:** `HyphensTest`
 

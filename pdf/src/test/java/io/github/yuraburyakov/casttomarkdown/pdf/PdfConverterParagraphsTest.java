@@ -38,9 +38,9 @@ class PdfConverterParagraphsTest {
                 line(1, 308, 72, 10, "larly high performance in the 2014 ILSVRC classification."),
                 line(1, 308, 100, 10, "A new paragraph."));
 
-        // one paragraph; the hyphen stays as "similarly" is not elsewhere in this tiny document (see Hyphens)
+        // one paragraph; "similarly" is an English word and "larly" is none, so the hyphen goes (see Hyphens)
         assertThat(PdfConverter.toMarkdown(lines)).startsWith(
-                "networks. VGGNet [18] and GoogLeNet [20] yielded simi-larly\nhigh performance in the 2014 ILSVRC classification.\n\n");
+                "networks. VGGNet [18] and GoogLeNet [20] yielded similarly\nhigh performance in the 2014 ILSVRC classification.\n\n");
     }
 
     @Test

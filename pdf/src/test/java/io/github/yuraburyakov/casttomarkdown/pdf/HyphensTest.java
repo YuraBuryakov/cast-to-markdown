@@ -56,6 +56,22 @@ class HyphensTest {
     }
 
     @Test
+    void aWordOfTheWordListJoins() {
+        // arXiv ResNet: "computa-" / "tional", written once in the document
+        List<String> lines = List.of("the computa-", "tional cost");
+
+        assertThat(Hyphens.join(lines, Set.of())).containsExactly("the computational", "cost");
+    }
+
+    @Test
+    void aRestThatIsAWordKeepsTheHyphen() {
+        // "in-" / "side" may be "inside" or a compound like "in-house": the rest is a word, so nothing is dropped
+        List<String> lines = List.of("the in-", "side wall");
+
+        assertThat(Hyphens.join(lines, Set.of())).containsExactly("the in-side", "wall");
+    }
+
+    @Test
     void aCompoundGoingOnOverTheBreakStaysWhole() {
         // arXiv 1608.06993: "state-of-" / "the-art"
         List<String> lines = List.of("achieves state-of-", "the-art results");
@@ -70,12 +86,12 @@ class HyphensTest {
     @Test
     void labelledBreaksOfTheSampleCorpus() {
         String[][] cases = {
-                // word breaks: joined when the document or the ending shows it, else the hyphen stays
+                // word breaks: joined when the document, the ending or the word list shows it
                 {"rather surpris-", "ing that", "", "rather surprising"},
                 {"a short descrip-", "tion of", "", "a short description"},
                 {"for fast un-", "supervised sentence", "unsupervised", "for fast unsupervised"},
-                {"It is sur-", "prisingly good", "", "It is sur-prisingly"},
-                {"the multi-", "plicative attention", "", "the multi-plicative"},
+                {"It is sur-", "prisingly good", "", "It is surprisingly"},
+                {"the multi-", "plicative attention", "", "the multiplicative"},
                 // compounds, mostly drawn by Chrome, Word and WeasyPrint, which break only at a hyphen
                 {"English-", "to-German translation", "", "English-to-German"},
                 {"high-", "level features", "", "high-level"},
