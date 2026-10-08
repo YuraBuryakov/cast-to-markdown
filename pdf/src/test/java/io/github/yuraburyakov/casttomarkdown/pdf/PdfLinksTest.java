@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.yuraburyakov.casttomarkdown.CastToMarkdown;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -99,6 +100,20 @@ class PdfLinksTest {
                         [a
                         three
                         lines](https://example.org/x) link""");
+    }
+
+    @Test
+    void wordSplitInsideALinkBrokenOverLinesIsJoined() {
+        // arXiv 1810.04805, a reference title: "fast un-" / "supervised" are two links until they are one
+        List<Line> lines = List.of(
+                new Line(1, 72, 700, 10, false, "objectives for fast [un-](https://arxiv.org/abs/1)"),
+                new Line(1, 72, 712, 10, false, "[supervised sentence](https://arxiv.org/abs/1). CoRR,"),
+                new Line(1, 72, 724, 10, false, "and unsupervised data."));
+
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo("""
+                objectives for fast [unsupervised
+                sentence](https://arxiv.org/abs/1). CoRR,
+                and unsupervised data.""");
     }
 
     @Test

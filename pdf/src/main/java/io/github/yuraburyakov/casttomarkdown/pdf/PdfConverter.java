@@ -174,9 +174,10 @@ public final class PdfConverter implements DocumentConverter {
             } else if (levels[i] > 0) {
                 out.add("#".repeat(levels[i]) + " " + Markdown.escape(Headings.text(paragraph)));
             } else {
-                List<String> texts = Hyphens.join(paragraph.stream().map(Line::text).toList(), words);
-                out.add(joinSplitLinks(texts.stream().map(text -> Lists.markdown(Markdown.escape(text)))
-                        .collect(Collectors.joining("\n"))));
+                // links first: a word split inside a link broken over lines ends its line with "-](url)" until then
+                String text = joinSplitLinks(paragraph.stream().map(line -> Lists.markdown(Markdown.escape(line.text())))
+                        .collect(Collectors.joining("\n")));
+                out.add(String.join("\n", Hyphens.join(text.lines().toList(), words)));
             }
         }
         return out.toString();

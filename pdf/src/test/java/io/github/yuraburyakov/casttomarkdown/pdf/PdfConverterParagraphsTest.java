@@ -40,7 +40,7 @@ class PdfConverterParagraphsTest {
 
         // one paragraph; the hyphen stays as "similarly" is not elsewhere in this tiny document (see Hyphens)
         assertThat(PdfConverter.toMarkdown(lines)).startsWith(
-                "networks. VGGNet [18] and GoogLeNet [20] yielded simi-\nlarly high performance in the 2014 ILSVRC classification.\n\n");
+                "networks. VGGNet [18] and GoogLeNet [20] yielded simi-larly\nhigh performance in the 2014 ILSVRC classification.\n\n");
     }
 
     @Test
