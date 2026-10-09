@@ -1,11 +1,13 @@
 package io.github.yuraburyakov.casttomarkdown.csv;
 
 import io.github.yuraburyakov.casttomarkdown.DocumentConversionException;
+import io.github.yuraburyakov.casttomarkdown.internal.ConvertedDocument;
 import io.github.yuraburyakov.casttomarkdown.internal.DocumentConverter;
 import io.github.yuraburyakov.casttomarkdown.internal.Markdown;
 import io.github.yuraburyakov.casttomarkdown.internal.Text;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -36,18 +38,18 @@ public final class CsvConverter implements DocumentConverter {
     }
 
     @Override
-    public String convert(Path path) {
+    public ConvertedDocument convert(Path path) {
         try {
-            return render(Text.decode(Files.readAllBytes(path)), path.getFileName().toString());
+            return ConvertedDocument.of(render(Text.decode(Files.readAllBytes(path)), path.getFileName().toString()));
         } catch (IOException e) {
             throw new DocumentConversionException("Cannot read CSV: " + path, e);
         }
     }
 
     @Override
-    public String convert(InputStream input, String name) {
+    public ConvertedDocument convert(InputStream input, String name, URI source) {
         try {
-            return render(Text.decode(input.readAllBytes()), name);
+            return ConvertedDocument.of(render(Text.decode(input.readAllBytes()), name));
         } catch (IOException e) {
             throw new DocumentConversionException("Cannot read CSV: " + name, e);
         }

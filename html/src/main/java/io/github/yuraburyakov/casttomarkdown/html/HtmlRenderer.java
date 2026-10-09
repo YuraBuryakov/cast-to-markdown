@@ -75,9 +75,10 @@ final class HtmlRenderer {
     private int nesting;
     private final URI base;
 
-    HtmlRenderer(Document document) {
+    /** {@code source}: the address the page was read from, {@code null} if unknown. */
+    HtmlRenderer(Document document, URI source) {
         this.document = document;
-        this.base = base(document);
+        this.base = base(document, source);
     }
 
     String render() {
@@ -121,13 +122,17 @@ final class HtmlRenderer {
     }
 
     /**
-     * The address the page gives itself, for relative links: {@code <base href>}, the canonical link or
-     * {@code og:url}, the first that is an absolute http(s) address; {@code null} for none.
+     * The address for relative links: {@code <base href>} (resolved against the source), the address the page was
+     * read from, then the address the page gives itself, the canonical link or {@code og:url}; the first that is an
+     * absolute http(s) address, {@code null} for none.
      */
-    private static URI base(Document document) {
+    private static URI base(Document document, URI source) {
         List<String> candidates = new ArrayList<>();
         for (Element base : document.select("base[href]")) {
-            candidates.add(base.attr("href"));
+            candidates.add(resolve(source, base.attr("href")));
+        }
+        if (source != null) {
+            candidates.add(source.toString());
         }
         for (Element canonical : document.select("link[rel=canonical][href]")) {
             candidates.add(canonical.attr("href"));
@@ -145,6 +150,18 @@ final class HtmlRenderer {
             }
         }
         return null;
+    }
+
+    /** {@code href} resolved against {@code source}; as it is without a source or when it is no address. */
+    private static String resolve(URI source, String href) {
+        if (source == null) {
+            return href;
+        }
+        try {
+            return source.resolve(new URI(href.strip())).toString();
+        } catch (java.net.URISyntaxException | IllegalArgumentException e) {
+            return href;
+        }
     }
 
     private void removeFurniture() {

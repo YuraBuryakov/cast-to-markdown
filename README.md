@@ -48,6 +48,19 @@ try (InputStream in = upload.getInputStream()) {
 }
 ```
 
+The document's own title, author and language come with the Markdown, when it states them (PDF document information, DOCX properties, HTML `<title>`, `<meta name="author">` and `<html lang>`):
+
+```java
+document.title().ifPresent(title -> index.put("title", title));   // Optional<String>
+document.language();                                             // Optional<String>, such as "en-US"
+```
+
+A web page fetched by your code: pass its address, and relative links (`/docs/intro`) become absolute links.
+
+```java
+PreparedDocument page = converter.convert(in, "page.html", response.uri());
+```
+
 The result looks like this (real output for a DOCX with a heading, a bullet list, a table and a link):
 
 ```markdown

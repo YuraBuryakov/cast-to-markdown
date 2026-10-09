@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.yuraburyakov.casttomarkdown.CastToMarkdown;
 import io.github.yuraburyakov.casttomarkdown.DocumentConversionException;
+import io.github.yuraburyakov.casttomarkdown.PreparedDocument;
 import io.github.yuraburyakov.casttomarkdown.UnsupportedFormatException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -30,6 +31,24 @@ class CastToMarkdownTest {
 
         assertThat(converter.convert(pdf).markdown())
                 .isEqualTo("First line.\nSecond line.\n");
+    }
+
+    @Test
+    void metadataComesFromTheDocumentInformation() throws IOException {
+        Path pdf = TestPdf.builder()
+                .info(" Annual report ", "Ada Lovelace", "en-US")
+                .page().line(720, "Text.")
+                .writeTo(dir.resolve("info.pdf"));
+        PreparedDocument document = converter.convert(pdf);
+        assertThat(document.title()).contains("Annual report");
+        assertThat(document.author()).contains("Ada Lovelace");
+        assertThat(document.language()).contains("en-US");
+
+        PreparedDocument bare = converter.convert(TestPdf.builder().page().line(720, "Text.")
+                .writeTo(dir.resolve("bare.pdf")));
+        assertThat(bare.title()).isEmpty();
+        assertThat(bare.author()).isEmpty();
+        assertThat(bare.language()).isEmpty();
     }
 
     @Test

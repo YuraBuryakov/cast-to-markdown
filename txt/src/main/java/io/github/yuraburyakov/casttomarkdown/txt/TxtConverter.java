@@ -1,11 +1,13 @@
 package io.github.yuraburyakov.casttomarkdown.txt;
 
 import io.github.yuraburyakov.casttomarkdown.DocumentConversionException;
+import io.github.yuraburyakov.casttomarkdown.internal.ConvertedDocument;
 import io.github.yuraburyakov.casttomarkdown.internal.DocumentConverter;
 import io.github.yuraburyakov.casttomarkdown.internal.Markdown;
 import io.github.yuraburyakov.casttomarkdown.internal.Text;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -30,18 +32,18 @@ public final class TxtConverter implements DocumentConverter {
     }
 
     @Override
-    public String convert(Path path) {
+    public ConvertedDocument convert(Path path) {
         try {
-            return render(Files.readAllBytes(path));
+            return ConvertedDocument.of(render(Files.readAllBytes(path)));
         } catch (IOException e) {
             throw new DocumentConversionException("Cannot read text file: " + path, e);
         }
     }
 
     @Override
-    public String convert(InputStream input, String name) {
+    public ConvertedDocument convert(InputStream input, String name, URI source) {
         try {
-            return render(input.readAllBytes());
+            return ConvertedDocument.of(render(input.readAllBytes()));
         } catch (IOException e) {
             throw new DocumentConversionException("Cannot read text file: " + name, e);
         }

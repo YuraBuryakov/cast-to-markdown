@@ -6,9 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import io.github.yuraburyakov.casttomarkdown.CastToMarkdown;
 import io.github.yuraburyakov.casttomarkdown.DocumentConversionException;
+import io.github.yuraburyakov.casttomarkdown.PreparedDocument;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -171,6 +173,37 @@ class HtmlConverterTest {
     }
 
     @Test
+    void relativeLinksUseTheAddressTheCallerGives() {
+        String body = "<p><a href='/docs/intro'>Intro</a> <a href='next'>Next</a></p>";
+        URI source = URI.create("https://a.org/guide/page.html");
+        // the address the page was read from comes before the one it gives itself
+        assertThat(convert("<head><link rel='canonical' href='https://b.org/x'></head>" + body, source))
+                .isEqualTo("[Intro](https://a.org/docs/intro) [Next](https://a.org/guide/next)\n");
+        // a relative <base> is resolved against it, and wins over it
+        assertThat(convert("<head><base href='/v2/'></head>" + body, source))
+                .isEqualTo("[Intro](https://a.org/docs/intro) [Next](https://a.org/v2/next)\n");
+        // only http(s) addresses are used
+        assertThat(convert(body, URI.create("file:///C:/pages/page.html"))).isEqualTo("Intro Next\n");
+    }
+
+    @Test
+    void metadataOfThePage() {
+        PreparedDocument page = CastToMarkdown.create().convert(stream("<html lang='de-DE'><head>"
+                + "<title> Interface\n List </title><meta name='author' content='Ada'></head><p>Text</p></html>"),
+                "page.html", URI.create("https://a.org/"));
+        assertThat(page.title()).contains("Interface List");
+        assertThat(page.author()).contains("Ada");
+        assertThat(page.language()).contains("de-DE");
+
+        PreparedDocument bare = CastToMarkdown.create().convert(stream("<p>Text</p>"), "page.html");
+        assertThat(bare.title()).isEmpty();
+        assertThat(bare.author()).isEmpty();
+        assertThat(bare.language()).isEmpty();
+        assertThatThrownBy(() -> CastToMarkdown.create().convert(stream(""), "page.html", null))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
     void spaceAtTheEndOfALinkStays() {
         // xml2rfc: <a>A.1. </a><a>Example</a> in a heading
         assertThat(convert("<h3><a href='#s-a.1'>A.1. </a><a href='#n-ex'>Example</a></h3>"
@@ -274,8 +307,8 @@ class HtmlConverterTest {
         Path file = dir.resolve("page.htm");
         Files.write(file, html);
 
-        assertThat(converter.convert(file)).isEqualTo("Привет\n");
-        assertThat(converter.convert(new ByteArrayInputStream(html), "page.html")).isEqualTo("Привет\n");
+        assertThat(converter.convert(file).markdown()).isEqualTo("Привет\n");
+        assertThat(converter.convert(new ByteArrayInputStream(html), "page.html", null).markdown()).isEqualTo("Привет\n");
     }
 
     @Test
@@ -301,7 +334,15 @@ class HtmlConverterTest {
                 .isInstanceOf(DocumentConversionException.class);
     }
 
+    private static InputStream stream(String html) {
+        return new ByteArrayInputStream(html.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String convert(String html, URI source) {
+        return converter.convert(stream(html), "page.html", source).markdown();
+    }
+
     private String convert(String html) {
-        return converter.convert(new ByteArrayInputStream(html.getBytes(StandardCharsets.UTF_8)), "page.html");
+        return convert(html, null);
     }
 }

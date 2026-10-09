@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.yuraburyakov.casttomarkdown.CastToMarkdown;
 import io.github.yuraburyakov.casttomarkdown.DocumentConversionException;
+import io.github.yuraburyakov.casttomarkdown.PreparedDocument;
 import io.github.yuraburyakov.casttomarkdown.UnsupportedFormatException;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -379,6 +380,25 @@ class DocxConverterTest {
                 .hasMessageContaining("damaged.docx")
                 .hasCauseInstanceOf(Exception.class);
         assertThat(in.closed).isFalse();
+    }
+
+    @Test
+    void metadataComesFromTheDocumentProperties() throws IOException {
+        PreparedDocument document = converter.convert(new ByteArrayInputStream(TestDocx.builder()
+                .properties("Annual  report", "Ada Lovelace", "en-GB").paragraph("Text").bytes()), "a.docx");
+        assertThat(document.title()).contains("Annual report");
+        assertThat(document.author()).contains("Ada Lovelace");
+        assertThat(document.language()).contains("en-GB");
+
+        // Word writes the language in the default text style, not in the core properties
+        PreparedDocument styled = converter.convert(new ByteArrayInputStream(TestDocx.builder()
+                .defaultLanguage("de-DE").paragraph("Text").bytes()), "b.docx");
+        assertThat(styled.language()).contains("de-DE");
+
+        PreparedDocument bare = converter.convert(new ByteArrayInputStream(TestDocx.builder()
+                .paragraph("Text").bytes()), "c.docx");
+        assertThat(bare.title()).isEmpty();
+        assertThat(bare.language()).isEmpty();
     }
 
     private String convert(byte[] docx) {

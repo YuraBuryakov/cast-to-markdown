@@ -3,6 +3,7 @@ package io.github.yuraburyakov.casttomarkdown;
 import io.github.yuraburyakov.casttomarkdown.internal.DocumentConverter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
@@ -167,8 +168,46 @@ public final class CastToMarkdown {
         Objects.requireNonNull(input, "input");
         Objects.requireNonNull(fileName, "fileName");
 
+        return convertStream(input, fileName, null);
+    }
+
+    /**
+     * As {@link #convert(InputStream, String)}, for a document read from {@code source}: a web page fetched by the
+     * caller. Relative links of an HTML page are resolved against this address, unless the page names its own
+     * base ({@code <base href>}); without it they stay text, unless the page gives its own address (canonical
+     * link, {@code og:url}). Only an {@code http} or {@code https} address is used. Other formats ignore it.
+     *
+     * <pre>{@code
+     * HttpResponse<InputStream> response = http.send(request, BodyHandlers.ofInputStream());
+     * try (InputStream in = response.body()) {
+     *     PreparedDocument page = converter.convert(in, "page.html", response.uri());
+     * }
+     * }</pre>
+     *
+     * @param input document content; must not be {@code null}; not closed by this method
+     * @param fileName document file name, such as {@code "page.html"}: its extension selects the format,
+     *        and it is used in error messages; must not be {@code null}
+     * @param source the address the document was read from; must not be {@code null}
+     * @return the converted document
+     * @throws UnsupportedFormatException if the format is not supported (the stream is not read then),
+     *         or the PDF is a scan without a text layer
+     * @throws DocumentTooLargeException if the stream has more bytes than {@link Builder#maxDocumentSize(long)};
+     *         it is read only up to the limit
+     * @throws DocumentConversionException if the stream cannot be read or the document cannot be parsed
+     * @throws NullPointerException if {@code input}, {@code fileName} or {@code source} is {@code null}
+     */
+    public PreparedDocument convert(InputStream input, String fileName, URI source) {
+        Objects.requireNonNull(input, "input");
+        Objects.requireNonNull(fileName, "fileName");
+        Objects.requireNonNull(source, "source");
+
+        return convertStream(input, fileName, source);
+    }
+
+    private PreparedDocument convertStream(InputStream input, String fileName, URI source) {
         DocumentConverter converter = converter(fileName, fileName);
-        return new PreparedDocument(converter.convert(new LimitedInputStream(input, maxDocumentSize, fileName), fileName));
+        return new PreparedDocument(
+                converter.convert(new LimitedInputStream(input, maxDocumentSize, fileName), fileName, source));
     }
 
     private void checkSize(Path path) {

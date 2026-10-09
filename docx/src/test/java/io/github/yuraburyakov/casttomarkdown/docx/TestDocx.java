@@ -159,6 +159,20 @@ final class TestDocx {
         return this;
     }
 
+    /** Title, creator and language of the core properties; {@code null} leaves one out. */
+    TestDocx properties(String title, String creator, String language) {
+        document.getProperties().getCoreProperties().setTitle(title);
+        document.getProperties().getCoreProperties().setCreator(creator);
+        document.getProperties().getCoreProperties().getUnderlyingProperties().setLanguageProperty(language);
+        return this;
+    }
+
+    /** The language of the default text style ({@code w:docDefaults}), where Word writes it. */
+    TestDocx defaultLanguage(String language) {
+        document.createStyles().setSpellingLanguage(language);
+        return this;
+    }
+
     byte[] bytes() throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         document.write(out);

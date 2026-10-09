@@ -95,6 +95,6 @@ class CsvConverterTest {
     }
 
     private String convert(String csv, String name) {
-        return converter.convert(new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8)), name);
+        return converter.convert(new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8)), name, null).markdown();
     }
 }

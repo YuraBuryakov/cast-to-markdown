@@ -24,9 +24,21 @@ Contents: [API](#api) · [PDF](#pdf) · [DOCX](#docx) · [HTML](#html) · [TXT](
 **Cannot**
 - No time limit for a conversion: run untrusted uploads in your own executor with a timeout.
 - The size limit is on the source, not on memory: a 1.7 MB DOCX with 7.6 MB of text XML needed about 100 MB of heap.
-- No metadata, warnings or other settings yet.
+- No warnings or other settings yet.
 
 **Tests:** `CastToMarkdownConcurrencyTest`, `CastToMarkdownSettingsTest`
+
+### Metadata
+
+`PreparedDocument.title()`, `author()` and `language()`, each an `Optional<String>`.
+
+**Can**
+- What the document states about itself, on one line without spaces around it; empty when it states nothing. PDF: title and author of the document information, `/Lang` of the catalog. Tested by `CastToMarkdownTest.metadataComesFromTheDocumentInformation`. DOCX: title, creator and language of the core properties, else the language of the default text style, where Word writes it. Tested by `DocxConverterTest.metadataComesFromTheDocumentProperties`. HTML: `<title>`, `<meta name="author">`, `<html lang>`. Tested by `HtmlConverterTest.metadataOfThePage`.
+- TXT and CSV have no metadata: all three are empty. Tested by `TxtConverterTest.charsetsAndExtension`.
+
+**Cannot**
+- Values are not checked or cleaned up: a PDF made by Word may give "Microsoft Word - report.docx" as its title, and the language is not checked to be a BCP 47 tag.
+- The language is not guessed from the text, and the PDF title is not read from XMP metadata when the document information has none.
 
 ### Input
 
@@ -35,7 +47,8 @@ Contents: [API](#api) · [PDF](#pdf) · [DOCX](#docx) · [HTML](#html) · [TXT](
 - The file name's extension selects the format, ignoring case (`REPORT.PDF`).
 - The caller's stream is read to the end and never closed, also when the conversion fails; a stream is read only up to the size limit.
 - An unsupported extension is rejected before the stream is read.
-- `null` arguments throw `NullPointerException`.
+- `convert(InputStream, fileName, URI source)` gives the address the document was read from, for the relative links of an HTML page (see HTML, Links); other formats ignore it.
+- `null` arguments throw `NullPointerException`. Tested by `HtmlConverterTest.metadataOfThePage` for `source`.
 
 **Cannot**
 - No content sniffing: a PDF named `report.docx` is read as DOCX and fails.
@@ -432,10 +445,10 @@ Web pages saved as `.html` or `.htm`, based on jsoup. Developed on 13 public pag
 
 **Can**
 - Links are `[text](url)`; only http, https and mailto, as in the other formats. The whole text of the link counts, also when it is part of the address (`Lib/json/__init__.py`). Spaces at the ends of the link text stay outside it. Tested by `headingsParagraphsAndLinks`, `unsafeLinksStayText`, `sphinxPageKeepsFootnotesAndSourceLinkButNotPermalinks`, `spaceAtTheEndOfALinkStays`.
-- Relative links resolve against the address the page gives itself: `<base href>`, the canonical link or `og:url`. Without one they stay text; links to anchors on the page always do. Tested by `relativeLinksUseTheAddressThePageGives`.
+- Relative links resolve against `<base href>`, else the address the caller read the page from (`convert(InputStream, fileName, URI)`), else the address the page gives itself: the canonical link or `og:url`. A relative `<base href>` is resolved against the caller's address. Only http(s) addresses count. Without one they stay text; links to anchors on the page always do. Tested by `relativeLinksUseTheAddressThePageGives`, `relativeLinksUseTheAddressTheCallerGives`.
 
 **Cannot**
-- The address the page was downloaded from cannot be passed in: a page without a base, canonical link or `og:url` keeps its relative links as text.
+- `convert(Path)` takes no address: a saved page without a base, canonical link or `og:url` keeps its relative links as text; read it as a stream to pass one.
 
 ### Reading the file
 

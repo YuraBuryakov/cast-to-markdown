@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.yuraburyakov.casttomarkdown.CastToMarkdown;
+import io.github.yuraburyakov.casttomarkdown.PreparedDocument;
 import io.github.yuraburyakov.casttomarkdown.DocumentConversionException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -69,8 +70,12 @@ class TxtConverterTest {
                 closed[0] = true;
             }
         };
-        assertThat(CastToMarkdown.create().convert(stream, "a.txt").markdown()).isEqualTo("Grüße\n");
+        PreparedDocument document = CastToMarkdown.create().convert(stream, "a.txt");
+        assertThat(document.markdown()).isEqualTo("Grüße\n");
         assertThat(closed[0]).isFalse();
+        // plain text has no metadata
+        assertThat(document.title()).isEmpty();
+        assertThat(document.language()).isEmpty();
     }
 
     @Test
@@ -79,6 +84,6 @@ class TxtConverterTest {
     }
 
     private String convert(String text) {
-        return converter.convert(new ByteArrayInputStream(text.getBytes(StandardCharsets.UTF_8)), "a.txt");
+        return converter.convert(new ByteArrayInputStream(text.getBytes(StandardCharsets.UTF_8)), "a.txt", null).markdown();
     }
 }

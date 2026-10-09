@@ -64,13 +64,13 @@ If you can reach the vault, read the Project Context before proposing architectu
 | Topic | Decision |
 |---|---|
 | Entry point | Instance: `CastToMarkdown.create().convert(path)`; immutable, thread-safe. No static `convert` yet |
-| Result | `public final class PreparedDocument` (not a record), package-private constructor, only `markdown()` for now |
-| Input | `convert(Path)` and `convert(InputStream, String fileName)`. The caller owns the stream: it is read to the end, never closed (also on error). The file name's extension selects the format |
+| Result | `public final class PreparedDocument` (not a record), package-private constructor; `markdown()` and the metadata `title()`, `author()`, `language()` as `Optional<String>` (Q-API-04, 2026-10-09) |
+| Input | `convert(Path)`, `convert(InputStream, String fileName)` and `convert(InputStream, String fileName, URI source)` (the address for relative HTML links). The caller owns the stream: it is read to the end, never closed (also on error). The file name's extension selects the format |
 | Errors | Unchecked `DocumentConversionException`; subclasses `UnsupportedFormatException` (format, scanned PDF) and `DocumentTooLargeException` |
 | Settings | `CastToMarkdown.builder()...build()`; `create()` = defaults. Only `maxDocumentSize` (default 100 MiB) so far |
 | Converters | Interface `internal.DocumentConverter` in `core`, exported only to the format modules (`exports ... to`). Each format module has one package with exactly one public class, the rest package-private. `CastToMarkdown` picks the converter by file extension. No public SPI |
 
-Not decided yet: metadata, warnings, logging, Markdown escaping beyond `#` at line start.
+Not decided yet: warnings, logging, Markdown escaping of list markers and inline syntax.
 
 ## How to work here
 

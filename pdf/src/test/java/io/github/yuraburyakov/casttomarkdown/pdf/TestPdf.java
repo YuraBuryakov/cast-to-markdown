@@ -53,12 +53,23 @@ final class TestPdf {
     private final List<List<Item>> pages = new ArrayList<>();
     /** Indexes of pages that get a picture, like a scanned page. */
     private final Set<Integer> imagePages = new HashSet<>();
+    private String title;
+    private String author;
+    private String language;
 
     private TestPdf() {
     }
 
     static TestPdf builder() {
         return new TestPdf();
+    }
+
+    /** The title and author of the document information, and the language of the catalog. */
+    TestPdf info(String title, String author, String language) {
+        this.title = title;
+        this.author = author;
+        this.language = language;
+        return this;
     }
 
     TestPdf page() {
@@ -311,6 +322,9 @@ final class TestPdf {
                     }
                 }
             }
+            document.getDocumentInformation().setTitle(title);
+            document.getDocumentInformation().setAuthor(author);
+            document.getDocumentCatalog().setLanguage(language);
             document.save(file.toFile());
         }
         return file;

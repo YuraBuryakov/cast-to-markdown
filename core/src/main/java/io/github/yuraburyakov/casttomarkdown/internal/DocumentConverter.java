@@ -2,6 +2,7 @@ package io.github.yuraburyakov.casttomarkdown.internal;
 
 import io.github.yuraburyakov.casttomarkdown.DocumentConversionException;
 import java.io.InputStream;
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -28,10 +29,10 @@ public interface DocumentConverter {
      * Converts the file into Markdown.
      *
      * @param path the file
-     * @return the normalized Markdown
+     * @return the normalized Markdown and the metadata of the document
      * @throws DocumentConversionException if the file cannot be read or parsed
      */
-    String convert(Path path);
+    ConvertedDocument convert(Path path);
 
     /**
      * Converts the document read from {@code input} into Markdown. Reads the stream to the end
@@ -39,8 +40,9 @@ public interface DocumentConverter {
      *
      * @param input the document content; read, not closed
      * @param name document name for error messages
-     * @return the normalized Markdown
+     * @param source the address the document was read from, for its relative links; {@code null} if unknown
+     * @return the normalized Markdown and the metadata of the document
      * @throws DocumentConversionException if the stream cannot be read or the document cannot be parsed
      */
-    String convert(InputStream input, String name);
+    ConvertedDocument convert(InputStream input, String name, URI source);
 }

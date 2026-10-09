@@ -2,10 +2,12 @@ package io.github.yuraburyakov.casttomarkdown.pdf;
 
 import io.github.yuraburyakov.casttomarkdown.DocumentConversionException;
 import io.github.yuraburyakov.casttomarkdown.UnsupportedFormatException;
+import io.github.yuraburyakov.casttomarkdown.internal.ConvertedDocument;
 import io.github.yuraburyakov.casttomarkdown.internal.DocumentConverter;
 import io.github.yuraburyakov.casttomarkdown.internal.Markdown;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +20,7 @@ import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.io.RandomAccessRead;
 import org.apache.pdfbox.io.RandomAccessReadBufferedFile;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDDocumentInformation;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
@@ -70,7 +73,7 @@ public final class PdfConverter implements DocumentConverter {
      * {@code IOException}, and damaged PDFs also fail with unchecked exceptions while loading.
      */
     @Override
-    public String convert(Path path) {
+    public ConvertedDocument convert(Path path) {
         try (RandomAccessRead file = new RandomAccessReadBufferedFile(path.toFile())) {
             return convert(() -> Loader.loadPDF(file), path.toString());
         } catch (IOException e) {
@@ -83,11 +86,11 @@ public final class PdfConverter implements DocumentConverter {
      * A size limit comes with the configuration (builder).
      */
     @Override
-    public String convert(InputStream input, String name) {
+    public ConvertedDocument convert(InputStream input, String name, URI source) {
         return convert(() -> Loader.loadPDF(input.readAllBytes()), name);
     }
 
-    private String convert(Source source, String name) {
+    private ConvertedDocument convert(Source source, String name) {
         try (PDDocument document = source.load()) {
             TaggedTables tables = TaggedTables.read(document);
             LineCollector.Collected collected = LineCollector.collect(document, tables);
@@ -103,7 +106,10 @@ public final class PdfConverter implements DocumentConverter {
             }
             lines = RuledTables.replace(document, lines, tableMarkdown);
             lines = ScientificPowers.apply(document, lines);
-            return Markdown.normalize(toMarkdown(lines, tableMarkdown, document.getNumberOfPages() > 0 && document.getPage(0).getRotation() % 360 == 0));
+            String markdown = Markdown.normalize(toMarkdown(lines, tableMarkdown, document.getNumberOfPages() > 0 && document.getPage(0).getRotation() % 360 == 0));
+            PDDocumentInformation information = document.getDocumentInformation();
+            return new ConvertedDocument(markdown, information.getTitle(), information.getAuthor(),
+                    document.getDocumentCatalog().getLanguage());
         } catch (InvalidPasswordException e) {
             throw new DocumentConversionException("PDF is encrypted: " + name, e);
         } catch (IOException e) {
