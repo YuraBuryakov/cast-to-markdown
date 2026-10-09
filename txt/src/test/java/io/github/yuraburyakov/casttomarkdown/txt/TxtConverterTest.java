@@ -39,9 +39,9 @@ class TxtConverterTest {
         // a renderer would run or hide raw HTML from an untrusted text file
         assertThat(convert("<script>alert(1)</script>\nList<E> and a < b, x<5\n<!-- note -->"))
                 .isEqualTo("\\<script>alert(1)\\</script>\nList\\<E> and a < b, x<5\n\\<!-- note -->\n");
-        // an address in angle brackets stays an autolink (RFC text files); an unsafe scheme does not
+        // an address in angle brackets is text too (RFC text files): the address reads whole, it is no link
         assertThat(convert("location: <https://www.iana.org/assignments/uuid>, <javascript:alert(1)>"))
-                .isEqualTo("location: <https://www.iana.org/assignments/uuid>, \\<javascript:alert(1)>\n");
+                .isEqualTo("location: \\<https://www.iana.org/assignments/uuid>, \\<javascript:alert(1)>\n");
     }
 
     @Test

@@ -128,10 +128,9 @@ class MarkdownTest {
         // "\<b>" would read as an escaped backslash and a tag: the backslashes before "<" are doubled too
         assertThat(Markdown.escapeTags("<b>")).isEqualTo("\\<b>");
         assertThat(Markdown.escapeTags("\\<b>")).isEqualTo("\\\\\\<b>");
-        assertThat(Markdown.escapeTags("C:\\dir <https://a.org> a < b")).isEqualTo("C:\\dir <https://a.org> a < b");
-        // only a whole autolink stays; with a space or quote it is none, and some renderers would read a tag
+        // an address in angle brackets is escaped too: renderers differ on what is an autolink and what a tag
+        assertThat(Markdown.escapeTags("C:\\dir <https://a.org> a < b")).isEqualTo("C:\\dir \\<https://a.org> a < b");
         assertThat(Markdown.escapeTags("<https://x\" onmouseover=\"alert(1)>")).isEqualTo("\\<https://x\" onmouseover=\"alert(1)>");
-        assertThat(Markdown.escapeTags("<https://x")).isEqualTo("\\<https://x");
     }
 
     @Test

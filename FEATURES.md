@@ -457,7 +457,7 @@ Plain text files (`.txt`), without a parser dependency.
 `; spaces at the end of a line go. Tested by `TxtConverterTest.linesAndParagraphsStay`, `indentationAndTrailingSpaces`.
 - Block syntax at the start of a line is escaped (`#`, `>`, code fences, rule lines), as in the other formats. Tested by `blockSyntaxAtLineStartIsEscaped`.
 - Indentation stays: a table or code in the text keeps its columns. Tested by `indentationAndTrailingSpaces`.
-- Text a renderer would take for HTML is escaped (`\<script>`, `List\<E>`, `\<!--`); an address in angle brackets stays an autolink when it is http, https or mailto (`<https://...>` in RFC text files), `<javascript:...>` does not. Tested by `textThatLooksLikeHtmlIsEscaped`.
+- Text a renderer would take for HTML is escaped (`\<script>`, `List\<E>`, `\<!--`); an address in angle brackets (`<https://...>` in RFC text files) is escaped too and reads as text, not as a link: renderers differ on what is an autolink and what a tag. Tested by `textThatLooksLikeHtmlIsEscaped`.
 - The charset comes from a byte order mark (UTF-8, UTF-16), else UTF-8 when the bytes are valid UTF-8, else windows-1252 (Notepad, Excel). Tested by `charsetsAndExtension`, `TextTest`.
 
 **Cannot**

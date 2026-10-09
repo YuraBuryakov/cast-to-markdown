@@ -22,9 +22,11 @@ public final class Markdown {
     /** Line breaks inside link text: a blank line there would end the paragraph. */
     private static final Pattern LINE_BREAKS = Pattern.compile("[\\r\\n]+");
     /** The start of something CommonMark reads as raw HTML: a tag, a closing tag, a comment, an instruction. */
-    /** The start of a tag-like text, unless it is a whole autolink to a safe address (no space, quote or {@code <}). */
-    private static final Pattern TAG_START = Pattern.compile(
-            "(\\\\*)<(?=[A-Za-z/!?])(?!(?i:https?|mailto):[^\\s<>\"']*>)");
+    /**
+     * The start of tag-like text with the backslashes before it. Also an autolink: renderers differ on what is an
+     * autolink and what a tag, so no exception is safe.
+     */
+    private static final Pattern TAG_START = Pattern.compile("(\\\\*)<(?=[A-Za-z/!?])");
     /** A pipe with the backslashes right before it (group 1). */
     private static final Pattern PIPE_WITH_BACKSLASHES = Pattern.compile("(\\\\*)\\|");
     /** What an autolink {@code <...>} cannot hold: CommonMark ends it there or does not read it at all. */
@@ -84,9 +86,8 @@ public final class Markdown {
     /**
      * Escapes text a CommonMark renderer would read as raw HTML and run or hide: {@code <} before a letter,
      * {@code /}, {@code !} or {@code ?} ({@code <script>}, {@code List<E>}, {@code <!--}). {@code a < b} and
-     * {@code x<5} stay, and so does an autolink to a safe address ({@code <https://...>}, {@code <mailto:...>}),
-     * which an RFC text file writes; {@code <javascript:...>} does not. Used by the text formats (TXT, CSV); PDF
-     * and DOCX do not escape yet (Q-API-02b).
+     * {@code x<5} stay. An address in angle brackets ({@code <https://...>} of an RFC text file) is escaped too and
+     * reads as text. Used by the text formats (TXT, CSV); PDF and DOCX do not escape yet (Q-API-02b).
      *
      * @param text text of the document
      * @return the text with each such {@code <} escaped
