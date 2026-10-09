@@ -25,7 +25,8 @@ import java.util.TreeMap;
  * closed by this class.
  *
  * <p>Supported formats are those of the format modules on the class or module path: PDF ({@code .pdf})
- * with a text layer from {@code cast-to-markdown-pdf}, DOCX ({@code .docx}) from {@code cast-to-markdown-docx}.
+ * with a text layer from {@code cast-to-markdown-pdf}, DOCX ({@code .docx}) from {@code cast-to-markdown-docx},
+ * HTML ({@code .html}, {@code .htm}) from {@code cast-to-markdown-html}.
  * The format is detected by the file extension.
  * Scanned PDFs (pages are images, no text layer) are not supported: run OCR on them first.
  *

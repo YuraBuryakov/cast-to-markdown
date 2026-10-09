@@ -8,7 +8,7 @@ How to read this file:
 - **Cannot** lists known limits. The output there is still correct text; it just keeps less structure.
 - A change to a feature's behaviour updates its section in the same commit.
 
-Contents: [API](#api) · [PDF](#pdf) · [DOCX](#docx)
+Contents: [API](#api) · [PDF](#pdf) · [DOCX](#docx) · [HTML](#html)
 
 ## API
 
@@ -382,3 +382,64 @@ Word 2007+ files, based on Apache POI.
 - Apache POI logs through Log4j API: without a Log4j provider (or the `log4j-to-slf4j` bridge that Spring Boot includes) it prints one `Log4j API could not find a logging provider` line to stderr.
 
 **Tests:** `DocxConverterTest`
+
+## HTML
+
+Web pages saved as `.html` or `.htm`, based on jsoup. Measured on 13 public pages (Wikipedia, Python, MDN, Javadoc and Spring documentation, gov.uk, GitHub, NASA, an RFC, a blog, Hacker News, paulgraham.com, the jsoup cookbook): 98.5 % of the words of the main text kept and 1 % of the output from outside it, against 99.5 % and 27 % for copy-down (the Java port of Turndown). Not covered by a test, the numbers are in the Obsidian note "CastToMarkdown - HTML Module (design)".
+
+### Main content and page furniture
+
+**Can**
+- The only `<main>` (or `role="main"`) is the content; with none or several, the whole body. Tested by `HtmlConverterTest.theOnlyMainIsTheContent`, `twoMainsKeepTheWholeBody`.
+- Left out: scripts, styles, embedded media, images, form controls, `nav`, hidden elements (`hidden`, `aria-hidden`, inline `display:none`), the landmark roles `navigation`, `banner`, `contentinfo`, `complementary`, `search`, "Skip to" links, and the `header`, `footer` and `aside` of the page. Those of an article, `main` or section stay (the title of a post, Sphinx footnotes). Tested by `navigationAndOtherPageFurnitureIsLeftOut`, `headerAndFooterOfAnArticleStay`, `sphinxPageKeepsFootnotesAndSourceLinkButNotPermalinks`.
+- A form's text stays, only its controls go: ASP.NET wraps the whole page in one form. Tested by `navigationAndOtherPageFurnitureIsLeftOut`.
+- Left out also: a list of at least three links to the page in other languages (`hreflang`), the `[edit]` links of MediaWiki and heading permalinks (`¶`, `§`, `#`). Tested by `languageSwitcherAndMediaWikiEditLinksAreLeftOut`, `sphinxPageKeepsFootnotesAndSourceLinkButNotPermalinks`.
+- With no `h1`, the page `<title>` is the first heading. Tested by `titleIsTheHeadingWhenThereIsNoH1`.
+
+**Cannot**
+- Furniture made of plain `div`s stays: GitHub's sidebar (About, Topics, Stars), Wikipedia's categories, a "Help improve" box at the end of MDN. Only what is marked up as furniture goes; a page without `<main>` keeps everything else rather than risk losing text.
+- A table of contents in `nav` is left out with the navigation (RFC HTML); its headings are in the text anyway.
+
+### Text
+
+**Can**
+- Headings `h1` to `h6`, paragraphs, a line break (`<br>`) inside a paragraph, two line breaks between paragraphs (paulgraham.com). Tested by `headingsParagraphsAndLinks`, `quotesAndLineBreaks`, `twoLineBreaksEndAParagraph`.
+- Custom elements of web apps (`<react-app>`, `<turbo-frame>`) and unknown tags are blocks: GitHub's README keeps its headings and lists. Tested by `customElementsAreBlocks`.
+- White space, also no-break spaces (`&nbsp;`, U+202F), becomes one space; block syntax at the start of a line is escaped. Tested by `blockSyntaxAtLineStartIsEscapedAndSpacesAreNormal`.
+- Digits in `<sub>` and `<sup>` become Unicode subscripts and superscripts (`0₁₆`, `10⁻³`); a reference `[2]` stays as it is. Tested by `digitsInSubscriptsAndSuperscriptsKeepTheirPlace`.
+- `<pre>` is a fenced code block, longer than any run of backticks in it, with the language of `class="language-x"`; inline `<code>` is a code span. Tested by `codeBlocksAndInlineCode`.
+- Quotes become `>` blocks; definition lists and figure captions become paragraphs; images are left out. Tested by `quotesAndLineBreaks`, `imagesGoAndCaptionsAndDefinitionsStay`.
+- Bold and italic are plain text, as in PDF and DOCX.
+
+**Cannot**
+- Links next to each other without a space between them run together (`[css](...)[css-selectors](...)`, GitHub topics).
+- Formulas (MathML) are left as their text; the `alt` text of images is not kept.
+
+### Lists and tables
+
+**Can**
+- Nested lists, four spaces per level; a numbered list starts at its `start`. Tested by `nestedAndNumberedLists`.
+- A table of data is a Markdown table; a cell spanning columns (`colspan`) is followed by empty cells; `|` in a cell is escaped. Tested by `dataTableWithSpannedCells`.
+- A table that lays out the page, with blocks in its cells or mostly empty cells (spacer images on Hacker News), is read as blocks. Tested by `layoutTableIsReadAsBlocks`, `tableOfMostlyEmptyCellsIsALayout`.
+
+**Cannot**
+- Cells spanning rows (`rowspan`) are not repeated in the rows below.
+
+### Links
+
+**Can**
+- Links are `[text](url)`; only http, https and mailto, as in the other formats. The whole text of the link counts, also when it is part of the address (`Lib/json/__init__.py`). Spaces at the ends of the link text stay outside it. Tested by `headingsParagraphsAndLinks`, `unsafeLinksStayText`, `sphinxPageKeepsFootnotesAndSourceLinkButNotPermalinks`, `spaceAtTheEndOfALinkStays`.
+- Relative links resolve against the address the page gives itself: `<base href>`, the canonical link or `og:url`. Without one they stay text; links to anchors on the page always do. Tested by `relativeLinksUseTheAddressThePageGives`.
+
+**Cannot**
+- The address the page was downloaded from cannot be passed in: a page without a base, canonical link or `og:url` keeps its relative links as text.
+
+### Reading the file
+
+**Can**
+- The charset comes from a byte order mark or `<meta charset>`, else UTF-8; from a `Path` and from a stream, which is not closed. Tested by `charsetOfTheMetaTagIsUsed`, `foundByExtensionAndTheStreamIsNotClosed`.
+- A page nested 100,000 elements deep converts without a stack overflow: deeper than 200 levels an element is read as its text. Tested by `deeplyNestedElementsDoNotOverflowTheStack`.
+- On the module path an application that requires only the core module gets jsoup too. Tested by `ModulePathTest`.
+- An unreadable file fails with `DocumentConversionException`. Tested by `unreadableFileIsAConversionError`.
+
+**Tests:** `HtmlConverterTest`, `ModulePathTest`

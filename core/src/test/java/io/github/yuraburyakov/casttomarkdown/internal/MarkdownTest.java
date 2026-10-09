@@ -124,6 +124,14 @@ class MarkdownTest {
     }
 
     @Test
+    void wholeLinkTextIsALinkAlsoWhenItIsPartOfTheAddress() {
+        // HTML: a link's text is never a piece of an address split over lines (Python docs: "Source code:")
+        assertThat(Markdown.link("Lib/json/__init__.py", "https://github.com/python/cpython/tree/3.14/Lib/json/__init__.py", true))
+                .isEqualTo("[Lib/json/__init__.py](https://github.com/python/cpython/tree/3.14/Lib/json/__init__.py)");
+        assertThat(Markdown.link("Click", "javascript:alert(1)", true)).isEqualTo("Click");
+    }
+
+    @Test
     void unifiesLineEndings() {
         assertThat(Markdown.normalize("a\r\nb\rc")).isEqualTo("a\nb\nc\n");
     }

@@ -9,7 +9,8 @@
 module io.github.yuraburyakov.casttomarkdown {
     exports io.github.yuraburyakov.casttomarkdown;
     exports io.github.yuraburyakov.casttomarkdown.internal
-            to io.github.yuraburyakov.casttomarkdown.pdf, io.github.yuraburyakov.casttomarkdown.docx;
+            to io.github.yuraburyakov.casttomarkdown.pdf, io.github.yuraburyakov.casttomarkdown.docx,
+            io.github.yuraburyakov.casttomarkdown.html;
 
     uses io.github.yuraburyakov.casttomarkdown.internal.DocumentConverter;
 }

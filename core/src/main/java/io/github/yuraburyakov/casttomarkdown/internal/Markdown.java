@@ -64,6 +64,19 @@ public final class Markdown {
      * @return the Markdown link, or {@code text} unchanged
      */
     public static String link(String text, String url) {
+        return link(text, url, false);
+    }
+
+    /**
+     * As {@link #link(String, String)}; with {@code wholeText} the text is the whole text of the link (HTML), so a
+     * text that is in the address ({@code Lib/json/__init__.py}) is still a link.
+     *
+     * @param text the link text
+     * @param url the link target; may be {@code null}
+     * @param wholeText whether the text is all of the link's text, never a piece of an address split over lines
+     * @return the Markdown link, or {@code text} unchanged
+     */
+    public static String link(String text, String url, boolean wholeText) {
         String label = text.strip();
         // a space typed after the address ends up in the target as %20
         String target = url == null ? "" : TRAILING_SPACE.matcher(url.strip()).replaceFirst("");
@@ -73,7 +86,7 @@ public final class Markdown {
         if (label.equals(target) || ("mailto:" + label).equalsIgnoreCase(target)) {
             return autolink(text, label);
         }
-        if (isPartOfAddress(label, target)) {
+        if (!wholeText && isPartOfAddress(label, target)) {
             return text;
         }
         target = encodeControlCharacters(target);

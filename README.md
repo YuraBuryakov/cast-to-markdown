@@ -2,14 +2,14 @@
 
 Java-native library that converts common document formats into clean, LLM/RAG-friendly Markdown through one consistent API, using mature Java parsers under the hood.
 
-> **Status:** first release `0.1.0`, early development; the API may still change before `1.0`. PDF: paragraphs, headings, bullet lists, headers/footers removed, tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports) and captioned ruled tables of untagged ones, web links. DOCX: headings, lists, tables, footnotes, links.
+> **Status:** first release `0.1.0`, early development; the API may still change before `1.0`. PDF: paragraphs, headings, bullet lists, headers/footers removed, tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports) and captioned ruled tables of untagged ones, web links. DOCX: headings, lists, tables, footnotes, links. HTML (in `main`, not released yet): the main content of web pages without navigation and page furniture.
 
 ## Goals
 
 - One small Java API for several formats.
 - Runs embedded in the JVM: no Python, Docker or external service for the basic formats.
 - Markdown that keeps useful structure (headings, lists, links, simple tables) and drops obvious extraction noise.
-- Built on mature libraries (Apache PDFBox, Apache POI; jsoup for HTML later) instead of custom parsers.
+- Built on mature libraries (Apache PDFBox, Apache POI, jsoup) instead of custom parsers.
 
 ## Installation
 
@@ -77,6 +77,7 @@ CastToMarkdown converter = CastToMarkdown.builder()
 
 - PDF (with a text layer): paragraphs, headings (also from the structure tree of a tagged PDF), bullet lists, web links, tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports) and captioned ruled tables of untagged ones (LaTeX), empty cells included; running headers, footers and page numbers are removed, a word split by a hyphen at a line end is joined, and the hyphen of a compound stays, and the text inside captioned figures is left out. Scanned PDFs are rejected: run OCR first, for example with [OCRmyPDF](https://ocrmypdf.readthedocs.io/).
 - DOCX: headings from paragraph styles, nested and numbered lists, tables, footnotes, links.
+- HTML web pages (`0.2.0-SNAPSHOT`, not released yet): the main content without navigation, page header and footer, sidebars and hidden elements; headings, lists, tables, code blocks, quotes, links resolved against the page's own address. On 13 public pages 98.5 % of the main text is kept and 1 % of the output comes from outside it (copy-down: 99.5 % and 27 %).
 
 Errors are unchecked: `UnsupportedFormatException` for unsupported formats and scans, `DocumentTooLargeException` above the size limit, `DocumentConversionException` for unreadable, damaged or password-protected files (the original exception is the cause).
 
@@ -114,7 +115,8 @@ The fix of running headers in 0.2.0-SNAPSHOT was prompted by two of the files (F
 |---|---|---|
 | PDF (with a text layer) | 0.1 | `cast-to-markdown-pdf` |
 | DOCX (Word 2007+) | 0.1 | `cast-to-markdown-docx` |
-| HTML, TXT, CSV | planned | |
+| HTML (web pages) | 0.2 (not released yet) | `cast-to-markdown-html` |
+| TXT, CSV | planned | |
 
 ## Project structure
 
@@ -123,6 +125,7 @@ The fix of running headers in 0.2.0-SNAPSHOT was prompted by two of the files (F
 | `core` | `cast-to-markdown-core` | the API (`io.github.yuraburyakov.casttomarkdown`); no parser dependencies |
 | `pdf` | `cast-to-markdown-pdf` | PDF, based on Apache PDFBox |
 | `docx` | `cast-to-markdown-docx` | DOCX (Word 2007+), based on Apache POI |
+| `html` | `cast-to-markdown-html` | HTML web pages, based on jsoup (from 0.2.0) |
 
 Add the format modules you need; they depend on `core` and are found automatically (`ServiceLoader`), so users who need only PDF do not pull other parsers. `io.github.yuraburyakov.casttomarkdown` is the only API package; the converter contract in `internal` is exported only to the format modules and may change in any version.
 
