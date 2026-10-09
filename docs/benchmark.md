@@ -1,6 +1,6 @@
 # Benchmark: CastToMarkdown vs OpenDataLoader PDF
 
-Measured on 2026-10-08, recounted on 2026-10-09 on 12 files; words recounted again after running headers stopped taking the column headings of tables (Fed Z.1, a file of the tuning corpus). The numbers in the README section "How it compares" come from here.
+Measured on 2026-10-08, recounted on 2026-10-09 on 12 files; words recounted again after a running-header fix. The running-header fix was prompted by Fed H.4.1 and BLS (holdout) and tuned on Fed Z.1 and H.8 (tuning corpus); the holdout was run once after it. The numbers in the README section "How it compares" come from here.
 
 ## What was compared
 

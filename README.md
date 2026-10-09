@@ -106,7 +106,7 @@ Where this library does better:
 - It finds fewer false headings.
 - It keeps the hyphen of compounds (`anti-dumping`, `single-shot`).
 
-Two more files were left out of these numbers because they were used to tune this library after the first comparison: a tagged Typst PDF (headings of tagged PDFs) and the Python documentation printed by Chrome (lines drawn out of order). How both libraries do on them is in the benchmark notes. The files with their download links, how each number was taken and the numbers per file are in [docs/benchmark.md](docs/benchmark.md).
+The fix of running headers in 0.2.0-SNAPSHOT was prompted by two of the files (Fed H.4.1, BLS) and tuned on two other Fed releases (Z.1, H.8); the compared files were run once after it. Two more files were left out of these numbers because they were used to tune this library after the first comparison: a tagged Typst PDF (headings of tagged PDFs) and the Python documentation printed by Chrome (lines drawn out of order). How both libraries do on them is in the benchmark notes. The files with their download links, how each number was taken and the numbers per file are in [docs/benchmark.md](docs/benchmark.md).
 
 ## Formats
 
