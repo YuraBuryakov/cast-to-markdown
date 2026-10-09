@@ -84,6 +84,27 @@ class LateTextTest {
         assertThat(LateText.insert(List.of(left1, left2, right))).containsExactly(left1, left2, right);
     }
 
+    @Test
+    void lateLinesAboveTheTextOfThePageGoToItsTop() {
+        // RFC 9562 page 6: list items 9 to 16 go on from page 5 and are drawn after the rest of the page
+        Line text1 = at(217.5f, line(10, "An inspection of these", new Line.Word("An", 65.9f, 80f)));
+        Line text2 = at(231.1f, line(10, "in which new UUIDs", new Line.Word("in", 65.9f, 75f)));
+        Line item9 = at(81.2f, line(10, "9. [Sonyflake]", new Line.Word("9.", 75.2f, 82f)));
+        Line item10 = at(97.3f, line(10, "10. [orderedUuid]", new Line.Word("10.", 69.6f, 82f)));
+
+        assertThat(LateText.insert(List.of(text1, text2, item9, item10))).containsExactly(item9, item10, text1, text2);
+    }
+
+    @Test
+    void rightColumnStartingAboveTheLeftOneStaysAfterIt() {
+        // the left column starts below a figure, the right one at the top of the page
+        Line left1 = at(300, line(10, "left one", new Line.Word("left", 50, 70)));
+        Line left2 = at(314, line(10, "left two", new Line.Word("left", 50, 70)));
+        Line right = at(80, line(10, "right one", new Line.Word("right", 308, 330)));
+
+        assertThat(LateText.insert(List.of(left1, left2, right))).containsExactly(left1, left2, right);
+    }
+
     private static Line at(float y, Line line) {
         return new Line(line.page(), line.pageHeight(), line.x(), y, line.fontSize(), false, false, line.text(), -1,
                 line.width(), line.pageX(), y, line.words());

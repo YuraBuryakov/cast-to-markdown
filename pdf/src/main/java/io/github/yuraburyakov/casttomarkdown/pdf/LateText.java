@@ -44,6 +44,8 @@ final class LateText {
     private static final int MAX_TRIES = 8;
     /** A whole late line goes back at most this many lines. */
     private static final int LOOK_BACK = 6;
+    /** A late line above the text of its page starts at most this many font sizes right of its first line. */
+    private static final float TOP_INDENT = 2;
     /** A line with more words takes no late text: real lines have far fewer, and joining is linear in them. */
     private static final int MAX_WORDS = 300;
 
@@ -80,25 +82,68 @@ final class LateText {
      */
     private static List<Line> lateLinesInPlace(List<Line> lines) {
         List<Line> result = new ArrayList<>(lines.size());
+        int moved = -1; // index in result of the line moved last, while the lines after it may follow it
         for (Line line : lines) {
             int at = -1;
-            for (int i = result.size() - 2; i >= 0 && i >= result.size() - 1 - LOOK_BACK; i--) {
+            if (moved >= 0 && moved + 1 < result.size() && followsMoved(result.get(moved), line, result.get(moved + 1))) {
+                at = moved + 1;
+            }
+            for (int i = result.size() - 2; at < 0 && i >= 0 && i >= result.size() - 1 - LOOK_BACK; i--) {
                 Line above = result.get(i);
                 Line below = result.get(i + 1);
                 if (above.page() == line.page() && below.page() == line.page() && eligible(line) && eligible(below)
                         && above.y() < line.y() && line.y() < below.y()
                         && Math.abs(line.x() - below.x()) < SLACK && line.sizeKey() >= below.sizeKey()) {
                     at = i + 1;
-                    break;
                 }
             }
             if (at < 0) {
+                at = topOfPage(result, line);
+            }
+            if (at < 0) {
                 result.add(line);
+                moved = -1;
             } else {
                 result.add(at, line);
+                moved = at;
             }
         }
         return result;
+    }
+
+    /** The next late line right below the one moved last, in its font: list items 10 to 16 after item 9. */
+    private static boolean followsMoved(Line moved, Line line, Line below) {
+        return eligible(line) && line.page() == moved.page() && below.page() == line.page()
+                && moved.y() < line.y() && line.y() < below.y() && line.sizeKey() == moved.sizeKey()
+                && line.y() - moved.y() < 2 * line.fontSize();
+    }
+
+    /**
+     * Where a line drawn after the text of its page but above it goes: before the first line of the page below it,
+     * when every earlier line of the page is well above it (a running header) and every later one below it, and it
+     * starts at that line's left edge or up to {@link #TOP_INDENT} font sizes right of it (list items 9 to 16 of RFC
+     * 9562 at the top of page 6, which WeasyPrint draws after the page). The left edge keeps the right column of a
+     * two-column page, which also starts above the end of the left one, out. {@code -1} for nowhere.
+     */
+    private static int topOfPage(List<Line> result, Line line) {
+        if (!eligible(line)) {
+            return -1;
+        }
+        int at = result.size();
+        while (at > 0 && result.get(at - 1).page() == line.page() && result.get(at - 1).y() > line.y()) {
+            at--;
+        }
+        if (at == result.size()) {
+            return -1;
+        }
+        for (int i = at - 1; i >= 0 && result.get(i).page() == line.page(); i--) {
+            if (result.get(i).y() > line.y() - line.fontSize()) {
+                return -1;
+            }
+        }
+        Line first = result.get(at);
+        return eligible(first) && line.sizeKey() >= first.sizeKey() && line.x() > first.x() - SLACK
+                && line.x() - first.x() <= TOP_INDENT * line.fontSize() ? at : -1;
     }
 
     private static int baselineKey(Line line) {

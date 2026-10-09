@@ -117,6 +117,7 @@ PDFs with a text layer, based on Apache PDFBox.
 - Text in a font up to 1 pt smaller or larger fills only a gap between two words, with a list number before them (RFC 9562 draws `MUST` and `MAY` 1 pt smaller); after the last word it stays apart, as pieces of formulas would join there. Tested by `LateTextTest`.
 - Text ending with a word split by a hyphen that the next line carries on does not go after the end of a line a few lines back (arXiv 1512.00567: `abil-` / `ity` across the denominator of a fraction stays one word). Tested by `LateTextTest`.
 - A whole line drawn after the lines below it goes back between them when it lies between two following lines, starts at the lower one's left edge and is in its font size or a larger one (WeasyPrint: the linked title of an RFC 9562 reference, a late heading above its text). Tested by `LateTextTest`.
+- Lines drawn after the text of their page but above all of it go to the top of the page when they start at the left edge of its first line or up to two font sizes right of it, and the late lines right below them follow (RFC 9562 list items 9 to 16 at the top of page 6; Chrome section headings of Wikipedia and Python docs, the title of the other-c7 cover before its contacts). The right column of a two-column page stays after the left one. Tested by `LateTextTest`.
 - Text far from the line (the value column of a title block, a page number in a table of contents, the other column) and a row label a few points left of a table row stay apart. Tested by `PdfLateTextTest`.
 
 **Cannot**
