@@ -28,8 +28,9 @@ import org.apache.pdfbox.pdmodel.PDPage;
  *       background does).</li>
  * </ul>
  * The short lines (labels, at most {@link #MAX_LABEL_WORDS} words) that start in the figure, beside it within
- * the caption's width, or between it and the caption, are removed; the caption and longer lines stay: a
- * table drawn as a figure keeps its rows, and a wrong figure area can never take a sentence.
+ * the caption's width, or between it and the caption, are removed, and so are longer lines of neither words
+ * nor numbers ({@code [CLS] Tok 1 [SEP]...}); the caption and other longer lines stay: a table drawn as a figure
+ * keeps its rows, and a wrong figure area can never take a sentence.
  * Figures without a caption keep their text, and so do pages that paint more than {@link PageGraphics#MAX_BOXES}
  * boxes, or have more than {@link #MAX_DRAWINGS} drawings or {@link #MAX_CAPTIONS} captions.
  */
@@ -47,6 +48,8 @@ final class Figures {
     private static final float MAX_GAP = 3;
     /** Only lines of at most this many words are labels; longer lines (table rows, sentences) always stay. */
     private static final int MAX_LABEL_WORDS = 8;
+    /** A word of at least three letters in lower case after at most one capital: "the", "Time"; not "Tok", "EA". */
+    private static final Pattern WORD = Pattern.compile("(?<!\\p{L})\\p{Lu}?\\p{Ll}{3,}(?!\\p{L})");
     /** A table drawn as a figure has at least this many rows of numbers in a run (see {@link #isTable}). */
     private static final int TABLE_ROWS = 3;
     /** Rows of a table follow each other at most this many font sizes apart. */
@@ -120,7 +123,7 @@ final class Figures {
         areasByPage.replaceAll((page, areas) -> areas.stream().filter(area -> !isTable(page, area, lines)).toList());
         Set<Line> rowLabels = rowLabels(lines);
         return lines.stream().filter(line -> line.isTable() || captionLines.contains(line)
-                || words(line) > MAX_LABEL_WORDS || rowLabels.contains(line)
+                || readsAsText(line) || rowLabels.contains(line)
                 || areasByPage.getOrDefault(line.page(), List.of()).stream()
                         .noneMatch(area -> area.contains(line.pageX(), line.pageY()) || titleOf(area, line, captionSizes.get(area)))).toList();
     }
@@ -236,6 +239,15 @@ final class Figures {
         return !line.rotated() && line.fontSize() >= TITLE_SIZE * captionSize && line.pageY() <= area.bottom() && area.top() - line.pageY() <= TITLE_GAP * line.fontSize()
                 // over the drawing: it may start a point left of it (page 15 there)
                 && line.pageX() <= area.right() && line.pageX() + line.width() >= area.left();
+    }
+
+    /**
+     * Whether the line is too long for a label and has a {@link #WORD} or mostly numbers, as a sentence or a table
+     * row has ({@code Time 199 ns 189 ns}, {@code 52.45 (4.00x) 274} in figures of arXiv 1712.01208). A long line
+     * of neither is a row of labels: the token rows {@code [CLS] Tok 1 [SEP]... Tok N} of BERT Figure 1.
+     */
+    private static boolean readsAsText(Line line) {
+        return words(line) > MAX_LABEL_WORDS && (WORD.matcher(line.text()).find() || mostlyNumbers(line));
     }
 
     /** The words of the line, by its word list or else by its text. */

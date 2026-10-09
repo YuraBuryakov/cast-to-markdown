@@ -21,6 +21,20 @@ class FiguresTest {
     }
 
     @Test
+    void longLinesOfNeitherWordsNorNumbersAreLabels() {
+        // BERT Figure 1: token rows of ten "words"; arXiv 1712.01208: a table drawn in a figure
+        List<Line> lines = List.of(line(110, 150, "[CLS] Tok 1 [SEP]... Tok N Tok 1 ... TokM"),
+                line(110, 160, "EA EB EB EB EB EBEA EA EA EA EA"),
+                line(110, 170, "Time 199 ns 189 ns 280 ns 105 ns"),
+                line(110, 180, "a long sentence that a wrong figure area must not take"),
+                line(72, 225, "Figure 1: Overall procedures."));
+
+        assertThat(texts(Figures.remove(lines, Map.of(1, List.of(box(100, 140, 300, 200))))))
+                .containsExactly("Time 199 ns 189 ns 280 ns 105 ns",
+                        "a long sentence that a wrong figure area must not take", "Figure 1: Overall procedures.");
+    }
+
+    @Test
     void axisLabelBetweenFigureAndCaptionIsRemoved() {
         List<Line> lines = List.of(line(150, 212, "iter. (1e4)"), line(72, 238, "Figure 1. Training error."));
 
