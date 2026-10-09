@@ -2,7 +2,7 @@
 
 Java-native library that converts common document formats into clean, LLM/RAG-friendly Markdown through one consistent API, using mature Java parsers under the hood.
 
-> **Status:** release `0.2.0`, early development; the API may still change before `1.0`. PDF: paragraphs, headings, bullet lists, headers/footers removed, tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports) and captioned ruled tables of untagged ones, web links. DOCX: headings, lists, tables, footnotes, links. HTML: the main content of web pages without navigation and page furniture. TXT, CSV and TSV.
+> **Status:** release `0.2.0`, early development; the API may still change before `1.0`. PDF: paragraphs, headings, bullet lists, headers/footers removed, tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports) and captioned ruled tables of untagged ones, web links. DOCX: headings, lists, tables, footnotes, links. HTML: the main content of web pages without navigation and page furniture. TXT, CSV and TSV. XLSX (in development for 0.3.0): each sheet as a Markdown table.
 
 ## Goals
 
@@ -28,7 +28,7 @@ Add the format modules you need (Java 17+); each brings `cast-to-markdown-core` 
 </dependency>
 ```
 
-The other formats come the same way: `cast-to-markdown-html` (web pages, jsoup), `cast-to-markdown-txt`, `cast-to-markdown-csv` (CSV and TSV), all `0.2.0`.
+The other formats come the same way: `cast-to-markdown-html` (web pages, jsoup), `cast-to-markdown-txt`, `cast-to-markdown-csv` (CSV and TSV), all `0.2.0`; `cast-to-markdown-xlsx` (Excel) comes with `0.3.0`.
 
 Gradle: `implementation("io.github.yuraburyakov:cast-to-markdown-pdf:0.2.0")`. It works on the class path and on the module path: `requires io.github.yuraburyakov.casttomarkdown;` is enough, the format modules are found as services.
 
@@ -94,6 +94,7 @@ CastToMarkdown converter = CastToMarkdown.builder()
 - DOCX: headings from paragraph styles, nested and numbered lists, tables, footnotes, links.
 - HTML web pages (from 0.2.0): the main content without navigation, page header and footer, sidebars and hidden elements; headings, lists, tables, code blocks, quotes, links resolved against the page's own address.
 - TXT and CSV/TSV (from 0.2.0): plain text with block syntax escaped; CSV and TSV as a Markdown table, RFC 4180 quoting, comma, semicolon or tab found by itself.
+- XLSX (from 0.3.0): each visible sheet as a Markdown table with the values Excel shows (number and date formats, saved formula results), a heading per sheet when there are several.
 
 Errors are unchecked: `UnsupportedFormatException` for unsupported formats and scans, `DocumentTooLargeException` above the size limit, `DocumentConversionException` for unreadable, damaged or password-protected files (the original exception is the cause).
 
@@ -145,6 +146,7 @@ CastToMarkdown leaves out navigation, page header and footer and hidden elements
 | DOCX (Word 2007+) | 0.1 | `cast-to-markdown-docx` |
 | HTML (web pages) | 0.2 | `cast-to-markdown-html` |
 | TXT, CSV, TSV | 0.2 | `cast-to-markdown-txt`, `cast-to-markdown-csv` |
+| XLSX (Excel 2007+) | 0.3 | `cast-to-markdown-xlsx` |
 
 ## Project structure
 
@@ -156,6 +158,7 @@ CastToMarkdown leaves out navigation, page header and footer and hidden elements
 | `html` | `cast-to-markdown-html` | HTML web pages, based on jsoup (from 0.2.0) |
 | `txt` | `cast-to-markdown-txt` | plain text, no dependencies (from 0.2.0) |
 | `csv` | `cast-to-markdown-csv` | CSV and TSV as a Markdown table, no dependencies (from 0.2.0) |
+| `xlsx` | `cast-to-markdown-xlsx` | XLSX (Excel 2007+) sheets as Markdown tables, based on Apache POI (from 0.3.0) |
 
 Add the format modules you need; they depend on `core` and are found automatically (`ServiceLoader`), so users who need only PDF do not pull other parsers. `io.github.yuraburyakov.casttomarkdown` is the only API package; the converter contract in `internal` is exported only to the format modules and may change in any version.
 

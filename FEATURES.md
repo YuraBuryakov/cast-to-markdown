@@ -8,7 +8,7 @@ How to read this file:
 - **Cannot** lists known limits. The output there is still correct text; it just keeps less structure.
 - A change to a feature's behaviour updates its section in the same commit.
 
-Contents: [API](#api) · [PDF](#pdf) · [DOCX](#docx) · [HTML](#html) · [TXT](#txt) · [CSV](#csv)
+Contents: [API](#api) · [PDF](#pdf) · [DOCX](#docx) · [HTML](#html) · [TXT](#txt) · [CSV](#csv) · [XLSX](#xlsx)
 
 ## API
 
@@ -502,3 +502,22 @@ CSV and TSV files (`.csv`, `.tsv`) as a Markdown table, without a parser depende
 - Numbers are not aligned and types are not recognized; a very large file becomes a very large table (the size limit applies).
 
 **Tests:** `CsvConverterTest`, `ModulePathTest`
+
+## XLSX
+
+Excel workbooks (`.xlsx`, Excel 2007+), with Apache POI.
+
+**Can**
+- Each visible sheet with text is a Markdown table, its first row with text the header. With more than one such sheet, each table follows a `#` heading with the sheet name; hidden and empty sheets are left out. Tested by `XlsxConverterTest.oneSheetIsATableWithShownValues`, `severalSheetsGetTheirNamesAsHeadingsAndHiddenOrEmptyOnesAreLeftOut`.
+- A cell is the text Excel shows: number and date formats applied (US English, so the output does not depend on the machine), a formula the value Excel saved for it. Tested by `oneSheetIsATableWithShownValues`.
+- Rows and columns without text in the whole sheet are left out. `|` in a cell is escaped, a line break becomes a space, text that looks like an HTML tag is escaped. Tested by `cellTextCannotBreakTheTable`.
+- Title, creator and language of the core properties as metadata. Tested by `metadataComesFromTheCoreProperties`.
+- `Path` and stream give the same Markdown, the stream is not closed; an old `.xls`, a password-protected or a damaged file is a `DocumentConversionException`. Tested by `fileAndStreamGiveTheSameAndTheStreamIsNotClosed`, `oldXlsAndDamagedFilesAreConversionErrors`.
+
+**Cannot**
+- Merged cells are not spread over the columns they span; charts, pictures, comments and cell colours are left out.
+- Formulas are not calculated again: in a file written by a program that does not calculate them, a formula cell shows no value or a wrong one. Not covered.
+- The whole workbook is loaded into memory: a big sheet needs many times the file size (the size limit applies to the file only). `.xls`, `.xlsm` and `.xlsb` are not read.
+- A sheet without a header row gets its first row as the header.
+
+**Tests:** `XlsxConverterTest`, `ModulePathTest`

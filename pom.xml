@@ -21,6 +21,7 @@
         <module>html</module>
         <module>txt</module>
         <module>csv</module>
+        <module>xlsx</module>
     </modules>
 
     <licenses>
