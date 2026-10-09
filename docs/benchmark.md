@@ -1,16 +1,16 @@
 # Benchmark: CastToMarkdown vs OpenDataLoader PDF
 
-Measured on 2026-10-08. The numbers in the README section "How it compares" come from here.
+Measured on 2026-10-08, recounted on 2026-10-09 for the release candidate. The numbers in the README section "How it compares" come from here.
 
 ## What was compared
 
-- **CastToMarkdown** `main` at `3650529` (0.1.0-SNAPSHOT, PDFBox 3.0.8): `CastToMarkdown.create().convert(path).markdown()`.
+- **CastToMarkdown** release candidate `8961b64` (0.1.0-SNAPSHOT, PDFBox 3.0.8; first measured on `main` at `3650529`, which gave the same words, links and hyphens on every file, one heading less on the 13 files and 10 instead of 36 on the Typst file): `CastToMarkdown.create().convert(path).markdown()`.
 - **OpenDataLoader PDF** 2.5.12 (`org.opendataloader:opendataloader-pdf-core`): `OpenDataLoaderPDF.processFile(path, config)` with `generateMarkdown=true`, `generateJSON=false`, `imageOutput=off` and the defaults for the rest (`hybrid=off`, `readingOrder=xycut`, `tableMethod=default`, `includeHeaderFooter=false`). A second run sets `useStructTree=true`.
 - Windows 11, OpenJDK 21.0.12, each library in its own JVM (they need different PDFBox versions). Every file is converted twice in one JVM, and the second pass is timed.
 
 ## Files
 
-14 public PDFs from different generators. None of them was used to tune CastToMarkdown, and none was changed for it before these numbers were taken. None is a scan. The files are not in this repository; download them from the links. Three of them are replaced at their address from time to time, so a later download may differ.
+14 public PDFs from different generators. None of them was used to tune CastToMarkdown, and none was changed for it before the first numbers were taken. After that the Typst file was used to tune the headings of tagged PDFs, so it is left out of the totals: the README and the table below count 13 files. Its row in the per-file table is kept. None is a scan. The files are not in this repository; download them from the links. Three of them are replaced at their address from time to time, so a later download may differ.
 
 | File | Generator | Pages | Source |
 |---|---|---|---|
@@ -36,18 +36,20 @@ Measured on 2026-10-08. The numbers in the README section "How it compares" come
 - **Links:** `[text](http...)` and `<http...>` in the Markdown.
 - **Hyphens:** every word that `pdftotext` shows split by a hyphen at a line end (524), looked up in each output: joined without the hyphen, joined with it, or still broken. The cases where the outputs differ (46) were labelled by hand as word break, compound or unclear.
 - **Tables:** the number of Markdown tables (a `|---|` separator row), checked by eye on the files where the counts differ.
-- **Time:** wall time of the second pass over all 14 files.
+- **Time:** wall time of the second pass over the 13 files, both libraries run one after the other on the same machine.
 
 ## Results
 
 | | CastToMarkdown | OpenDataLoader | OpenDataLoader, `useStructTree` |
 |---|---|---|---|
-| Words kept (149,688 reference words) | 97.2 % | 96.5 % | 95.9 % |
-| Outline headings found (420) / extra | 278 / 27 | 252 / 110 | 353 / 96 |
-| Links | 457 | 0 | 0 |
+| Words kept (147,121 reference words) | 97.2 % | 96.4 % | 95.8 % |
+| Outline headings found (312 in 7 files) / extra | 269 / 25 | 237 / 89 | 255 / 84 |
+| Links | 449 | 0 | 0 |
 | Word breaks left with their hyphen, of the 46 cases where the outputs differ | 25 | 0 | |
 | Compounds that lost their hyphen, of the same 46 | 0 | 21 | |
-| Time, 14 files | 2.4 s | 3.4 s | |
+| Time, 13 files | 1.9 s | 3.5 s | |
+
+With the Typst file (14 files): words 97.2 % / 96.5 % / 95.9 % of 149,688; headings 305 / 82, 252 / 110, 353 / 96 of 420; links 457, 0, 0; time 2.0 s and 3.6 s. The 46 hyphen cases have none in the Typst file.
 
 Per file:
 
@@ -63,18 +65,18 @@ Per file:
 | eu-key-figures-2014-2019-indesign | 94.5 / 96.5 / 99.5 | no outline | 0 / 8 / 0 | 0 / 0 |
 | fed-h41-aspose | 98.6 / 99.5 / 99.5 | no outline | 0 / 11 / 11 | 0 / 0 |
 | gdocs-chromium-win32k-lockdown | 99.9 / 99.9 / 99.9 | 30; 28/0, 28/1, 28/0 | 1 / 1 / 1 | 17 / 0 |
-| govuk-cycle-to-work-guidance-word | 99.6 / 99.4 / 96.7 | 43; 41/6, 24/5, 42/1 | 4 / 8 / 4 | 19 / 0 |
+| govuk-cycle-to-work-guidance-word | 99.6 / 99.4 / 96.7 | 43; 42/6, 24/5, 42/1 | 4 / 8 / 4 | 19 / 0 |
 | libreoffice-custom-shape-tutorial | 98.5 / 96.2 / 96.2 | 152; 124/5, 122/42, 122/42 | 9 / 36 / 36 | 38 / 0 |
 | rfc9457-weasyprint | 95.2 / 94.8 / 94.8 | 31; 28/2, 26/8, 26/8 | 0 / 0 / 0 | 45 / 0 |
-| typst-oderso-documentation | 100.0 / 99.8 / 99.8 | 108; 10/2, 15/21, 98/12 | 4 / 1 / 4 | 8 / 0 |
+| typst-oderso-documentation (not in the totals) | 100.0 / 99.8 / 99.8 | 108; 36/57, 15/21, 98/12 | 4 / 1 / 4 | 8 / 0 |
 
 ## What the numbers do not show
 
 - **Tables.** OpenDataLoader's 32 tables in bls-empsit and 11 in fed-h41-aspose are real statistical tables; CastToMarkdown writes them as plain text. In the arXiv papers most of OpenDataLoader's tables are figures and algorithm boxes turned into empty or one-column tables (39 in the XGBoost paper, which has about six real ones; CastToMarkdown finds one of them).
 - **Noise.** OpenDataLoader writes `<br>` inside table cells (4,353 in bls-empsit) and HTML entities in the text (`&lt;` and `&gt;`: 229 in the Perelman paper, 528 in the LibreOffice tutorial). These count as extra words, not as missing ones, so the "words kept" row does not lower OpenDataLoader for them.
 - **Figures and formulas.** CastToMarkdown breaks formulas and text drawn rotated or letter by letter inside figures into many short paragraphs (`qu` / `an` / `tu` / `m` in the revtex paper); the cover title of the EU document comes out as nine short paragraphs.
-- **Tagged PDFs.** With `useStructTree=true` OpenDataLoader takes the headings of the tagged Typst PDF from its structure tree (98 of 108); CastToMarkdown finds 10 there, as it reads headings from the fonts.
+- **Tagged PDFs.** Both libraries take the headings of the tagged Typst PDF from its structure tree, OpenDataLoader with `useStructTree=true` (98 of 108 found). CastToMarkdown finds 36 by this count (10 before it read the structure tree), but most of its 57 extra headings are outline entries too: it writes the parameter type after the name as in the PDF (`lang str`), and the outline has the name alone (`lang`).
 
 ## The same comparison on the files used for tuning
 
-CastToMarkdown was tuned on 21 other PDFs (arXiv, NIST, an RFC, Word, InDesign, LibreOffice and Chrome exports). On those its lead is larger: 256 of 298 outline headings with 53 extra against 225 with 193, and 1.8 times the speed. On words kept OpenDataLoader was ahead there (96.6 % against 95.7 %), mostly because CastToMarkdown leaves out the text inside captioned figures, which those papers have more of. These numbers are not in the README for that reason.
+CastToMarkdown was tuned on 21 other PDFs (arXiv, NIST, an RFC, Word, InDesign, LibreOffice and Chrome exports). On those its lead is larger: 287 of 298 outline headings with 58 extra against 225 with 193, and 1.8 times the speed. On words kept OpenDataLoader was ahead there (96.6 % against 95.6 %; a word joined at a line-end hyphen counts as missing), mostly because CastToMarkdown leaves out the text inside captioned figures, which those papers have more of. These numbers are not in the README for that reason.

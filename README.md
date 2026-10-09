@@ -9,7 +9,7 @@ Java-native library that converts common document formats into clean, LLM/RAG-fr
 - One small Java API for several formats.
 - Runs embedded in the JVM: no Python, Docker or external service for the basic formats.
 - Markdown that keeps useful structure (headings, lists, links, simple tables) and drops obvious extraction noise.
-- Built on mature libraries (Apache PDFBox, Apache POI, jsoup) instead of custom parsers.
+- Built on mature libraries (Apache PDFBox, Apache POI; jsoup for HTML later) instead of custom parsers.
 
 ## Installation
 
@@ -75,7 +75,7 @@ CastToMarkdown converter = CastToMarkdown.builder()
 
 [FEATURES.md](FEATURES.md) lists every feature: what it can do, what it cannot do yet, and the tests that check it. In short:
 
-- PDF (with a text layer): paragraphs, headings, bullet lists, web links, tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports) and captioned ruled tables of untagged ones (LaTeX), empty cells included; running headers, footers and page numbers are removed, a word split by a hyphen at a line end is joined, and the hyphen of a compound stays, and the text inside captioned figures is left out. Scanned PDFs are rejected: run OCR first, for example with [OCRmyPDF](https://ocrmypdf.readthedocs.io/).
+- PDF (with a text layer): paragraphs, headings (also from the structure tree of a tagged PDF), bullet lists, web links, tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports) and captioned ruled tables of untagged ones (LaTeX), empty cells included; running headers, footers and page numbers are removed, a word split by a hyphen at a line end is joined, and the hyphen of a compound stays, and the text inside captioned figures is left out. Scanned PDFs are rejected: run OCR first, for example with [OCRmyPDF](https://ocrmypdf.readthedocs.io/).
 - DOCX: headings from paragraph styles, nested and numbered lists, tables, footnotes, links.
 
 Errors are unchecked: `UnsupportedFormatException` for unsupported formats and scans, `DocumentTooLargeException` above the size limit, `DocumentConversionException` for unreadable, damaged or password-protected files (the original exception is the cause).
@@ -84,21 +84,20 @@ A conversion has no time limit. For untrusted uploads run it in your own executo
 
 ## How it compares
 
-Measured against [OpenDataLoader PDF](https://github.com/opendataloader-project/opendataloader-pdf) 2.5.12, the other pure-Java PDF-to-Markdown library, on 14 public PDFs that were not used to tune this library. They come from different generators: pdfTeX (one- and two-column arXiv papers, revtex, ACM), Ghostscript, Acrobat Distiller, InDesign, Word, Aspose.Words, LibreOffice, Google Docs, Chrome, WeasyPrint (an RFC) and Typst. OpenDataLoader ran with its defaults (`hybrid=off`, `readingOrder=xycut`) and again with `useStructTree=true`. Both ran on OpenJDK 21 in separate JVMs, and the time is the second (warm) pass.
+Measured against [OpenDataLoader PDF](https://github.com/opendataloader-project/opendataloader-pdf) 2.5.12, the other pure-Java PDF-to-Markdown library, on 13 public PDFs that were not used to tune this library. They come from different generators: pdfTeX (one- and two-column arXiv papers, revtex, ACM), Ghostscript, Acrobat Distiller, InDesign, Word, Aspose.Words, LibreOffice, Google Docs, Chrome and WeasyPrint (an RFC). OpenDataLoader ran with its defaults (`hybrid=off`, `readingOrder=xycut`) and again with `useStructTree=true`. Both ran on OpenJDK 21 in separate JVMs, and the time is the second (warm) pass.
 
-| | CastToMarkdown 0.1.0-SNAPSHOT | OpenDataLoader 2.5.12 (default / `useStructTree`) |
+| | CastToMarkdown 0.1.0 | OpenDataLoader 2.5.12 (default / `useStructTree`) |
 |---|---|---|
-| Words of the PDF text kept (reference: `pdftotext -raw`, 149,688 words) | 97.2 % | 96.5 % / 95.9 % |
-| Headings of the PDF outline found (420 entries in 8 files) / headings that are not in the outline | 278 / 27 | 252 / 110; 353 / 96 |
-| Web links written as Markdown links | 457 | 0 |
+| Words of the PDF text kept (reference: `pdftotext -raw`, 147,121 words) | 97.2 % | 96.4 % / 95.8 % |
+| Headings of the PDF outline found (312 entries in 7 files) / headings that are not in the outline | 269 / 25 | 237 / 89; 255 / 84 |
+| Web links written as Markdown links | 449 | 0 |
 | Compounds that lost their hyphen at a line break | 0 | 21 |
 | Statistical tables (BLS Employment Situation, Fed H.4.1) as Markdown tables | 0 of 2 files | 43 tables in 2 files (11 with `useStructTree`) |
-| Time for the 14 files | 2.4 s | 3.4 s |
+| Time for the 13 files | 1.9 s | 3.5 s |
 | Runtime jars | 6, 4.0 MB | 33, 25 MB |
 
 Where OpenDataLoader does better:
 - Tables of statistical reports drawn without row rules become Markdown tables there and plain text here.
-- With `useStructTree=true` it reads the headings of a tagged PDF from its structure tree (Typst: 98 of 108 against 10 here).
 - Text inside figures and formulas is broken into many short paragraphs here.
 - Some words split at a line end keep their hyphen here when the rest is itself a word or the word is not in the 40,000-word list (`com-pact`, `be-fore`, `Gaus-sian`: 25 cases); OpenDataLoader joins them.
 
@@ -107,7 +106,7 @@ Where this library does better:
 - It finds fewer false headings.
 - It keeps the hyphen of compounds (`anti-dumping`, `single-shot`).
 
-The files with their download links, how each number was taken and the numbers per file are in [docs/benchmark.md](docs/benchmark.md).
+A 14th file, a tagged Typst PDF, was left out of these numbers because it was used to tune the headings of tagged PDFs; how both libraries do on it is in the benchmark notes. The files with their download links, how each number was taken and the numbers per file are in [docs/benchmark.md](docs/benchmark.md).
 
 ## Formats
 
