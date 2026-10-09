@@ -2,7 +2,7 @@
 
 Java-native library that converts common document formats into clean, LLM/RAG-friendly Markdown through one consistent API, using mature Java parsers under the hood.
 
-> **Status:** first release `0.1.0`, early development; the API may still change before `1.0`. PDF: paragraphs, headings, bullet lists, headers/footers removed, tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports) and captioned ruled tables of untagged ones, web links. DOCX: headings, lists, tables, footnotes, links. HTML (in `main`, not released yet): the main content of web pages without navigation and page furniture.
+> **Status:** release `0.2.0`, early development; the API may still change before `1.0`. PDF: paragraphs, headings, bullet lists, headers/footers removed, tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports) and captioned ruled tables of untagged ones, web links. DOCX: headings, lists, tables, footnotes, links. HTML: the main content of web pages without navigation and page furniture. TXT, CSV and TSV.
 
 ## Goals
 
@@ -19,16 +19,18 @@ Add the format modules you need (Java 17+); each brings `cast-to-markdown-core` 
 <dependency>
     <groupId>io.github.yuraburyakov</groupId>
     <artifactId>cast-to-markdown-pdf</artifactId>
-    <version>0.1.0</version>
+    <version>0.2.0</version>
 </dependency>
 <dependency>
     <groupId>io.github.yuraburyakov</groupId>
     <artifactId>cast-to-markdown-docx</artifactId>
-    <version>0.1.0</version>
+    <version>0.2.0</version>
 </dependency>
 ```
 
-Gradle: `implementation("io.github.yuraburyakov:cast-to-markdown-pdf:0.1.0")`. It works on the class path and on the module path: `requires io.github.yuraburyakov.casttomarkdown;` is enough, the format modules are found as services.
+The other formats come the same way: `cast-to-markdown-html` (web pages, jsoup), `cast-to-markdown-txt`, `cast-to-markdown-csv` (CSV and TSV), all `0.2.0`.
+
+Gradle: `implementation("io.github.yuraburyakov:cast-to-markdown-pdf:0.2.0")`. It works on the class path and on the module path: `requires io.github.yuraburyakov.casttomarkdown;` is enough, the format modules are found as services.
 
 ## Usage
 
@@ -77,8 +79,8 @@ CastToMarkdown converter = CastToMarkdown.builder()
 
 - PDF (with a text layer): paragraphs, headings (also from the structure tree of a tagged PDF), bullet lists, web links, tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports) and captioned ruled tables of untagged ones (LaTeX), empty cells included; running headers, footers and page numbers are removed, a word split by a hyphen at a line end is joined, and the hyphen of a compound stays, and the text inside captioned figures is left out. Scanned PDFs are rejected: run OCR first, for example with [OCRmyPDF](https://ocrmypdf.readthedocs.io/).
 - DOCX: headings from paragraph styles, nested and numbered lists, tables, footnotes, links.
-- HTML web pages (`0.2.0-SNAPSHOT`, not released yet): the main content without navigation, page header and footer, sidebars and hidden elements; headings, lists, tables, code blocks, quotes, links resolved against the page's own address.
-- TXT and CSV/TSV (`0.2.0-SNAPSHOT`, not released yet): plain text with block syntax escaped; CSV and TSV as a Markdown table, RFC 4180 quoting, comma, semicolon or tab found by itself.
+- HTML web pages (from 0.2.0): the main content without navigation, page header and footer, sidebars and hidden elements; headings, lists, tables, code blocks, quotes, links resolved against the page's own address.
+- TXT and CSV/TSV (from 0.2.0): plain text with block syntax escaped; CSV and TSV as a Markdown table, RFC 4180 quoting, comma, semicolon or tab found by itself.
 
 Errors are unchecked: `UnsupportedFormatException` for unsupported formats and scans, `DocumentTooLargeException` above the size limit, `DocumentConversionException` for unreadable, damaged or password-protected files (the original exception is the cause).
 
@@ -88,7 +90,7 @@ A conversion has no time limit. For untrusted uploads run it in your own executo
 
 Measured against [OpenDataLoader PDF](https://github.com/opendataloader-project/opendataloader-pdf) 2.5.12, the other pure-Java PDF-to-Markdown library, on 12 public PDFs that were not used to tune this library. They come from different generators: pdfTeX (one- and two-column arXiv papers, revtex, ACM), Ghostscript, Acrobat Distiller, InDesign, Word, Aspose.Words, LibreOffice, Google Docs and WeasyPrint (an RFC). OpenDataLoader ran with its defaults (`hybrid=off`, `readingOrder=xycut`) and again with `useStructTree=true`. Both ran on OpenJDK 21 in separate JVMs, and the time is the second (warm) pass.
 
-| | CastToMarkdown 0.2.0-SNAPSHOT | OpenDataLoader 2.5.12 (default / `useStructTree`) |
+| | CastToMarkdown 0.2.0 | OpenDataLoader 2.5.12 (default / `useStructTree`) |
 |---|---|---|
 | Words of the PDF text kept (reference: `pdftotext -raw`, 143,012 words) | 97.5 % | 96.6 % / 96.5 % |
 | Headings of the PDF outline found (312 entries in 7 files) / headings that are not in the outline | 269 / 25 | 237 / 89; 255 / 84 |
@@ -108,9 +110,9 @@ Where this library does better:
 - It finds fewer false headings.
 - It keeps the hyphen of compounds (`anti-dumping`, `single-shot`).
 
-The fix of running headers in 0.2.0-SNAPSHOT was prompted by two of the files (Fed H.4.1, BLS) and tuned on two other Fed releases (Z.1, H.8); the compared files were run once after it. Two more files were left out of these numbers because they were used to tune this library after the first comparison: a tagged Typst PDF (headings of tagged PDFs) and the Python documentation printed by Chrome (lines drawn out of order). How both libraries do on them is in the benchmark notes. The files with their download links, how each number was taken and the numbers per file are in [docs/benchmark.md](docs/benchmark.md).
+The fix of running headers in 0.2.0 was prompted by two of the files (Fed H.4.1, BLS) and tuned on two other Fed releases (Z.1, H.8); the compared files were run once after it. Two more files were left out of these numbers because they were used to tune this library after the first comparison: a tagged Typst PDF (headings of tagged PDFs) and the Python documentation printed by Chrome (lines drawn out of order). How both libraries do on them is in the benchmark notes. The files with their download links, how each number was taken and the numbers per file are in [docs/benchmark.md](docs/benchmark.md).
 
-### HTML (0.2.0, not released yet)
+### HTML
 
 Measured on 10 public pages not used to develop the module, one per site type (Sphinx, MkDocs, Docusaurus, Javadoc, a blog, MediaWiki, usa.gov, GitHub, a Fed data table, a news article), against copy-down 1.1, the Java port of Turndown, which converts the whole page:
 
@@ -128,8 +130,8 @@ CastToMarkdown leaves out navigation, page header and footer and hidden elements
 |---|---|---|
 | PDF (with a text layer) | 0.1 | `cast-to-markdown-pdf` |
 | DOCX (Word 2007+) | 0.1 | `cast-to-markdown-docx` |
-| HTML (web pages) | 0.2 (not released yet) | `cast-to-markdown-html` |
-| TXT, CSV, TSV | 0.2 (not released yet) | `cast-to-markdown-txt`, `cast-to-markdown-csv` |
+| HTML (web pages) | 0.2 | `cast-to-markdown-html` |
+| TXT, CSV, TSV | 0.2 | `cast-to-markdown-txt`, `cast-to-markdown-csv` |
 
 ## Project structure
 

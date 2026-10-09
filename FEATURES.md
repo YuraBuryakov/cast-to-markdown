@@ -1,6 +1,6 @@
 # Features
 
-What CastToMarkdown can and cannot do, feature by feature. Status: `0.1.0` released; `main` is `0.2.0-SNAPSHOT`.
+What CastToMarkdown can and cannot do, feature by feature. Status: `0.2.0`.
 
 How to read this file:
 

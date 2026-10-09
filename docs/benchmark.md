@@ -4,7 +4,7 @@ Measured on 2026-10-08, recounted on 2026-10-09 on 12 files; words recounted aga
 
 ## What was compared
 
-- **CastToMarkdown** 0.2.0-SNAPSHOT (PDFBox 3.0.8; 0.1.0 gave the same numbers except 97.3 % of the words kept; first measured on `main` at `3650529`, which gave the same words, links and hyphens on every file, one heading less on the 12 files and 10 instead of 36 on the Typst file): `CastToMarkdown.create().convert(path).markdown()`.
+- **CastToMarkdown** 0.2.0 (PDFBox 3.0.8; 0.1.0 gave the same numbers except 97.3 % of the words kept; first measured on `main` at `3650529`, which gave the same words, links and hyphens on every file, one heading less on the 12 files and 10 instead of 36 on the Typst file): `CastToMarkdown.create().convert(path).markdown()`.
 - **OpenDataLoader PDF** 2.5.12 (`org.opendataloader:opendataloader-pdf-core`): `OpenDataLoaderPDF.processFile(path, config)` with `generateMarkdown=true`, `generateJSON=false`, `imageOutput=off` and the defaults for the rest (`hybrid=off`, `readingOrder=xycut`, `tableMethod=default`, `includeHeaderFooter=false`). A second run sets `useStructTree=true`.
 - Windows 11, OpenJDK 21.0.12, each library in its own JVM (they need different PDFBox versions). Every file is converted twice in one JVM, and the second pass is timed.
 
