@@ -19,6 +19,8 @@
         <module>pdf</module>
         <module>docx</module>
         <module>html</module>
+        <module>txt</module>
+        <module>csv</module>
     </modules>
 
     <licenses>

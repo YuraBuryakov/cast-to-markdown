@@ -162,7 +162,7 @@ final class DocxRenderer {
                         .map(paragraph -> text(paragraph).strip())
                         .filter(line -> !line.isEmpty())
                         .collect(Collectors.joining(" "));
-                cells.add(LINE_BREAKS.matcher(text).replaceAll(" ").replace("|", "\\|"));
+                cells.add(Markdown.tableCell(LINE_BREAKS.matcher(text).replaceAll(" ")));
             }
             columns = Math.max(columns, cells.size());
             rows.add(cells);

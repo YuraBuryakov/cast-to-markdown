@@ -21,6 +21,8 @@ public final class Markdown {
     private static final Pattern TRAILING_SPACE = Pattern.compile("(\\s|%20)+$");
     /** Line breaks inside link text: a blank line there would end the paragraph. */
     private static final Pattern LINE_BREAKS = Pattern.compile("[\\r\\n]+");
+    /** A pipe with the backslashes right before it (group 1). */
+    private static final Pattern PIPE_WITH_BACKSLASHES = Pattern.compile("(\\\\*)\\|");
     /** What an autolink {@code <...>} cannot hold: CommonMark ends it there or does not read it at all. */
     private static final Pattern NOT_IN_AUTOLINK = Pattern.compile("[\\s\\p{Cntrl}<>]");
     /** The e-mail address CommonMark reads as {@code <team@example.org>}. */
@@ -65,6 +67,21 @@ public final class Markdown {
      */
     public static String link(String text, String url) {
         return link(text, url, false);
+    }
+
+    /**
+     * Text of one table cell with every {@code |} escaped, and the backslashes right before it doubled: a GFM table
+     * reads {@code \\} as an escaped backslash, so the {@code |} after {@code x\} would end the cell and shift the
+     * columns of the row.
+     *
+     * @param text the text of the cell, on one line
+     * @return the text safe inside a cell
+     */
+    public static String tableCell(String text) {
+        return PIPE_WITH_BACKSLASHES.matcher(text).replaceAll(match -> {
+            String backslashes = match.group(1);
+            return Matcher.quoteReplacement(backslashes + backslashes + "\\|");
+        });
     }
 
     /**

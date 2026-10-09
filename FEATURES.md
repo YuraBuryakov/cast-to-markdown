@@ -8,7 +8,7 @@ How to read this file:
 - **Cannot** lists known limits. The output there is still correct text; it just keeps less structure.
 - A change to a feature's behaviour updates its section in the same commit.
 
-Contents: [API](#api) · [PDF](#pdf) · [DOCX](#docx) · [HTML](#html)
+Contents: [API](#api) · [PDF](#pdf) · [DOCX](#docx) · [HTML](#html) · [TXT](#txt) · [CSV](#csv)
 
 ## API
 
@@ -446,3 +446,44 @@ Web pages saved as `.html` or `.htm`, based on jsoup. Developed on 13 public pag
 - An unreadable file fails with `DocumentConversionException`. Tested by `unreadableFileIsAConversionError`.
 
 **Tests:** `HtmlConverterTest`, `ModulePathTest`
+
+## TXT
+
+Plain text files (`.txt`), without a parser dependency.
+
+**Can**
+- The lines as they are; blank lines between paragraphs, several of them one; line ends `
+` and `` become `
+`; spaces at the end of a line go. Tested by `TxtConverterTest.linesAndParagraphsStay`, `indentationAndTrailingSpaces`.
+- Block syntax at the start of a line is escaped (`#`, `>`, code fences, rule lines), as in the other formats. Tested by `blockSyntaxAtLineStartIsEscaped`.
+- Indentation stays: a table or code in the text keeps its columns. Tested by `indentationAndTrailingSpaces`.
+- The charset comes from a byte order mark (UTF-8, UTF-16), else UTF-8 when the bytes are valid UTF-8, else windows-1252 (Notepad, Excel). Tested by `charsetsAndExtension`, `TextTest`.
+
+**Cannot**
+- Structure is not guessed: underlined titles, numbered sections and lists of a text file stay text (`- item` lines are Markdown list items anyway).
+- A line indented by four spaces is a code block to a Markdown renderer.
+- Other legacy charsets (windows-1251, Shift JIS) are read as windows-1252.
+
+**Tests:** `TxtConverterTest`, `TextTest`, `ModulePathTest`
+
+## CSV
+
+CSV and TSV files (`.csv`, `.tsv`) as a Markdown table, without a parser dependency.
+
+**Can**
+- The first row is the header. Tested by `CsvConverterTest.firstRowIsTheHeader`.
+- Fields follow RFC 4180: quoted fields hold the separator, line breaks (a space in the cell) and doubled quotes; `
+` and `
+` line ends. Tested by `quotedFieldsAfterRfc4180`.
+- A `.tsv` is separated by tabs; in a `.csv` the separator is the one of comma, semicolon (Excel in much of Europe) and tab the first row has most of. Tested by `semicolonAndTabSeparators`.
+- The header is as wide as the widest row; a shorter row is not padded, a renderer adds its empty cells. Blank lines are no rows. Tested by `rowsOfOtherLengthsAndEmptyLines`.
+- `|` in a cell is escaped, with the backslashes right before it doubled (else GFM would end the cell there and shift the columns; the same in the tables of PDF, DOCX and HTML), and text that looks like an HTML tag (`<b>`). Tested by `cellTextCannotBreakTheTable`, `MarkdownTest.tableCellTextCannotEndOrSplitItsCell`.
+- A hostile file (a million separators in one row, an unclosed quote) takes linear time and does not blow up the output. Tested by `hostileFileTakesLinearTimeAndDoesNotBlowUp`.
+- The charset as for TXT. Tested by `charsetsAndExtensions`.
+
+**Cannot**
+- A file without a header row gets its first data row as the header.
+- A separator other than comma, semicolon and tab (`|`, spaces) is not found; the rows stay one cell each.
+- Numbers are not aligned and types are not recognized; a very large file becomes a very large table (the size limit applies).
+
+**Tests:** `CsvConverterTest`, `ModulePathTest`

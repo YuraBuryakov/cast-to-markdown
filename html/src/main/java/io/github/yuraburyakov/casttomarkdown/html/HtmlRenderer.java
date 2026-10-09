@@ -419,7 +419,7 @@ final class HtmlRenderer {
                 if (!cell.nameIs("td") && !cell.nameIs("th")) {
                     continue;
                 }
-                line.add(oneLine(inlineText(cell, depth)).replace("|", "\\|"));
+                line.add(Markdown.tableCell(oneLine(inlineText(cell, depth))));
                 for (int span = Math.min(span(cell), MAX_SPAN); span > 1; span--) {
                     line.add("");
                 }

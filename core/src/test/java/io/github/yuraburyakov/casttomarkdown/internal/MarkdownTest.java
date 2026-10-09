@@ -124,6 +124,15 @@ class MarkdownTest {
     }
 
     @Test
+    void tableCellTextCannotEndOrSplitItsCell() {
+        // GFM reads "\\" as an escaped backslash, so the "|" after it would end the cell: backslashes before a pipe
+        // are doubled too
+        assertThat(Markdown.tableCell("a|b")).isEqualTo("a\\|b");
+        assertThat(Markdown.tableCell("x\\|y")).isEqualTo("x\\\\\\|y");
+        assertThat(Markdown.tableCell("C:\\path")).isEqualTo("C:\\path");
+    }
+
+    @Test
     void wholeLinkTextIsALinkAlsoWhenItIsPartOfTheAddress() {
         // HTML: a link's text is never a piece of an address split over lines (Python docs: "Source code:")
         assertThat(Markdown.link("Lib/json/__init__.py", "https://github.com/python/cpython/tree/3.14/Lib/json/__init__.py", true))

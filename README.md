@@ -78,6 +78,7 @@ CastToMarkdown converter = CastToMarkdown.builder()
 - PDF (with a text layer): paragraphs, headings (also from the structure tree of a tagged PDF), bullet lists, web links, tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports) and captioned ruled tables of untagged ones (LaTeX), empty cells included; running headers, footers and page numbers are removed, a word split by a hyphen at a line end is joined, and the hyphen of a compound stays, and the text inside captioned figures is left out. Scanned PDFs are rejected: run OCR first, for example with [OCRmyPDF](https://ocrmypdf.readthedocs.io/).
 - DOCX: headings from paragraph styles, nested and numbered lists, tables, footnotes, links.
 - HTML web pages (`0.2.0-SNAPSHOT`, not released yet): the main content without navigation, page header and footer, sidebars and hidden elements; headings, lists, tables, code blocks, quotes, links resolved against the page's own address.
+- TXT and CSV/TSV (`0.2.0-SNAPSHOT`, not released yet): plain text with block syntax escaped; CSV and TSV as a Markdown table, RFC 4180 quoting, comma, semicolon or tab found by itself.
 
 Errors are unchecked: `UnsupportedFormatException` for unsupported formats and scans, `DocumentTooLargeException` above the size limit, `DocumentConversionException` for unreadable, damaged or password-protected files (the original exception is the cause).
 
@@ -128,7 +129,7 @@ CastToMarkdown leaves out navigation, page header and footer and hidden elements
 | PDF (with a text layer) | 0.1 | `cast-to-markdown-pdf` |
 | DOCX (Word 2007+) | 0.1 | `cast-to-markdown-docx` |
 | HTML (web pages) | 0.2 (not released yet) | `cast-to-markdown-html` |
-| TXT, CSV | planned | |
+| TXT, CSV, TSV | 0.2 (not released yet) | `cast-to-markdown-txt`, `cast-to-markdown-csv` |
 
 ## Project structure
 
@@ -138,6 +139,8 @@ CastToMarkdown leaves out navigation, page header and footer and hidden elements
 | `pdf` | `cast-to-markdown-pdf` | PDF, based on Apache PDFBox |
 | `docx` | `cast-to-markdown-docx` | DOCX (Word 2007+), based on Apache POI |
 | `html` | `cast-to-markdown-html` | HTML web pages, based on jsoup (from 0.2.0) |
+| `txt` | `cast-to-markdown-txt` | plain text, no dependencies (from 0.2.0) |
+| `csv` | `cast-to-markdown-csv` | CSV and TSV as a Markdown table, no dependencies (from 0.2.0) |
 
 Add the format modules you need; they depend on `core` and are found automatically (`ServiceLoader`), so users who need only PDF do not pull other parsers. `io.github.yuraburyakov.casttomarkdown` is the only API package; the converter contract in `internal` is exported only to the format modules and may change in any version.
 

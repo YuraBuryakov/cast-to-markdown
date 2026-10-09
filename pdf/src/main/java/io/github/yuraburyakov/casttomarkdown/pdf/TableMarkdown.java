@@ -1,5 +1,6 @@
 package io.github.yuraburyakov.casttomarkdown.pdf;
 
+import io.github.yuraburyakov.casttomarkdown.internal.Markdown;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -24,7 +25,7 @@ final class TableMarkdown {
         for (List<String> row : table) {
             List<String> cells = new ArrayList<>();
             for (String text : row) {
-                cells.add(WHITESPACE.matcher(text.strip()).replaceAll(" ").replace("|", "\\|"));
+                cells.add(Markdown.tableCell(WHITESPACE.matcher(text.strip()).replaceAll(" ")));
             }
             columns = Math.max(columns, cells.size());
             rows.add(cells);
