@@ -124,6 +124,14 @@ class MarkdownTest {
     }
 
     @Test
+    void tagsAreEscapedAlsoAfterABackslash() {
+        // "\<b>" would read as an escaped backslash and a tag: the backslashes before "<" are doubled too
+        assertThat(Markdown.escapeTags("<b>")).isEqualTo("\\<b>");
+        assertThat(Markdown.escapeTags("\\<b>")).isEqualTo("\\\\\\<b>");
+        assertThat(Markdown.escapeTags("C:\\dir <https://a.org> a < b")).isEqualTo("C:\\dir <https://a.org> a < b");
+    }
+
+    @Test
     void tableCellTextCannotEndOrSplitItsCell() {
         // GFM reads "\\" as an escaped backslash, so the "|" after it would end the cell: backslashes before a pipe
         // are doubled too

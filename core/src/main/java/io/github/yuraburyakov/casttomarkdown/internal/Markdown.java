@@ -21,6 +21,8 @@ public final class Markdown {
     private static final Pattern TRAILING_SPACE = Pattern.compile("(\\s|%20)+$");
     /** Line breaks inside link text: a blank line there would end the paragraph. */
     private static final Pattern LINE_BREAKS = Pattern.compile("[\\r\\n]+");
+    /** The start of something CommonMark reads as raw HTML: a tag, a closing tag, a comment, an instruction. */
+    private static final Pattern TAG_START = Pattern.compile("(\\\\*)<(?=[A-Za-z/!?])(?!(?i:https?|mailto):)");
     /** A pipe with the backslashes right before it (group 1). */
     private static final Pattern PIPE_WITH_BACKSLASHES = Pattern.compile("(\\\\*)\\|");
     /** What an autolink {@code <...>} cannot hold: CommonMark ends it there or does not read it at all. */
@@ -77,6 +79,24 @@ public final class Markdown {
      * @param text the text of the cell, on one line
      * @return the text safe inside a cell
      */
+    /**
+     * Escapes text a CommonMark renderer would read as raw HTML and run or hide: {@code <} before a letter,
+     * {@code /}, {@code !} or {@code ?} ({@code <script>}, {@code List<E>}, {@code <!--}). {@code a < b} and
+     * {@code x<5} stay, and so does an autolink to a safe address ({@code <https://...>}, {@code <mailto:...>}),
+     * which an RFC text file writes; {@code <javascript:...>} does not. Used by the text formats (TXT, CSV); PDF
+     * and DOCX do not escape yet (Q-API-02b).
+     *
+     * @param text text of the document
+     * @return the text with each such {@code <} escaped
+     */
+    public static String escapeTags(String text) {
+        // backslashes right before "<" are doubled: "\<b>" would read as an escaped backslash and a tag
+        return TAG_START.matcher(text).replaceAll(match -> {
+            String backslashes = match.group(1);
+            return Matcher.quoteReplacement(backslashes + backslashes + "\\<");
+        });
+    }
+
     public static String tableCell(String text) {
         return PIPE_WITH_BACKSLASHES.matcher(text).replaceAll(match -> {
             String backslashes = match.group(1);

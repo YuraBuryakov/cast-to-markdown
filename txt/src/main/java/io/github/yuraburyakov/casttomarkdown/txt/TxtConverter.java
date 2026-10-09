@@ -48,6 +48,8 @@ public final class TxtConverter implements DocumentConverter {
     }
 
     private static String render(byte[] bytes) {
-        return Markdown.normalize(Text.decode(bytes).lines().map(Markdown::escape).collect(Collectors.joining("\n")));
+        return Markdown.normalize(Text.decode(bytes).lines()
+                .map(line -> Markdown.escape(Markdown.escapeTags(line)))
+                .collect(Collectors.joining("\n")));
     }
 }

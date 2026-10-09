@@ -457,6 +457,7 @@ Plain text files (`.txt`), without a parser dependency.
 `; spaces at the end of a line go. Tested by `TxtConverterTest.linesAndParagraphsStay`, `indentationAndTrailingSpaces`.
 - Block syntax at the start of a line is escaped (`#`, `>`, code fences, rule lines), as in the other formats. Tested by `blockSyntaxAtLineStartIsEscaped`.
 - Indentation stays: a table or code in the text keeps its columns. Tested by `indentationAndTrailingSpaces`.
+- Text a renderer would take for HTML is escaped (`\<script>`, `List\<E>`, `\<!--`); an address in angle brackets stays an autolink when it is http, https or mailto (`<https://...>` in RFC text files), `<javascript:...>` does not. Tested by `textThatLooksLikeHtmlIsEscaped`.
 - The charset comes from a byte order mark (UTF-8, UTF-16), else UTF-8 when the bytes are valid UTF-8, else windows-1252 (Notepad, Excel). Tested by `charsetsAndExtension`, `TextTest`.
 
 **Cannot**
@@ -474,7 +475,7 @@ CSV and TSV files (`.csv`, `.tsv`) as a Markdown table, without a parser depende
 - The first row is the header. Tested by `CsvConverterTest.firstRowIsTheHeader`.
 - Fields follow RFC 4180: quoted fields hold the separator, line breaks (a space in the cell) and doubled quotes; `
 ` and `
-` line ends. Tested by `quotedFieldsAfterRfc4180`.
+` line ends. Spaces before an opening quote are allowed (`"Month", "1958"`). Tested by `quotedFieldsAfterRfc4180`, `spacesBeforeAnOpeningQuote`.
 - A `.tsv` is separated by tabs; in a `.csv` the separator is the one of comma, semicolon (Excel in much of Europe) and tab the first row has most of. Tested by `semicolonAndTabSeparators`.
 - The header is as wide as the widest row; a shorter row is not padded, a renderer adds its empty cells. Blank lines are no rows. Tested by `rowsOfOtherLengthsAndEmptyLines`.
 - `|` in a cell is escaped, with the backslashes right before it doubled (else GFM would end the cell there and shift the columns; the same in the tables of PDF, DOCX and HTML), and text that looks like an HTML tag (`<b>`). Tested by `cellTextCannotBreakTheTable`, `MarkdownTest.tableCellTextCannotEndOrSplitItsCell`.

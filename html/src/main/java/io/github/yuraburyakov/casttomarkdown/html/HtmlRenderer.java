@@ -47,7 +47,7 @@ final class HtmlRenderer {
     /** A line break, then only white space up to the next one. */
     private static final Pattern BLANK_LINE = Pattern.compile("\\n[\\s\\p{Z}&&[^\\n]]*\\n");
     /** The start of something CommonMark reads as raw HTML: a tag, a closing tag, a comment, an instruction. */
-    private static final Pattern TAG_START = Pattern.compile("<(?=[A-Za-z/!?]|$)");
+    private static final Pattern TAG_START = Pattern.compile("(\\\\*)<(?=[A-Za-z/!?]|$)");
     private static final Pattern BACKTICKS = Pattern.compile("`+");
     /** The language of a code block in a class: {@code language-x}, {@code lang-x}, {@code brush: x} (MDN), {@code highlight-x} (Sphinx). */
     private static final Pattern LANGUAGE = Pattern.compile("(?:^|\\s)(?:lang(?:uage)?-|highlight-|brush:\\s*)([\\w+#-]+)");
@@ -326,7 +326,11 @@ final class HtmlRenderer {
      * are not text of the page.
      */
     private static String escapeTags(String text) {
-        return TAG_START.matcher(text).replaceAll("\\\\<");
+        // backslashes right before "<" are doubled: "\<b>" would read as an escaped backslash and a tag
+        return TAG_START.matcher(text).replaceAll(match -> {
+            String backslashes = match.group(1);
+            return Matcher.quoteReplacement(backslashes + backslashes + "\\<");
+        });
     }
 
     private static String oneLine(String text) {

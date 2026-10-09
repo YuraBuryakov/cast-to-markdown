@@ -192,6 +192,8 @@ class HtmlConverterTest {
         // RFC: literal angle brackets around an address that becomes an autolink; renders "<address>"
         assertThat(convert("<p>&lt;<a href='https://www.rfc-editor.org/info/rfc8141'>https://www.rfc-editor.org/info/rfc8141</a>&gt;</p>"))
                 .isEqualTo("\\<<https://www.rfc-editor.org/info/rfc8141>>\n");
+        // a backslash before the tag would escape our backslash instead
+        assertThat(convert("<p>\\&lt;b&gt;</p>")).isEqualTo("\\\\\\<b>\n");
         // Javadoc: the type parameter is a link of its own, after a text node that ends with "<"
         assertThat(convert("<p><a href='Iterator.html'>Iterator</a>&lt;<a href='List.html'>E</a>&gt; iterator()</p>"))
                 .isEqualTo("Iterator\\<E> iterator()\n");

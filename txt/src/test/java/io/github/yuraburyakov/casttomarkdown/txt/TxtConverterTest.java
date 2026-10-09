@@ -35,6 +35,16 @@ class TxtConverterTest {
     }
 
     @Test
+    void textThatLooksLikeHtmlIsEscaped() {
+        // a renderer would run or hide raw HTML from an untrusted text file
+        assertThat(convert("<script>alert(1)</script>\nList<E> and a < b, x<5\n<!-- note -->"))
+                .isEqualTo("\\<script>alert(1)\\</script>\nList\\<E> and a < b, x<5\n\\<!-- note -->\n");
+        // an address in angle brackets stays an autolink (RFC text files); an unsafe scheme does not
+        assertThat(convert("location: <https://www.iana.org/assignments/uuid>, <javascript:alert(1)>"))
+                .isEqualTo("location: <https://www.iana.org/assignments/uuid>, \\<javascript:alert(1)>\n");
+    }
+
+    @Test
     void indentationAndTrailingSpaces() {
         // the indentation of a text table or of code stays; spaces at the end of a line go
         assertThat(convert("Table:\n\n    a   b\n    1   2   \n")).isEqualTo("Table:\n\n    a   b\n    1   2\n");
