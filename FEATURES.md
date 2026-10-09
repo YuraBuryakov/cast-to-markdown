@@ -250,6 +250,7 @@ LaTeX and similar tools draw tables as a grid of rules, without tags.
 - A figure drawn in several pieces (columns of a diagram, a column cut by text) is one figure, within the caption's column; a frame touching the caption still belongs to it.
 - Only lines of at most 8 words are labels: longer lines in a figure (rows of a table drawn as a figure, sentences) always stay.
 - In a table drawn as a figure, a short line left of a longer row on the same baseline is the row's label and stays (`page size: 64` in arXiv 1712.01208 Figure 4). Tested by `FiguresTest`.
+- A figure with at least three rows of mostly numbers, at most two font sizes apart, is a table drawn as a figure and keeps all its text: the header row `Config Size(MB) Lookup (ns) Model (ns)`, the group labels `Btree`, `Learned Index` and the column groups `Map Data Web Data Log-Normal Data` of arXiv 1712.01208 Figures 4 and 6. Rows of ticks of stacked plots are a plot's height apart, and boxes of network diagrams (`3x3 conv, 64`) and BERT tokens (`E1`) are no numbers. Tested by `FiguresTest.allTextOfATableDrawnAsAFigureStays`, `FiguresTest.axisTickRowsOfStackedPlotsAreNoTable`.
 - Only what is visible counts as drawn: a placed picture's background clipped away under the next column does not join the columns.
 - Never taken for a figure: a table of thin rules, a page background, a figure in the other column, `Fig. 4.` in the middle of a paragraph, a caption without graphics next to it.
 - Left as they are (untrusted input): pages painting more than 10,000 boxes, or with more than 200 drawings or 50 captions.
@@ -257,7 +258,7 @@ LaTeX and similar tools draw tables as a grid of rules, without tags.
 **Cannot**
 - A figure without such a caption keeps its text; rotated pages are skipped.
 - Labels more than one caption font size above or below the drawing stay (arXiv Figure 3: the network names over its columns), unless a line is in a font at least 1.5 times the caption's and at most two of its own font sizes above the drawing. Tested by `FiguresTest`.
-- A short label line inside a table drawn as a figure is removed with the other labels unless it is a row label on the baseline of a longer row (column headers such as `Lookup (ns)`, labels spanning rows).
+- In a table drawn as a figure with fewer than three rows of numbers, or with rows of words, short lines that are no row labels (column headers, labels spanning rows) are removed with the other labels.
 - Figures are not kept as images.
 
 **Tests:** `FiguresTest`, `PdfFiguresTest`, `PageGraphicsTest`

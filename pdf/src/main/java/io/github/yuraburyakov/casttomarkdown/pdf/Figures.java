@@ -47,6 +47,12 @@ final class Figures {
     private static final float MAX_GAP = 3;
     /** Only lines of at most this many words are labels; longer lines (table rows, sentences) always stay. */
     private static final int MAX_LABEL_WORDS = 8;
+    /** A table drawn as a figure has at least this many rows of numbers in a run (see {@link #isTable}). */
+    private static final int TABLE_ROWS = 3;
+    /** Rows of a table follow each other at most this many font sizes apart. */
+    private static final float ROW_PITCH = 2;
+    /** A number in a table cell: digits with a decimal point, a sign, a factor or a percent, in brackets. */
+    private static final Pattern NUMBER = Pattern.compile("[(\\[]?[-+]?\\d[\\d.,]*[x%]?[)\\]]?[,;]?");
     /**
      * A title of a drawing is at least this many times larger than the caption: a section heading of body size
      * just above a figure stays.
@@ -110,6 +116,8 @@ final class Figures {
         if (areasByPage.isEmpty()) {
             return lines;
         }
+        // a table drawn as a figure keeps all its text: header rows and group labels are no axis labels
+        areasByPage.replaceAll((page, areas) -> areas.stream().filter(area -> !isTable(page, area, lines)).toList());
         Set<Line> rowLabels = rowLabels(lines);
         return lines.stream().filter(line -> line.isTable() || captionLines.contains(line)
                 || words(line) > MAX_LABEL_WORDS || rowLabels.contains(line)
@@ -182,6 +190,37 @@ final class Figures {
             }
         }
         return labels;
+    }
+
+    /**
+     * Whether the area holds a table drawn as a figure: at least {@link #TABLE_ROWS} long lines of mostly numbers
+     * that follow each other at most {@link #ROW_PITCH} font sizes apart (arXiv 1712.01208 Figures 4 and 6). The
+     * rows of ticks of plots are numbers too, but a plot's height apart; the token rows of BERT Figure 1 are words.
+     */
+    private static boolean isTable(int page, PageGraphics.Box area, List<Line> lines) {
+        List<Line> rows = lines.stream()
+                .filter(line -> line.page() == page && !line.rotated() && !line.isTable() && words(line) > MAX_LABEL_WORDS
+                        && area.contains(line.pageX(), line.pageY()) && mostlyNumbers(line))
+                .sorted(java.util.Comparator.comparingDouble(Line::pageY)).toList();
+        int run = 1;
+        for (int i = 1; i < rows.size(); i++) {
+            Line above = rows.get(i - 1);
+            Line row = rows.get(i);
+            run = row.pageY() - above.pageY() <= ROW_PITCH * row.fontSize() ? run + 1 : 1;
+            if (run >= TABLE_ROWS) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Whether more than half the words of the line are numbers ({@code 1247}, {@code 13.11}, {@code (4.00x)},
+     * {@code (52%)}); not {@code 3x3} or {@code E1}, the boxes of a network diagram and the tokens of BERT.
+     */
+    private static boolean mostlyNumbers(Line line) {
+        String[] words = line.text().strip().split("\\s+");
+        return 2 * java.util.Arrays.stream(words).filter(word -> NUMBER.matcher(word).matches()).count() > words.length;
     }
 
     private static long baseline(Line line) {

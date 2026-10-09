@@ -144,6 +144,37 @@ class FiguresTest {
     }
 
     @Test
+    void allTextOfATableDrawnAsAFigureStays() {
+        // arXiv 1712.01208 Figure 6: rows of numbers 10 pt apart in 7 pt, a header row and group labels beside them
+        List<Line> lines = List.of(
+                line(200, 81, 7, "Config Size(MB) Lookup (ns) Model (ns)"),
+                line(200, 91, 7, "page size: 32 13.11 (4.00x) 1247 (1.03x) 643 (52%)"),
+                line(150, 92.2f, 8, "Btree"),
+                line(200, 101, 7, "page size: 64 6.56 (2.00x) 1280 (1.01x) 500 (39%)"),
+                line(200, 111, 7, "page size: 128 3.28 (1.00x) 1288 (1.00x) 377 (29%)"),
+                line(150, 132.2f, 8, "Learned Index"),
+                line(203, 215.3f, 10, "Figure 6: String data: Learned Index vs B-Tree"));
+
+        assertThat(texts(Figures.remove(lines, Map.of(1, List.of(box(140, 75, 450, 195))))))
+                .containsExactlyElementsOf(texts(lines));
+    }
+
+    @Test
+    void axisTickRowsOfStackedPlotsAreNoTable() {
+        // two plots one above the other: their rows of ticks are numbers, but a plot's height apart
+        List<Line> lines = List.of(
+                line(150, 100, 7, "0 10 20 30 40 50 60 70 80 90"),
+                line(145, 120, 7, "Accuracy"),
+                line(150, 160, 7, "0 10 20 30 40 50 60 70 80 90"),
+                line(150, 220, 7, "0 10 20 30 40 50 60 70 80 90"),
+                line(150, 240, 10, "Figure 2: Accuracy over time."));
+
+        assertThat(texts(Figures.remove(lines, Map.of(1, List.of(box(140, 60, 450, 230))))))
+                .containsExactly("0 10 20 30 40 50 60 70 80 90", "0 10 20 30 40 50 60 70 80 90",
+                        "0 10 20 30 40 50 60 70 80 90", "Figure 2: Accuracy over time.");
+    }
+
+    @Test
     void largeTitleJustAboveTheDrawingIsRemoved() {
         // arXiv 1706.03762 Figure 4: "Input-Input Layer5" in 19 pt, 30 pt above the plots, caption in 9 pt
         List<Line> lines = List.of(line(107, 115.5f, 19, "Input-Input Layer5"),
