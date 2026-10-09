@@ -26,6 +26,20 @@ class LateTextTest {
     }
 
     @Test
+    void pageDrawnBottomUpTakesLinearTime() {
+        // a hostile page: 200 000 lines, each drawn above all before it
+        List<Line> lines = new ArrayList<>();
+        for (int i = 0; i < 200_000; i++) {
+            float y = 400_000 - i * 2;
+            lines.add(new Line(1, 792, 50, y, 1, false, false, "w", -1, 6, 50, y, List.of(new Line.Word("w", 50, 56))));
+        }
+
+        List<Line> result = assertTimeoutPreemptively(Duration.ofSeconds(5), () -> LateText.insert(lines));
+
+        assertThat(result).hasSize(200_000);
+    }
+
+    @Test
     void smallerKeywordFillsTheGapLeftForIt() {
         // RFC 9562 page 8: "MAY" in 12 pt drawn after its 13 pt line, in the gap between "UUIDs" and "be"
         Line line = line(13, "UUIDs be represented", new Line.Word("UUIDs", 65.9f, 95.7f),

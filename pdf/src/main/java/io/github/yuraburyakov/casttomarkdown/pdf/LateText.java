@@ -46,6 +46,8 @@ final class LateText {
     private static final int LOOK_BACK = 6;
     /** A late line above the text of its page starts at most this many font sizes right of its first line. */
     private static final float TOP_INDENT = 2;
+    /** A late line goes to the top of its page only when the page so far has at most this many lines. */
+    private static final int MAX_PAGE_LINES = 300;
     /** A line with more words takes no late text: real lines have far fewer, and joining is linear in them. */
     private static final int MAX_WORDS = 300;
 
@@ -129,15 +131,17 @@ final class LateText {
         if (!eligible(line)) {
             return -1;
         }
+        // a hostile page drawn bottom up would make every line walk back over the whole page
+        int stop = Math.max(0, result.size() - MAX_PAGE_LINES);
         int at = result.size();
-        while (at > 0 && result.get(at - 1).page() == line.page() && result.get(at - 1).y() > line.y()) {
+        while (at > stop && result.get(at - 1).page() == line.page() && result.get(at - 1).y() > line.y()) {
             at--;
         }
-        if (at == result.size()) {
+        if (at == result.size() || at == stop && stop > 0 && result.get(stop - 1).page() == line.page()) {
             return -1;
         }
         for (int i = at - 1; i >= 0 && result.get(i).page() == line.page(); i--) {
-            if (result.get(i).y() > line.y() - line.fontSize()) {
+            if (i < stop || result.get(i).y() > line.y() - line.fontSize()) {
                 return -1;
             }
         }
