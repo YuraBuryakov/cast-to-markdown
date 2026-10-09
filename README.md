@@ -77,7 +77,7 @@ CastToMarkdown converter = CastToMarkdown.builder()
 
 - PDF (with a text layer): paragraphs, headings (also from the structure tree of a tagged PDF), bullet lists, web links, tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports) and captioned ruled tables of untagged ones (LaTeX), empty cells included; running headers, footers and page numbers are removed, a word split by a hyphen at a line end is joined, and the hyphen of a compound stays, and the text inside captioned figures is left out. Scanned PDFs are rejected: run OCR first, for example with [OCRmyPDF](https://ocrmypdf.readthedocs.io/).
 - DOCX: headings from paragraph styles, nested and numbered lists, tables, footnotes, links.
-- HTML web pages (`0.2.0-SNAPSHOT`, not released yet): the main content without navigation, page header and footer, sidebars and hidden elements; headings, lists, tables, code blocks, quotes, links resolved against the page's own address. On 13 public pages 98.5 % of the main text is kept and 1 % of the output comes from outside it (copy-down: 99.5 % and 27 %).
+- HTML web pages (`0.2.0-SNAPSHOT`, not released yet): the main content without navigation, page header and footer, sidebars and hidden elements; headings, lists, tables, code blocks, quotes, links resolved against the page's own address.
 
 Errors are unchecked: `UnsupportedFormatException` for unsupported formats and scans, `DocumentTooLargeException` above the size limit, `DocumentConversionException` for unreadable, damaged or password-protected files (the original exception is the cause).
 

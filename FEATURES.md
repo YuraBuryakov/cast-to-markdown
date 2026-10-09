@@ -385,7 +385,7 @@ Word 2007+ files, based on Apache POI.
 
 ## HTML
 
-Web pages saved as `.html` or `.htm`, based on jsoup. Measured on 13 public pages (Wikipedia, Python, MDN, Javadoc and Spring documentation, gov.uk, GitHub, NASA, an RFC, a blog, Hacker News, paulgraham.com, the jsoup cookbook): 98.5 % of the words of the main text kept and 1 % of the output from outside it, against 99.5 % and 27 % for copy-down (the Java port of Turndown). Not covered by a test, the numbers are in the Obsidian note "CastToMarkdown - HTML Module (design)".
+Web pages saved as `.html` or `.htm`, based on jsoup. Developed on 13 public pages; measurements on that development set are in [docs/benchmark-html.md](docs/benchmark-html.md), a comparison on pages not used for development is still to come.
 
 ### Main content and page furniture
 
