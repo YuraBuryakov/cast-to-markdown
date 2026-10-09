@@ -39,8 +39,9 @@ class HtmlConverterTest {
         assertThat(convert("<body><a href='#main'>Skip to main content</a>"
                 + "<header><a href='/'>Site</a><nav><a href='/a'>Home</a></nav></header>"
                 + "<div role='navigation'>Menu</div><aside>Related</aside>"
-                + "<div id='main'><h1>Post</h1><p>Body.</p>"
-                + "<aside aria-label='Advertisement'><span>Sponsor Message</span></aside>"
+                + "<div id='main'><h1>Post</h1><article><p>Body.</p>"
+                // an ad inside the article: not the aside of the page, gone by its label (NPR)
+                + "<aside aria-label='Advertisement'><span>Sponsor Message</span></aside></article>"
                 + "<form><label>Search</label><input value='q'><button>Go</button></form></div>"
                 + "<div hidden>Secret</div><div aria-hidden='true'>Icon</div><p style='display: none'>Gone</p>"
                 + "<script>var x = 1;</script><style>p {}</style><noscript>Enable JS</noscript>"
