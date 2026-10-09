@@ -439,6 +439,7 @@ Web pages saved as `.html` or `.htm`, based on jsoup. Measured on 13 public page
 **Can**
 - The charset comes from a byte order mark or `<meta charset>`, else UTF-8; from a `Path` and from a stream, which is not closed. Tested by `charsetOfTheMetaTagIsUsed`, `foundByExtensionAndTheStreamIsNotClosed`.
 - A page nested 100,000 elements deep converts without a stack overflow: deeper than 200 levels an element is read as its text. Tested by `deeplyNestedElementsDoNotOverflowTheStack`.
+- Hostile pages take linear time and cannot blow up the output: tens of thousands of nested headers or language lists, a table widened by `colspan` to a million columns (a table of more than 100,000 cells, padding included, is read as blocks), lists and quotes nested thousands deep (deeper than 10 levels they are plain blocks). Tested by `hostilePagesTakeLinearTimeAndDoNotBlowUpTheOutput`.
 - On the module path an application that requires only the core module gets jsoup too. Tested by `ModulePathTest`.
 - An unreadable file fails with `DocumentConversionException`. Tested by `unreadableFileIsAConversionError`.
 

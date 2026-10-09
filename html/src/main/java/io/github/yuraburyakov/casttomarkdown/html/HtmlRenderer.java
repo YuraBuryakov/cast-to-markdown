@@ -14,6 +14,8 @@ import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
 import org.jsoup.select.Elements;
+import org.jsoup.select.NodeTraversor;
+import org.jsoup.select.NodeVisitor;
 
 /** Renders one HTML document; a new instance for every document. */
 final class HtmlRenderer {
@@ -56,10 +58,16 @@ final class HtmlRenderer {
     private static final int MAX_DEPTH = 200;
     /** A language switcher has at least this many languages; one link to another language is content. */
     private static final int MIN_LANGUAGES = 3;
+    /** Lists and quotes deeper than this are rendered as plain blocks. */
+    private static final int MAX_NESTING = 10;
+    /** A Markdown table has at most this many cells, padding included; a larger one is read as blocks. */
+    private static final int MAX_TABLE_CELLS = 100_000;
     /** A colspan larger than this is taken as this. */
     private static final int MAX_SPAN = 50;
 
     private final Document document;
+    /** Lists and quotes around the block being rendered. */
+    private int nesting;
     private final URI base;
 
     HtmlRenderer(Document document) {
@@ -117,21 +125,39 @@ final class HtmlRenderer {
             }
         }
         // the header, footer and sidebar of the page, not those of an article or section (footnotes of Sphinx)
-        for (Element element : body.select("header, footer, aside")) {
-            if (element.parents().stream().noneMatch(parent -> parent.nameIs("article") || parent.nameIs("main")
-                    || parent.nameIs("section") || "main".equals(parent.attr("role")))) {
-                element.remove();
+        // one walk down the tree, counting the sections around: asking each element for its parents is quadratic
+        // on a hostile page of thousands of nested headers
+        List<Element> pageParts = new ArrayList<>();
+        int[] sections = {0};
+        NodeTraversor.traverse(new NodeVisitor() {
+            @Override
+            public void head(Node node, int depth) {
+                if (node instanceof Element element) {
+                    if (isSection(element)) {
+                        sections[0]++;
+                    } else if (sections[0] == 0 && (element.nameIs("header") || element.nameIs("footer")
+                            || element.nameIs("aside"))) {
+                        pageParts.add(element);
+                    }
+                }
             }
-        }
+
+            @Override
+            public void tail(Node node, int depth) {
+                if (node instanceof Element element && isSection(element)) {
+                    sections[0]--;
+                }
+            }
+        }, body);
+        pageParts.forEach(Element::remove);
         // MediaWiki: "[edit]" at every heading
         body.select("span.mw-editsection").remove();
         // a language switcher: a list of links, each to the page in another language (hreflang)
         for (Element list : body.select("ul, ol")) {
             Elements items = list.children();
-            if (items.size() >= MIN_LANGUAGES && items.stream().allMatch(item -> {
-                Element link = item.selectFirst("a[hreflang]");
-                return link != null && link.text().strip().equals(item.text().strip());
-            })) {
+            // each item only the link, so that nested lists are not read again for each level
+            if (items.size() >= MIN_LANGUAGES && items.stream().allMatch(item -> item.childrenSize() == 1
+                    && item.child(0).nameIs("a") && item.child(0).hasAttr("hreflang") && item.ownText().isBlank())) {
                 list.remove();
             }
         }
@@ -177,8 +203,14 @@ final class HtmlRenderer {
             if (!text.isEmpty()) {
                 blocks.add("#".repeat(Integer.parseInt(heading.group(1))) + " " + Markdown.escape(text));
             }
+        } else if ((name.equals("ul") || name.equals("ol") || name.equals("menu") || name.equals("blockquote"))
+                && nesting >= MAX_NESTING) {
+            // deeper lists and quotes are plain blocks: each level would indent all lines below it again
+            blocks.addAll(blocks(element, depth));
         } else if (name.equals("ul") || name.equals("ol") || name.equals("menu")) {
+            nesting++;
             String list = list(element, depth);
+            nesting--;
             if (!list.isEmpty()) {
                 blocks.add(list);
             }
@@ -187,7 +219,9 @@ final class HtmlRenderer {
         } else if (name.equals("pre")) {
             blocks.add(codeBlock(element));
         } else if (name.equals("blockquote")) {
+            nesting++;
             String quoted = String.join("\n\n", blocks(element, depth));
+            nesting--;
             if (!quoted.isEmpty()) {
                 blocks.add(quoted.lines().map(line -> line.isEmpty() ? ">" : "> " + line).collect(Collectors.joining("\n")));
             }
@@ -287,6 +321,12 @@ final class HtmlRenderer {
         return String.join("\n", items);
     }
 
+    /** An article, main or section: its header, footer and aside are its own, not the page's. */
+    private static boolean isSection(Element element) {
+        return element.nameIs("article") || element.nameIs("main") || element.nameIs("section")
+                || "main".equals(element.attr("role"));
+    }
+
     private static int start(Element list) {
         try {
             return Integer.parseInt(list.attr("start").strip());
@@ -338,6 +378,13 @@ final class HtmlRenderer {
             }
         }
         if (grid.isEmpty()) {
+            return;
+        }
+        if ((long) columns * grid.size() > MAX_TABLE_CELLS) {
+            // padding every row to the widest one would blow up a hostile table; its cells are read as blocks
+            for (Element cell : cells) {
+                blocks.addAll(blocks(cell, depth + 1));
+            }
             return;
         }
         StringBuilder markdown = new StringBuilder();

@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -201,6 +202,20 @@ class HtmlConverterTest {
         String markdown = assertTimeoutPreemptively(Duration.ofSeconds(10), () -> convert(html));
 
         assertThat(markdown).isEqualTo("deep\n");
+    }
+
+    @Test
+    void hostilePagesTakeLinearTimeAndDoNotBlowUpTheOutput() {
+        String headers = "<header>".repeat(50_000) + "x" + "</header>".repeat(50_000);
+        String languages = "<ul><li><a hreflang='de' href='https://a.org'>de</a><ul>".repeat(20_000) + "</ul></li></ul>".repeat(20_000);
+        String wideRow = "<table><tr>" + "<td colspan='50'>c</td>".repeat(20_000) + "</tr>" + "<tr><td>r</td></tr>".repeat(5_000) + "</table>";
+        String deepLists = "<ul><li>item".repeat(3_000) + "</li></ul>".repeat(3_000);
+        String deepQuotes = "<blockquote><p>q</p>".repeat(3_000) + "</blockquote>".repeat(3_000);
+
+        for (String html : List.of(headers, languages, wideRow, deepLists, deepQuotes)) {
+            String markdown = assertTimeoutPreemptively(Duration.ofSeconds(10), () -> convert(html));
+            assertThat(markdown.length()).as(html.substring(0, 40)).isLessThan(20 * html.length());
+        }
     }
 
     @Test
