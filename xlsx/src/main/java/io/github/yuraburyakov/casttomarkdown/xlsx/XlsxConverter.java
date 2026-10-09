@@ -1,6 +1,7 @@
 package io.github.yuraburyakov.casttomarkdown.xlsx;
 
 import io.github.yuraburyakov.casttomarkdown.DocumentConversionException;
+import io.github.yuraburyakov.casttomarkdown.DocumentTooLargeException;
 import io.github.yuraburyakov.casttomarkdown.internal.ConvertedDocument;
 import io.github.yuraburyakov.casttomarkdown.internal.DocumentConverter;
 import io.github.yuraburyakov.casttomarkdown.internal.Markdown;
@@ -10,8 +11,12 @@ import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
 import org.apache.poi.EncryptedDocumentException;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
@@ -38,6 +43,10 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 public final class XlsxConverter implements DocumentConverter {
 
     private static final Pattern LINE_BREAKS = Pattern.compile("\\s*\\R\\s*");
+    /** A table of up to this many cells is written however few of them have text. */
+    private static final long MAX_SPARSE_TABLE = 1_000_000;
+    /** A larger table may have at most this many cells per cell with text. */
+    private static final long SPARSE_FACTOR = 10;
 
     /** Creates the converter; {@link java.util.ServiceLoader} calls it. */
     public XlsxConverter() {
@@ -92,6 +101,8 @@ public final class XlsxConverter implements DocumentConverter {
             // a password-protected XLSX is an OLE2 container, like an old .xls renamed to .xlsx
             throw new DocumentConversionException(
                     "XLSX is password-protected, or is an old Excel .xls file, which is not supported: " + name, e);
+        } catch (DocumentConversionException e) {
+            throw e;
         } catch (IOException | InvalidFormatException | RuntimeException e) {
             throw new DocumentConversionException("Cannot read XLSX: " + name, e);
         }
@@ -124,43 +135,47 @@ public final class XlsxConverter implements DocumentConverter {
         return String.join("\n\n", blocks);
     }
 
-    /** The sheet as a Markdown table, or {@code ""} when it has no text. */
+    /**
+     * The sheet as a Markdown table, or {@code ""} when it has no text. Only the cells the file holds are read,
+     * and only rows and columns with text become the table.
+     *
+     * @throws DocumentTooLargeException when the table would be many times larger than the text in it: a few cells
+     *         far apart ({@code A1} and {@code XFD100000}) would fill rows times columns empty cells
+     */
     private static String table(Sheet sheet, DataFormatter formatter) {
-        List<List<String>> rows = new ArrayList<>();
-        int columns = 0;
+        List<Map<Integer, String>> rows = new ArrayList<>();
+        SortedSet<Integer> columns = new TreeSet<>();
+        long textCells = 0;
         for (Row row : sheet) {
-            List<String> cells = new ArrayList<>();
-            for (int c = 0; c < Math.max(row.getLastCellNum(), 0); c++) {
-                Cell cell = row.getCell(c);
-                String text = cell == null ? "" : LINE_BREAKS.matcher(formatter.formatCellValue(cell)).replaceAll(" ");
-                cells.add(Markdown.tableCell(text.strip()));
-            }
-            while (!cells.isEmpty() && cells.get(cells.size() - 1).isEmpty()) {
-                cells.remove(cells.size() - 1);
+            Map<Integer, String> cells = new HashMap<>();
+            for (Cell cell : row) {
+                String text = LINE_BREAKS.matcher(formatter.formatCellValue(cell)).replaceAll(" ").strip();
+                if (!text.isEmpty()) {
+                    cells.put(cell.getColumnIndex(), Markdown.tableCell(text));
+                    columns.add(cell.getColumnIndex());
+                }
             }
             if (!cells.isEmpty()) {
                 rows.add(cells);
-                columns = Math.max(columns, cells.size());
+                textCells += cells.size();
             }
         }
-        for (List<String> cells : rows) {
-            while (cells.size() < columns) {
-                cells.add("");
-            }
-        }
-        for (int column = columns - 1; column >= 0; column--) {
-            int c = column;
-            if (rows.stream().allMatch(cells -> cells.get(c).isEmpty())) {
-                rows.forEach(cells -> cells.remove(c));
-                columns--;
-            }
+        long tableCells = (long) rows.size() * columns.size();
+        if (tableCells > MAX_SPARSE_TABLE && tableCells > SPARSE_FACTOR * textCells) {
+            throw new DocumentTooLargeException("Sheet " + sheet.getSheetName() + " would be a table of " + rows.size()
+                    + " rows and " + columns.size() + " columns for " + textCells + " cells with text");
         }
         // ponytail: merged cells are not spread over the columns they span, as in DOCX
         StringBuilder markdown = new StringBuilder();
         for (int r = 0; r < rows.size(); r++) {
-            markdown.append("| ").append(String.join(" | ", rows.get(r))).append(" |\n");
+            Map<Integer, String> cells = rows.get(r);
+            markdown.append('|');
+            for (int column : columns) {
+                markdown.append(' ').append(cells.getOrDefault(column, "")).append(" |");
+            }
+            markdown.append('\n');
             if (r == 0) {
-                markdown.append("|").append(" --- |".repeat(columns)).append('\n');
+                markdown.append("|").append(" --- |".repeat(columns.size())).append('\n');
             }
         }
         return markdown.toString().stripTrailing();

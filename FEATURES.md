@@ -511,6 +511,7 @@ Excel workbooks (`.xlsx`, Excel 2007+), with Apache POI.
 - Each visible sheet with text is a Markdown table, its first row with text the header. With more than one such sheet, each table follows a `#` heading with the sheet name; hidden and empty sheets are left out. Tested by `XlsxConverterTest.oneSheetIsATableWithShownValues`, `severalSheetsGetTheirNamesAsHeadingsAndHiddenOrEmptyOnesAreLeftOut`.
 - A cell is the text Excel shows: number and date formats applied (US English, so the output does not depend on the machine), a formula the value Excel saved for it. Tested by `oneSheetIsATableWithShownValues`.
 - Rows and columns without text in the whole sheet are left out. `|` in a cell is escaped, a line break becomes a space, text that looks like an HTML tag is escaped. Tested by `cellTextCannotBreakTheTable`.
+- Only the cells the file holds are read: a cell in the last column (`XFD1`) adds one column, not 16,000. A table that would be more than a million cells and ten times more cells than have text (a few cells far apart in a small file) is rejected with `DocumentTooLargeException`. Tested by `cellsFarApartDoNotBlowUpTheTable`.
 - Title, creator and language of the core properties as metadata. Tested by `metadataComesFromTheCoreProperties`.
 - `Path` and stream give the same Markdown, the stream is not closed; an old `.xls`, a password-protected or a damaged file is a `DocumentConversionException`. Tested by `fileAndStreamGiveTheSameAndTheStreamIsNotClosed`, `oldXlsAndDamagedFilesAreConversionErrors`.
 

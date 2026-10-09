@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.yuraburyakov.casttomarkdown.CastToMarkdown;
 import io.github.yuraburyakov.casttomarkdown.DocumentConversionException;
+import io.github.yuraburyakov.casttomarkdown.DocumentTooLargeException;
 import io.github.yuraburyakov.casttomarkdown.PreparedDocument;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -75,6 +76,24 @@ class XlsxConverterTest {
         row.createCell(3).setCellValue("two\nlines <b>bold</b>, x<5");
 
         assertThat(convert(workbook)).isEqualTo("| a\\|b | two lines \\<b>bold\\</b>, x<5 |\n| --- | --- |\n");
+    }
+
+    @Test
+    void cellsFarApartDoNotBlowUpTheTable() throws IOException {
+        XSSFWorkbook far = new XSSFWorkbook();
+        Row row = far.createSheet("S").createRow(0);
+        row.createCell(0).setCellValue("a");
+        row.createCell(16_383).setCellValue("b"); // XFD1, the last column
+        assertThat(convert(far)).isEqualTo("| a | b |\n| --- | --- |\n");
+
+        // one cell per row, each in its own column: rows times columns empty cells from a small file
+        XSSFWorkbook sparse = new XSSFWorkbook();
+        Sheet sheet = sparse.createSheet("S");
+        for (int r = 0; r < 1100; r++) {
+            sheet.createRow(r).createCell(r).setCellValue("x");
+        }
+        assertThatThrownBy(() -> convert(sparse)).isInstanceOf(DocumentTooLargeException.class)
+                .hasMessageContaining("1100 rows and 1100 columns");
     }
 
     @Test
