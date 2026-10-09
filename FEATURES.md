@@ -222,6 +222,7 @@ LaTeX and similar tools draw tables as a grid of rules, without tags.
 - Columns run between the vertical rules, so empty cells are kept: arXiv's `ensemble 59.0 37.4` becomes `| ensemble |  |  | 59.0 | 37.4 |`.
 - A cell spanning columns (no vertical rule there in that row) puts its text in the first of them.
 - Rows between two horizontal rules are one row per text line when every line has a label in the first column, else one row whose cells join their lines.
+- A horizontal rule narrower than half the narrowest column is no row border: LaTeX draws the underscore of `conv2_x` as a rule, and arXiv 1512.03385 Table 1 has one row per stage as in the PDF. Tested by `RuledTablesTest.underscoreDrawnAsARuleDoesNotCutTheRow`.
 - A caption right under the rows in their font is found, also when it ends up in their paragraph; `Table 2 shows` in a sentence is no caption.
 - Left as text: rules without a vertical, a grid next to text of another column on the same lines, a cluster of more than 1,000 rules (untrusted input).
 - Words keep their ligatures decomposed (`refinement`, not `re` + U+FB01 + `nement`), as in the rest of the text.
@@ -229,7 +230,7 @@ LaTeX and similar tools draw tables as a grid of rules, without tags.
 **Cannot**
 - Tables without vertical rules (booktabs) or without a caption stay plain text, as do tables of many web-to-PDF tools.
 - Columns without a rule between them share one cell (arXiv Table 10: 20 per-class columns are one cell, numbers in header order).
-- Rules drawn inside cells (large brackets of a matrix, arXiv Table 1) can split a row in two and put bracket pieces into cells; all words are kept and in the right columns.
+- Bracket glyphs of a matrix stay in the cells as `[ ]` (arXiv Table 1), and an underscore drawn as a rule is lost (`conv2 x`); all words are kept and in the right columns.
 - RFC tables stay text: no inner vertical rules, and the page background joins the rules into one drawing.
 
 **Tests:** `RuledTablesTest`, `PdfRuledTablesTest`, `LineCollectorTest`, `PageGraphicsTest`

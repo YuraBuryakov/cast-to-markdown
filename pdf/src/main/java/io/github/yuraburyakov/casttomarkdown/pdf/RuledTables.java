@@ -245,7 +245,15 @@ final class RuledTables {
                 ruledBounds.get(nearest).add(rule);
             }
         }
-        List<Float> bands = merged(grid.horizontals().stream().map(rule -> (rule.top() + rule.bottom()) / 2).toList());
+        // a rule narrower than half a column is no row border: LaTeX draws the underscore of "conv2_x" (arXiv
+        // 1512.03385 Table 1) as a rule 1.9 pt wide, which cut each row of the table in two
+        float narrowest = Float.MAX_VALUE;
+        for (int c = 1; c < bounds.size(); c++) {
+            narrowest = Math.min(narrowest, bounds.get(c) - bounds.get(c - 1));
+        }
+        float minRule = narrowest / 2;
+        List<Float> bands = merged(grid.horizontals().stream().filter(rule -> rule.right() - rule.left() >= minRule)
+                .map(rule -> (rule.top() + rule.bottom()) / 2).toList());
 
         List<TextLine> textLines = textLines(lines);
         List<List<String>> rows = new ArrayList<>();

@@ -68,6 +68,25 @@ class RuledTablesTest {
     }
 
     @Test
+    void underscoreDrawnAsARuleDoesNotCutTheRow() {
+        // arXiv 1512.03385 Table 1: the underscore of "conv2_x" is a rule 1.9 pt wide in the middle of the row
+        List<PageGraphics.Box> rules = new java.util.ArrayList<>(smallGrid());
+        rules.add(new PageGraphics.Box(150, 102, 151.9f, 102));
+        List<Line> lines = List.of(
+                line(81, w("layer", 130), w("18-layer", 170), w("34-layer", 250)),
+                line(92, w("3×3,", 170), w("64", 190), w("3×3,", 250), w("64", 270)),
+                line(102, w("conv2", 130), w("x", 152)),
+                line(112, w("3×3,", 170), w("64", 190), w("3×3,", 250), w("64", 270)),
+                line(135, w("Table", 130), w("1.", 154), w("Architectures.", 166)));
+
+        RuledTables.replace(lines, Map.of(1, rules), tables);
+
+        assertThat(tables).containsExactly(TableMarkdown.of(List.of(
+                List.of("layer", "18-layer", "34-layer"),
+                List.of("conv2 x", "3×3, 64 3×3, 64", "3×3, 64 3×3, 64")), false));
+    }
+
+    @Test
     void cellSpanningUnderAHeaderWithMoreColumnsGoesToTheFirstOfThem() {
         // arXiv Table 1, conv1: the header has a rule between every model, the conv1 row only after the label;
         // the row's line sits so close under the header that a font size above its baseline reaches into it
