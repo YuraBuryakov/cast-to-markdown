@@ -408,7 +408,7 @@ Web pages saved as `.html` or `.htm`, based on jsoup. Measured on 13 public page
 - White space, also no-break spaces (`&nbsp;`, U+202F), becomes one space; block syntax at the start of a line is escaped. Tested by `blockSyntaxAtLineStartIsEscapedAndSpacesAreNormal`.
 - Text that a CommonMark renderer would take for HTML and hide is escaped: `List\<E>` (Javadoc, also when `E` is a link of its own), "the \<caption> element" (MDN), `\<!--`; `a < b` and `x<5` stay, code stays as it is, and literal angle brackets around an address (`\<<https://...>>`, RFC) render as "<address>". On the 13 pages no raw HTML is left. Tested by `textThatLooksLikeATagIsEscaped`.
 - Digits in `<sub>` and `<sup>` become Unicode subscripts and superscripts (`0₁₆`, `10⁻³`); a reference `[2]` stays as it is. Tested by `digitsInSubscriptsAndSuperscriptsKeepTheirPlace`.
-- `<pre>` is a fenced code block, longer than any run of backticks in it, with the language of `class="language-x"`; inline `<code>` is a code span. Tested by `codeBlocksAndInlineCode`.
+- `<pre>` is a fenced code block, longer than any run of backticks in it, with the language of its class or of the two wrappers above it: `language-x`, `lang-x`, `brush: x` (MDN), `highlight-x` (Sphinx), `highlight-source-x` (GitHub); inline `<code>` is a code span. Tested by `codeBlocksAndInlineCode`, `languageOfACodeBlockFromItsHighlighterClass`.
 - Quotes become `>` blocks; definition lists and figure captions become paragraphs; images are left out. Tested by `quotesAndLineBreaks`, `imagesGoAndCaptionsAndDefinitionsStay`.
 - Bold and italic are plain text, as in PDF and DOCX.
 

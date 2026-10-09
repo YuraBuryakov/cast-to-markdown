@@ -144,6 +144,15 @@ class HtmlConverterTest {
     }
 
     @Test
+    void languageOfACodeBlockFromItsHighlighterClass() {
+        // MDN: <pre class="brush: css notranslate">; Sphinx: <div class="highlight-python3"><div class="highlight"><pre>
+        assertThat(convert("<pre class='brush: css notranslate'>table {}</pre>"
+                + "<div class='highlight-python3 notranslate'><div class='highlight'><pre>import json</pre></div></div>"
+                + "<div class='highlight highlight-source-java'><pre>int a;</pre></div>"))
+                .isEqualTo("```css\ntable {}\n```\n\n```python3\nimport json\n```\n\n```java\nint a;\n```\n");
+    }
+
+    @Test
     void quotesAndLineBreaks() {
         assertThat(convert("<blockquote><p>Quote</p><p>Two<br>lines</p></blockquote>"))
                 .isEqualTo("> Quote\n>\n> Two\n> lines\n");

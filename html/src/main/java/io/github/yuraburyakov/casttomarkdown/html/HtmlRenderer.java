@@ -49,7 +49,8 @@ final class HtmlRenderer {
     /** The start of something CommonMark reads as raw HTML: a tag, a closing tag, a comment, an instruction. */
     private static final Pattern TAG_START = Pattern.compile("<(?=[A-Za-z/!?]|$)");
     private static final Pattern BACKTICKS = Pattern.compile("`+");
-    private static final Pattern LANGUAGE = Pattern.compile("(?:^|\\s)lang(?:uage)?-(\\S+)");
+    /** The language of a code block in a class: {@code language-x}, {@code lang-x}, {@code brush: x} (MDN), {@code highlight-x} (Sphinx). */
+    private static final Pattern LANGUAGE = Pattern.compile("(?:^|\\s)(?:lang(?:uage)?-|highlight-|brush:\\s*)([\\w+#-]+)");
     private static final Pattern SAFE_BASE = Pattern.compile("(?i)https?://.+");
     /** Spaces per list nesting level, as in the DOCX module. */
     private static final String LIST_INDENT = "    ";
@@ -60,6 +61,7 @@ final class HtmlRenderer {
     private static final int MAX_DEPTH = 200;
     /** A language switcher has at least this many languages; one link to another language is content. */
     private static final int MIN_LANGUAGES = 3;
+    private static final Pattern SCOPE = Pattern.compile("(?:source|text)-([^-]+).*");
     /** Lists and quotes deeper than this are rendered as plain blocks. */
     private static final int MAX_NESTING = 10;
     /** A Markdown table has at most this many cells, padding included; a larger one is read as blocks. */
@@ -426,9 +428,16 @@ final class HtmlRenderer {
     private static String codeBlock(Element pre) {
         String code = pre.wholeText().replaceFirst("^\\r?\\n", "").stripTrailing();
         Element first = pre.selectFirst("code");
-        Matcher language = LANGUAGE.matcher(pre.className() + " " + (first == null ? "" : first.className()));
+        // Sphinx puts the language two wrappers above the <pre>
+        Element parent = pre.parent();
+        Element grandparent = parent == null ? null : parent.parent();
+        Matcher language = LANGUAGE.matcher(String.join(" ", pre.className(), first == null ? "" : first.className(),
+                parent == null ? "" : parent.className(), grandparent == null ? "" : grandparent.className()));
         String fence = "`".repeat(Math.max(3, longestBackticks(code) + 1));
-        return fence + (language.find() ? language.group(1).toLowerCase(Locale.ROOT) : "") + "\n" + code + "\n" + fence;
+        String name = language.find() ? language.group(1).toLowerCase(Locale.ROOT) : "";
+        // GitHub names the grammar scope: highlight-source-java, highlight-text-html-basic
+        Matcher scope = SCOPE.matcher(name);
+        return fence + (scope.matches() ? scope.group(1) : name) + "\n" + code + "\n" + fence;
     }
 
     private static String codeSpan(String code) {
