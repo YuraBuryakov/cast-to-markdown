@@ -86,9 +86,9 @@ A conversion has no time limit. For untrusted uploads run it in your own executo
 
 Measured against [OpenDataLoader PDF](https://github.com/opendataloader-project/opendataloader-pdf) 2.5.12, the other pure-Java PDF-to-Markdown library, on 12 public PDFs that were not used to tune this library. They come from different generators: pdfTeX (one- and two-column arXiv papers, revtex, ACM), Ghostscript, Acrobat Distiller, InDesign, Word, Aspose.Words, LibreOffice, Google Docs and WeasyPrint (an RFC). OpenDataLoader ran with its defaults (`hybrid=off`, `readingOrder=xycut`) and again with `useStructTree=true`. Both ran on OpenJDK 21 in separate JVMs, and the time is the second (warm) pass.
 
-| | CastToMarkdown 0.1.0 | OpenDataLoader 2.5.12 (default / `useStructTree`) |
+| | CastToMarkdown 0.2.0-SNAPSHOT | OpenDataLoader 2.5.12 (default / `useStructTree`) |
 |---|---|---|
-| Words of the PDF text kept (reference: `pdftotext -raw`, 143,012 words) | 97.3 % | 96.6 % / 96.5 % |
+| Words of the PDF text kept (reference: `pdftotext -raw`, 143,012 words) | 97.5 % | 96.6 % / 96.5 % |
 | Headings of the PDF outline found (312 entries in 7 files) / headings that are not in the outline | 269 / 25 | 237 / 89; 255 / 84 |
 | Web links written as Markdown links | 362 | 0 |
 | Compounds that lost their hyphen at a line break | 0 | 21 |

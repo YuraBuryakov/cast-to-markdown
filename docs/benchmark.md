@@ -1,10 +1,10 @@
 # Benchmark: CastToMarkdown vs OpenDataLoader PDF
 
-Measured on 2026-10-08, recounted on 2026-10-09 for the release candidate on 12 files. The numbers in the README section "How it compares" come from here.
+Measured on 2026-10-08, recounted on 2026-10-09 on 12 files; words recounted again after running headers stopped taking the column headings of tables (Fed Z.1, a file of the tuning corpus). The numbers in the README section "How it compares" come from here.
 
 ## What was compared
 
-- **CastToMarkdown** 0.1.0 (PDFBox 3.0.8; first measured on `main` at `3650529`, which gave the same words, links and hyphens on every file, one heading less on the 12 files and 10 instead of 36 on the Typst file): `CastToMarkdown.create().convert(path).markdown()`.
+- **CastToMarkdown** 0.2.0-SNAPSHOT (PDFBox 3.0.8; 0.1.0 gave the same numbers except 97.3 % of the words kept; first measured on `main` at `3650529`, which gave the same words, links and hyphens on every file, one heading less on the 12 files and 10 instead of 36 on the Typst file): `CastToMarkdown.create().convert(path).markdown()`.
 - **OpenDataLoader PDF** 2.5.12 (`org.opendataloader:opendataloader-pdf-core`): `OpenDataLoaderPDF.processFile(path, config)` with `generateMarkdown=true`, `generateJSON=false`, `imageOutput=off` and the defaults for the rest (`hybrid=off`, `readingOrder=xycut`, `tableMethod=default`, `includeHeaderFooter=false`). A second run sets `useStructTree=true`.
 - Windows 11, OpenJDK 21.0.12, each library in its own JVM (they need different PDFBox versions). Every file is converted twice in one JVM, and the second pass is timed.
 
@@ -42,28 +42,28 @@ Measured on 2026-10-08, recounted on 2026-10-09 for the release candidate on 12 
 
 | | CastToMarkdown | OpenDataLoader | OpenDataLoader, `useStructTree` |
 |---|---|---|---|
-| Words kept (143,012 reference words) | 97.3 % | 96.6 % | 96.5 % |
+| Words kept (143,012 reference words) | 97.5 % | 96.6 % | 96.5 % |
 | Outline headings found (312 in 7 files) / extra | 269 / 25 | 237 / 89 | 255 / 84 |
 | Links | 362 | 0 | 0 |
 | Word breaks left with their hyphen, of the 46 cases where the outputs differ | 25 | 0 | |
 | Compounds that lost their hyphen, of the same 46 | 0 | 21 | |
 | Time, 12 files | 1.9 s | 3.4 s | |
 
-With the two left-out files (14 files): words 97.2 % / 96.5 % / 95.9 % of 149,688; headings 305 / 82, 252 / 110, 353 / 96 of 420; links 457, 0, 0; time 2.1 s and 3.6 s. Of the 46 hyphen cases none is in these two files.
+With the two left-out files (14 files): words 97.4 % / 96.5 % / 95.9 % of 149,688; headings 305 / 82, 252 / 110, 353 / 96 of 420; links 457, 0, 0; time 2.1 s and 3.6 s. Of the 46 hyphen cases none is in these two files.
 
 Per file:
 
 | File | Words kept: ours / ODL / ODL struct (%) | Outline headings: entries; found / extra for ours, ODL, ODL struct | Markdown tables: ours / ODL / ODL struct | Links: ours / ODL |
 |---|---|---|---|---|
 | arxiv-1304.3061-vqe-revtex | 93.5 / 93.0 / 93.0 | 4; 1/0, 1/12, 1/12 | 0 / 10 / 10 | 57 / 0 |
-| arxiv-1602.03837-ligo-distiller | 95.1 / 94.9 / 94.9 | no outline | 0 / 3 / 3 | 144 / 0 |
+| arxiv-1602.03837-ligo-distiller | 95.2 / 94.9 / 94.9 | no outline | 0 / 3 / 3 | 144 / 0 |
 | arxiv-1603.02754-xgboost-acm | 94.9 / 95.5 / 95.5 | 29; 23/9, 19/16, 19/16 | 1 / 39 / 39 | 2 / 0 |
 | arxiv-1801.00862-nisq-quantph | 96.8 / 96.6 / 96.6 | 23; 23/3, 17/5, 17/5 | 0 / 0 / 0 | 46 / 0 |
 | arxiv-math-0211159-perelman-math | 97.3 / 95.5 / 95.5 | no outline | 0 / 0 / 0 | 0 / 0 |
-| bls-empsit | 99.0 / 99.4 / 99.0 | no outline | 0 / 32 / 0 | 0 / 0 |
+| bls-empsit | 99.9 / 99.4 / 99.0 | no outline | 0 / 32 / 0 | 0 / 0 |
 | chrome-python-json (not in the totals) | 92.2 / 92.1 / 73.6 | no outline | 2 / 2 / 2 | 87 / 0 |
 | eu-key-figures-2014-2019-indesign | 94.5 / 96.5 / 99.5 | no outline | 0 / 8 / 0 | 0 / 0 |
-| fed-h41-aspose | 98.6 / 99.5 / 99.5 | no outline | 0 / 11 / 11 | 0 / 0 |
+| fed-h41-aspose | 99.2 / 99.5 / 99.5 | no outline | 0 / 11 / 11 | 0 / 0 |
 | gdocs-chromium-win32k-lockdown | 99.9 / 99.9 / 99.9 | 30; 28/0, 28/1, 28/0 | 1 / 1 / 1 | 17 / 0 |
 | govuk-cycle-to-work-guidance-word | 99.6 / 99.4 / 96.7 | 43; 42/6, 24/5, 42/1 | 4 / 8 / 4 | 19 / 0 |
 | libreoffice-custom-shape-tutorial | 98.5 / 96.2 / 96.2 | 152; 124/5, 122/42, 122/42 | 9 / 36 / 36 | 38 / 0 |
