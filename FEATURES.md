@@ -395,6 +395,7 @@ Web pages saved as `.html` or `.htm`, based on jsoup. Developed on 13 public pag
 - A form's text stays, only its controls go: ASP.NET wraps the whole page in one form. Tested by `navigationAndOtherPageFurnitureIsLeftOut`.
 - Left out also: a list of at least three links to the page in other languages (`hreflang`), the `[edit]` links of MediaWiki and heading permalinks (`¶`, `§`, `#`). Tested by `languageSwitcherAndMediaWikiEditLinksAreLeftOut`, `sphinxPageKeepsFootnotesAndSourceLinkButNotPermalinks`.
 - With no `h1`, the page `<title>` is the first heading. Tested by `titleIsTheHeadingWhenThereIsNoH1`.
+- A heading below level 1 with nothing under it, before a heading of a higher level or at the end, is left out: the navigation under it is gone (gov.uk "Related content", GitHub "Repository files navigation"). Two headings of one level stay (the title of a gov.uk guide and of its part). Tested by `headingWithNothingUnderItIsLeftOut`.
 
 **Cannot**
 - Furniture made of plain `div`s stays: GitHub's sidebar (About, Topics, Stars), Wikipedia's categories, a "Help improve" box at the end of MDN. Only what is marked up as furniture goes; a page without `<main>` keeps everything else rather than risk losing text.
@@ -411,9 +412,9 @@ Web pages saved as `.html` or `.htm`, based on jsoup. Developed on 13 public pag
 - `<pre>` is a fenced code block, longer than any run of backticks in it, with the language of its class or of the two wrappers above it: `language-x`, `lang-x`, `brush: x` (MDN), `highlight-x` (Sphinx), `highlight-source-x` (GitHub); inline `<code>` is a code span. Tested by `codeBlocksAndInlineCode`, `languageOfACodeBlockFromItsHighlighterClass`.
 - Quotes become `>` blocks; definition lists and figure captions become paragraphs; images are left out. Tested by `quotesAndLineBreaks`, `imagesGoAndCaptionsAndDefinitionsStay`.
 - Bold and italic are plain text, as in PDF and DOCX.
+- A link right next to another element, which CSS lays out apart, gets a space where two words meet (GitHub topics `[css](...) [dom](...)`); brackets in elements around a footnote link stay tight (`[1]`), and a word split by tags stays whole (`Ex<b>am</b>ple`). Tested by `linksRightAfterAnotherElementAreSpacedApart`.
 
 **Cannot**
-- Links next to each other without a space between them run together (`[css](...)[css-selectors](...)`, GitHub topics).
 - Formulas (MathML) are left as their text; the `alt` text of images is not kept.
 
 ### Lists and tables

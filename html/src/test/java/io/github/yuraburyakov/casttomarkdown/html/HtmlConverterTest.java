@@ -198,6 +198,23 @@ class HtmlConverterTest {
     }
 
     @Test
+    void linksRightAfterAnotherElementAreSpacedApart() {
+        // GitHub topics: <a>css</a><a>css-selectors</a>, laid out apart by CSS; words of one link split stay whole
+        assertThat(convert("<p><a href='https://g.com/t/css'>css</a><a href='https://g.com/t/dom'>dom</a>"
+                + "<span>tag</span><a href='https://g.com/t/html'>html</a>, Ex<b>am</b>ple"
+                + " <span>[</span><a href='#fn1'>1</a><span>]</span></p>"))
+                .isEqualTo("[css](https://g.com/t/css) [dom](https://g.com/t/dom) tag [html](https://g.com/t/html), Example [1]\n");
+    }
+
+    @Test
+    void headingWithNothingUnderItIsLeftOut() {
+        // gov.uk: "Related content" ends the page, its links were navigation; a title over a part of a guide stays
+        assertThat(convert("<h1>Register for VAT</h1><h1>When to register</h1><p>Text.</p><h3>Empty</h3><h2>Next</h2>"
+                + "<p>More.</p><h2>Related content</h2><nav><a href='https://a.org'>Other</a></nav>"))
+                .isEqualTo("# Register for VAT\n\n# When to register\n\nText.\n\n## Next\n\nMore.\n");
+    }
+
+    @Test
     void unsafeLinksStayText() {
         assertThat(convert("<p><a href='javascript:alert(1)'>Click</a> <a href='mailto:a@b.org'>Mail</a></p>"))
                 .isEqualTo("Click [Mail](mailto:a@b.org)\n");

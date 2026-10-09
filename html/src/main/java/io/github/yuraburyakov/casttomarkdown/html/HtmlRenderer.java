@@ -90,7 +90,33 @@ final class HtmlRenderer {
             blocks.add("# " + Markdown.escape(title));
         }
         blocks.addAll(blocks(root, 0));
+        withoutEmptyHeadings(blocks);
         return String.join("\n\n", blocks);
+    }
+
+    /**
+     * Leaves out a heading below level 1 with nothing under it: the next block is a heading of a higher level, or
+     * there is none (gov.uk "Related content" over navigation that is gone). Two headings of one level stay: gov.uk
+     * sets the title of a guide and of its part so.
+     */
+    private static void withoutEmptyHeadings(List<String> blocks) {
+        for (int i = blocks.size() - 1; i >= 0; i--) {
+            int level = headingLevel(blocks.get(i));
+            // a level 1 heading is the title of the document, kept also alone
+            if (level > 1 && (i == blocks.size() - 1
+                    || headingLevel(blocks.get(i + 1)) > 0 && headingLevel(blocks.get(i + 1)) < level)) {
+                blocks.remove(i);
+            }
+        }
+    }
+
+    /** 1 for {@code # }, ... 6; 0 for a block that is no heading. */
+    private static int headingLevel(String block) {
+        int level = 0;
+        while (level < block.length() && block.charAt(level) == '#') {
+            level++;
+        }
+        return level > 0 && level <= 6 && level < block.length() && block.charAt(level) == ' ' ? level : 0;
     }
 
     /**
@@ -256,6 +282,17 @@ final class HtmlRenderer {
             if (depth > MAX_DEPTH) {
                 out.append(element.text());
                 return;
+            }
+            // links right next to another element are laid out apart by CSS (GitHub topics): a space between them
+            // when words meet; a footnote "[<a>1</a>]" of Sphinx, with its brackets in elements, stays whole
+            if (element.previousSibling() instanceof Element previous && (element.nameIs("a") || previous.nameIs("a"))
+                    && !out.isEmpty() && !Character.isWhitespace(out.charAt(out.length() - 1))) {
+                String before = previous.text();
+                String text = element.text();
+                if (!before.isEmpty() && Character.isLetterOrDigit(before.charAt(before.length() - 1))
+                        && !text.isEmpty() && Character.isLetterOrDigit(text.charAt(0))) {
+                    out.append(' ');
+                }
             }
             switch (element.normalName()) {
                 case "br" -> out.append('\n');
