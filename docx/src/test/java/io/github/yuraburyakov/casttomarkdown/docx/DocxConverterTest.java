@@ -256,6 +256,19 @@ class DocxConverterTest {
     }
 
     @Test
+    void tagsInTextAreEscapedAndLinksStay() throws IOException {
+        // "List<" and "E" are in different runs; a link to a bookmark leaves its runs as plain text
+        byte[] docx = TestDocx.builder()
+                .paragraph("Use <b> for bold, a < b.")
+                .paragraphWithLink("Returns List<", null, "> items.", "E")
+                .paragraphWithLink("See ", "https://example.org/a(b)", ".", "Set<T>")
+                .bytes();
+
+        assertThat(convert(docx)).isEqualTo("Use \\<b> for bold, a < b.\n\nReturns List\\<E> items.\n\n"
+                + "See [Set\\<T>](<https://example.org/a(b)>).\n");
+    }
+
+    @Test
     void internalAndUnsafeLinksStayText() throws IOException {
         // Word's table of contents links to bookmarks; javascript: must not reach a Markdown renderer
         byte[] docx = TestDocx.builder()

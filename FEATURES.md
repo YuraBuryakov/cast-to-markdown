@@ -70,9 +70,10 @@ Add `cast-to-markdown-pdf`, `cast-to-markdown-docx` or both; they are found with
 - Line endings become `\n`, trailing spaces are removed, runs of blank lines become one, the text ends with one `\n`.
 - Block syntax at the start of a line is escaped: `#`, `>`, code fences, and the rule or heading-underline lines CommonMark reads as syntax (`---`, `***`, `===`, a lone `-` or `*`).
 - Links: only `http`, `https` and `mailto` become `[text](url)`; brackets in the text and parentheses and control characters in the address are escaped. A link whose text is just its address becomes an autolink `<https://...>` or `<team@example.org>`, which works anywhere in a line (a bare address right after a footnote number, `1http://...`, is no link to GFM); it stays text when the address has a space, `<` or `>`. A link whose text is a piece of its address stays text. Tested by `MarkdownTest`.
+- Text a CommonMark renderer would take for HTML and hide is escaped in every format: `List\<E>`, `\<b>`, `\<!--`; `a < b` and `x<5` stay. In PDF and DOCX the links written by this library and an autolink the document wrote out itself (`<https://...>`) stay links; TXT and CSV escape that autolink too (see their sections). Tested by `MarkdownTest.tagsOutsideLinksAreEscapedAndLinksStay`, `PdfConverterEscapeTest.tagsInTextAreEscaped`, `DocxConverterTest.tagsInTextAreEscapedAndLinksStay`.
 
 **Cannot**
-- List markers (`-`, `*`, `1.`) and inline syntax (`*`, `_`, `` ` ``, `[`, `<`) in the text are not escaped: PDFs write real lists as plain text.
+- List markers (`-`, `*`, `1.`) and inline syntax (`*`, `_`, `` ` ``, `[`) in the text are not escaped: PDFs write real lists as plain text.
 
 **Tests:** `MarkdownTest`
 

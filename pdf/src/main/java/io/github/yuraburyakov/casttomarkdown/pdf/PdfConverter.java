@@ -180,7 +180,7 @@ public final class PdfConverter implements DocumentConverter {
                 out.add(String.join("\n", Hyphens.join(text.lines().toList(), words)));
             }
         }
-        return out.toString();
+        return Markdown.escapeTagsOutsideLinks(out.toString());
     }
 
     /**

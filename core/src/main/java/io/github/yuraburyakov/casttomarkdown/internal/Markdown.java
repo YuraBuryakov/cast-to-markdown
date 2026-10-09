@@ -34,6 +34,12 @@ public final class Markdown {
     /** The e-mail address CommonMark reads as {@code <team@example.org>}. */
     private static final Pattern AUTOLINK_EMAIL = Pattern.compile("[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9]"
             + "(?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*");
+    /**
+     * What {@link #link} writes with {@code <}: a target in angle brackets ({@code ](<a b>)}) and an autolink
+     * ({@code <https://...>}, {@code <team@example.org>}). Neither is raw HTML to CommonMark.
+     */
+    private static final Pattern LINK_SYNTAX = Pattern.compile("\\]\\(<[^<>\\n]*>\\)|<(?i:https?|mailto):[^\\s\\p{Cntrl}<>]*>|<"
+            + AUTOLINK_EMAIL.pattern() + ">");
     private static final Pattern ADDRESS_LIKE = Pattern.compile("/|^www\\.|://");
     /** Sentence punctuation after an address in running text: "see https://example.org/x." */
     private static final Pattern ADDRESS_END_PUNCTUATION = Pattern.compile("[.,;:)]+$");
@@ -79,7 +85,7 @@ public final class Markdown {
      * Escapes text a CommonMark renderer would read as raw HTML and run or hide: {@code <} before a letter,
      * {@code /}, {@code !} or {@code ?} ({@code <script>}, {@code List<E>}, {@code <!--}). {@code a < b} and
      * {@code x<5} stay. An address in angle brackets ({@code <https://...>} of an RFC text file) is escaped too and
-     * reads as text. Used by the text formats (TXT, CSV); PDF and DOCX do not escape yet (Q-API-02b).
+     * reads as text. Used by the text formats (TXT, CSV).
      *
      * @param text text of the document
      * @return the text with each such {@code <} escaped
@@ -90,6 +96,25 @@ public final class Markdown {
             String backslashes = match.group(1);
             return Matcher.quoteReplacement(backslashes + backslashes + "\\<");
         });
+    }
+
+    /**
+     * As {@link #escapeTags(String)} for Markdown that already holds links written by {@link #link}: their
+     * autolinks and targets in angle brackets stay, and so does an autolink the document wrote out itself
+     * (PDF, DOCX: their text and their links are put together before the Markdown is done).
+     *
+     * @param markdown Markdown text with links
+     * @return the text with each {@code <} outside the links escaped as {@link #escapeTags(String)} does
+     */
+    public static String escapeTagsOutsideLinks(String markdown) {
+        StringBuilder out = new StringBuilder(markdown.length());
+        Matcher link = LINK_SYNTAX.matcher(markdown);
+        int end = 0;
+        while (link.find()) {
+            out.append(escapeTags(markdown.substring(end, link.start()))).append(link.group());
+            end = link.end();
+        }
+        return out.append(escapeTags(markdown.substring(end))).toString();
     }
 
     /**

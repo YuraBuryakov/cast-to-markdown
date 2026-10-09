@@ -77,7 +77,8 @@ final class DocxRenderer {
             }
         }
         footnoteDefinitions();
-        return out.toString();
+        // runs split text anywhere ("List<" and "E>"), so the whole Markdown is escaped, not each run
+        return Markdown.escapeTagsOutsideLinks(out.toString());
     }
 
     private void paragraph(XWPFParagraph paragraph) {

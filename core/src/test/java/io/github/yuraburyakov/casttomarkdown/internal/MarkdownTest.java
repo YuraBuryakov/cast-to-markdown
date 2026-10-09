@@ -134,6 +134,16 @@ class MarkdownTest {
     }
 
     @Test
+    void tagsOutsideLinksAreEscapedAndLinksStay() {
+        assertThat(Markdown.escapeTagsOutsideLinks("List<E> [a<b>](<https://x/a b>) <https://a.org> <team@example.org>"))
+                .isEqualTo("List\\<E> [a\\<b>](<https://x/a b>) <https://a.org> <team@example.org>");
+        // not a target in angle brackets: the text after it would be read as HTML
+        assertThat(Markdown.escapeTagsOutsideLinks("[x](<script>alert(1)</script>)"))
+                .isEqualTo("[x](\\<script>alert(1)\\</script>)");
+        assertThat(Markdown.escapeTagsOutsideLinks("<https://x onmouseover=1>")).isEqualTo("\\<https://x onmouseover=1>");
+    }
+
+    @Test
     void tableCellTextCannotEndOrSplitItsCell() {
         // GFM reads "\\" as an escaped backslash, so the "|" after it would end the cell: backslashes before a pipe
         // are doubled too

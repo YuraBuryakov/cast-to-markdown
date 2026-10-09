@@ -17,6 +17,14 @@ class PdfConverterEscapeTest {
     }
 
     @Test
+    void tagsInTextAreEscaped() {
+        // Javadoc printed to PDF: "List<E>" was hidden by a renderer as an unknown tag
+        List<Line> lines = List.of(new Line(1, 72, 100, 9, "Returns a List<E> of <b>items</b>, a < b."));
+
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo("Returns a List\\<E> of \\<b>items\\</b>, a < b.");
+    }
+
+    @Test
     void codeFenceQuoteAndRuleInTextStayText() {
         List<Line> lines = List.of(
                 new Line(1, 72, 100, 9, "```bash is how the example starts"),
