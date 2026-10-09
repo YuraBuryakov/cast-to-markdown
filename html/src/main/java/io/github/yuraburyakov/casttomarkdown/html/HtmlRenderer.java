@@ -46,6 +46,8 @@ final class HtmlRenderer {
     private static final Pattern SPACES = Pattern.compile("[\\s\\p{Z}]+");
     /** A line break, then only white space up to the next one. */
     private static final Pattern BLANK_LINE = Pattern.compile("\\n[\\s\\p{Z}&&[^\\n]]*\\n");
+    /** The start of something CommonMark reads as raw HTML: a tag, a closing tag, a comment, an instruction. */
+    private static final Pattern TAG_START = Pattern.compile("<(?=[A-Za-z/!?]|$)");
     private static final Pattern BACKTICKS = Pattern.compile("`+");
     private static final Pattern LANGUAGE = Pattern.compile("(?:^|\\s)lang(?:uage)?-(\\S+)");
     private static final Pattern SAFE_BASE = Pattern.compile("(?i)https?://.+");
@@ -81,7 +83,7 @@ final class HtmlRenderer {
         Elements mains = body.select("main, [role=main]");
         Element root = mains.size() == 1 ? mains.first() : body;
         List<String> blocks = new ArrayList<>();
-        String title = SPACES.matcher(document.title()).replaceAll(" ").strip();
+        String title = escapeTags(SPACES.matcher(document.title()).replaceAll(" ").strip());
         if (root.selectFirst("h1") == null && !title.isEmpty()) {
             blocks.add("# " + Markdown.escape(title));
         }
@@ -247,7 +249,7 @@ final class HtmlRenderer {
 
     private void inline(StringBuilder out, Node node, int depth) {
         if (node instanceof TextNode text) {
-            out.append(SPACES.matcher(text.getWholeText()).replaceAll(" "));
+            out.append(escapeTags(SPACES.matcher(text.getWholeText()).replaceAll(" ")));
         } else if (node instanceof Element element) {
             if (depth > MAX_DEPTH) {
                 out.append(element.text());
@@ -275,6 +277,17 @@ final class HtmlRenderer {
             inline(text, child, depth + 1);
         }
         return text.toString();
+    }
+
+    /**
+     * Text of the page that a CommonMark renderer would read as HTML and hide: {@code List<E>} of Javadoc,
+     * "the &lt;caption&gt; element" of MDN. A {@code <} before a letter, {@code /}, {@code !} or {@code ?} is
+     * escaped, and one at the end of a text node, as the next node may go on with a letter (Javadoc writes
+     * {@code Iterator&lt;<a>E</a>&gt;}); {@code a < b} and {@code x<5} stay. Code and the autolinks written here
+     * are not text of the page.
+     */
+    private static String escapeTags(String text) {
+        return TAG_START.matcher(text).replaceAll("\\\\<");
     }
 
     private static String oneLine(String text) {

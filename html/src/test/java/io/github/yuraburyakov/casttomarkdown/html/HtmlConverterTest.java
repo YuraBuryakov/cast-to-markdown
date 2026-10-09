@@ -170,6 +170,25 @@ class HtmlConverterTest {
     }
 
     @Test
+    void textThatLooksLikeATagIsEscaped() {
+        // Javadoc: "Interface List&lt;E&gt;" is text, a CommonMark renderer would take <E> for a tag and hide it
+        assertThat(convert("<h1>Interface List&lt;E&gt;</h1><p>Map&lt;K, V&gt; and Collection&lt;? extends E&gt;,"
+                + " a &lt; b, x&lt;5, &lt;!-- not a comment --&gt; and &lt;/p&gt;.</p>"))
+                .isEqualTo("# Interface List\\<E>\n\nMap\\<K, V> and Collection\\<? extends E>, a < b, x<5,"
+                        + " \\<!-- not a comment --> and \\</p>.\n");
+        // MDN: the element named in text and in code, and in the text of a link
+        assertThat(convert("<p>the &lt;table&gt; element, <code>&lt;table&gt;</code>,"
+                + " <a href='https://a.org/c'>Adding a caption with &lt;caption&gt;</a></p>"))
+                .isEqualTo("the \\<table> element, `<table>`, [Adding a caption with \\<caption>](https://a.org/c)\n");
+        // RFC: literal angle brackets around an address that becomes an autolink; renders "<address>"
+        assertThat(convert("<p>&lt;<a href='https://www.rfc-editor.org/info/rfc8141'>https://www.rfc-editor.org/info/rfc8141</a>&gt;</p>"))
+                .isEqualTo("\\<<https://www.rfc-editor.org/info/rfc8141>>\n");
+        // Javadoc: the type parameter is a link of its own, after a text node that ends with "<"
+        assertThat(convert("<p><a href='Iterator.html'>Iterator</a>&lt;<a href='List.html'>E</a>&gt; iterator()</p>"))
+                .isEqualTo("Iterator\\<E> iterator()\n");
+    }
+
+    @Test
     void unsafeLinksStayText() {
         assertThat(convert("<p><a href='javascript:alert(1)'>Click</a> <a href='mailto:a@b.org'>Mail</a></p>"))
                 .isEqualTo("Click [Mail](mailto:a@b.org)\n");
