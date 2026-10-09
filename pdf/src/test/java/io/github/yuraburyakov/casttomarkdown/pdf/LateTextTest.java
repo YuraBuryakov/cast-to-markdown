@@ -99,6 +99,52 @@ class LateTextTest {
     }
 
     @Test
+    void referenceLabelsDrawnBeforeTheHeadingGoToTheStartOfTheirEntries() {
+        // RFC 9562 page 35: the labels are drawn first, then the heading, then the entries one font size right of them
+        Line label1 = at(297.7f, line(10, "[C309]", new Line.Word("[C309]", 104.2f, 135.9f)));
+        Line label2 = at(346.5f, line(10, "[C311]", new Line.Word("[C311]", 104.2f, 135.9f)));
+        Line heading = at(273.9f, line(12, "9.1. Normative References", new Line.Word("9.1.", 65.9f, 85f),
+                new Line.Word("Normative", 88f, 150f), new Line.Word("References", 153f, 220f)));
+        Line entry1 = at(297.7f, line(10, "X/Open Company Limited", new Line.Word("X/Open", 145.9f, 180.7f),
+                new Line.Word("Company", 183.3f, 228.4f), new Line.Word("Limited", 231f, 268.1f)));
+        Line entry2 = at(346.5f, line(10, "The Open Group", new Line.Word("The", 145.9f, 163.7f),
+                new Line.Word("Open", 166.3f, 191.7f), new Line.Word("Group", 194.3f, 224.4f)));
+
+        assertThat(LateText.insert(List.of(label1, label2, heading, entry1, entry2))).extracting(Line::text)
+                .containsExactly("9.1. Normative References", "[C309] X/Open Company Limited", "[C311] The Open Group");
+    }
+
+    @Test
+    void wordsDrawnAfterThePunctuationBetweenThemJoinIt() {
+        // RFC 9562 page 35: "and , , ," is drawn with the entry before it, the names and the title come later
+        Line before = at(533.7f, line(10, "[rfc2119]>.", new Line.Word("[rfc2119]>.", 145.9f, 200f)));
+        Line punctuation = at(555.3f, line(10, "and , , ,", new Line.Word("and", 218f, 236.2f),
+                new Line.Word(",", 283.5f, 286f), new Line.Word(",", 453.9f, 456.4f), new Line.Word(",", 502.5f, 505f)));
+        Line after = at(568.9f, line(10, "10.17487/RFC8141, April 2017", new Line.Word("10.17487/RFC8141,", 145.9f, 230f),
+                new Line.Word("April", 232.6f, 255f), new Line.Word("2017", 257.6f, 280f)));
+        Line words = at(555.3f, line(10, "Saint-Andre, P. J. Klensin \"Uniform Resource Names (URNs)\" RFC 8141 DOI",
+                new Line.Word("Saint-Andre,", 145.9f, 205.4f), new Line.Word("P.", 208f, 215.4f),
+                new Line.Word("J.", 238.8f, 244.9f), new Line.Word("Klensin", 247.5f, 283.5f),
+                new Line.Word("\"Uniform", 288.6f, 333.1f), new Line.Word("Resource", 335.7f, 379.3f),
+                new Line.Word("Names", 381.9f, 414.4f), new Line.Word("(URNs)\"", 417f, 453.9f),
+                new Line.Word("RFC", 459f, 477.6f), new Line.Word("8141", 480.2f, 502.5f), new Line.Word("DOI", 507.6f, 526f)));
+
+        assertThat(LateText.insert(List.of(before, punctuation, after, words))).extracting(Line::text).containsExactly(
+                "[rfc2119]>.",
+                "Saint-Andre, P. and J. Klensin, \"Uniform Resource Names (URNs)\", RFC 8141, DOI",
+                "10.17487/RFC8141, April 2017");
+    }
+
+    @Test
+    void linesOfTwoColumnsOnOneBaselineStayApart() {
+        // two-column paper: both columns have a line on the same baseline, 24 pt apart
+        Line left = at(100, line(10, "left column text", new Line.Word("left", 50, 70), new Line.Word("text", 260, 282)));
+        Line right = at(100, line(10, "right column text", new Line.Word("right", 306, 330), new Line.Word("text", 520, 545)));
+
+        assertThat(LateText.insert(List.of(left, right))).containsExactly(left, right);
+    }
+
+    @Test
     void lateLinesAboveTheTextOfThePageGoToItsTop() {
         // RFC 9562 page 6: list items 9 to 16 go on from page 5 and are drawn after the rest of the page
         Line text1 = at(217.5f, line(10, "An inspection of these", new Line.Word("An", 65.9f, 80f)));

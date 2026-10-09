@@ -44,6 +44,10 @@ final class LateText {
     private static final int MAX_TRIES = 8;
     /** A whole late line goes back at most this many lines. */
     private static final int LOOK_BACK = 6;
+    /** A reference label is at most this many font sizes left of its entry (see {@link #spliced}). */
+    private static final float NEAR_PIECE = 1.5f;
+    /** The label of a reference entry: {@code [RFC2119]}, {@code [C309]}. */
+    private static final Pattern LABEL = Pattern.compile("\\[[^\\]\\s]+\\]");
     /** A late line above the text of its page starts at most this many font sizes right of its first line. */
     private static final float TOP_INDENT = 2;
     /** A late line goes to the top of its page only when the page so far has at most this many lines. */
@@ -65,12 +69,138 @@ final class LateText {
                 page = line.page();
                 byBaseline.clear();
             }
-            if (!merged(result, byBaseline, line, l + 1 < lines.size() ? lines.get(l + 1) : null)) {
+            if (!merged(result, byBaseline, line, l + 1 < lines.size() ? lines.get(l + 1) : null)
+                    && !spliced(result, byBaseline, line)) {
                 byBaseline.computeIfAbsent(baselineKey(line), k -> new ArrayList<>()).add(result.size());
                 result.add(line);
             }
         }
-        return lateLinesInPlace(result);
+        result.removeIf(java.util.Objects::isNull);
+        // labels after: a labelled line starts at its label, no longer at the left edge of the entries around it
+        List<Line> inPlace = lateLinesInPlace(result);
+        labelsToEntries(inPlace);
+        inPlace.removeIf(java.util.Objects::isNull);
+        return inPlace;
+    }
+
+    /**
+     * A reference label alone on its line goes to the start of the entry on its baseline, wherever the entry is in
+     * the list: RFC 9562 draws all labels of a page before its heading, and the first line of an entry is put together
+     * from pieces only later. The label's place is left {@code null}.
+     */
+    private static void labelsToEntries(List<Line> result) {
+        Map<Long, List<Integer>> byPageBaseline = new HashMap<>();
+        for (int i = 0; i < result.size(); i++) {
+            Line line = result.get(i);
+            if (line != null) {
+                byPageBaseline.computeIfAbsent((long) line.page() << 32 | baselineKey(line), k -> new ArrayList<>()).add(i);
+            }
+        }
+        for (int i = 0; i < result.size(); i++) {
+            Line label = result.get(i);
+            if (label == null || !eligible(label) || label.words().size() != 1 || !LABEL.matcher(label.text().strip()).matches()) {
+                continue;
+            }
+            List<Integer> same = byPageBaseline.get((long) label.page() << 32 | baselineKey(label));
+            // ponytail: the first few lines on the baseline only, so that a hostile page stays linear
+            for (int j : same.subList(0, Math.min(same.size(), MAX_TRIES))) {
+                Line entry = result.get(j);
+                if (j == i || entry == null || !eligible(entry) || entry.sizeKey() != label.sizeKey()
+                        || entry.words().size() <= 1 || entry.x() <= label.x()) {
+                    continue;
+                }
+                Line joined = splice(label, entry);
+                if (joined != null) {
+                    result.set(j, joined);
+                    result.set(i, null);
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * A line and an earlier piece on its baseline that the rules of {@link #merged} do not join, spliced into one line
+     * by position, both in one font size: their words go between each other (WeasyPrint draws the commas and "and" of
+     * an RFC 9562 reference entry with the entry before it, and the names after the page), or the earlier one is a
+     * reference label at most {@link #NEAR_PIECE} font sizes left of the later one (the label {@code [C309]}, drawn
+     * before the heading "9.1. Normative References", one font size left of its entry). The spliced line takes the place of the piece with more words, the other place is left {@code null}.
+     * Two columns are further apart. Whether the line was spliced into {@code result}.
+     */
+    private static boolean spliced(List<Line> result, Map<Integer, List<Integer>> byBaseline, Line late) {
+        if (!eligible(late) || late.words().size() > MAX_WORDS) {
+            return false;
+        }
+        List<Integer> candidates = new ArrayList<>();
+        int key = baselineKey(late);
+        for (int k = key - 1; k <= key + 1; k++) {
+            List<Integer> bucket = byBaseline.getOrDefault(k, List.of());
+            candidates.addAll(bucket.subList(Math.max(0, bucket.size() - MAX_TRIES), bucket.size()));
+        }
+        candidates.sort(Comparator.reverseOrder());
+        for (int i : candidates.subList(0, Math.min(candidates.size(), MAX_TRIES))) {
+            Line line = result.get(i);
+            if (line == null || !eligible(line) || line.words().size() > MAX_WORDS
+                    || Math.abs(line.y() - late.y()) >= SAME_BASELINE || line.sizeKey() != late.sizeKey()) {
+                continue;
+            }
+            Line joined = splice(line, late);
+            if (joined != null) {
+                if (line.words().size() >= late.words().size()) {
+                    result.set(i, joined);
+                } else {
+                    result.set(i, null);
+                    byBaseline.computeIfAbsent(key, k -> new ArrayList<>()).add(result.size());
+                    result.add(joined);
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** The two pieces as one line, or {@code null} when their words overlap or they are too far apart. */
+    private static Line splice(Line a, Line b) {
+        Line left = a.x() <= b.x() ? a : b;
+        Line right = left == a ? b : a;
+        float size = Math.max(a.fontSize(), b.fontSize());
+        List<Line.Word> words = Stream.concat(a.words().stream(), b.words().stream())
+                .sorted(Comparator.comparingDouble(Line.Word::left)).toList();
+        for (int w = 1; w < words.size(); w++) {
+            if (words.get(w).left() < words.get(w - 1).right() - SLACK) {
+                return null;
+            }
+        }
+        float leftEnd = left.words().get(left.words().size() - 1).right();
+        String text;
+        if (right.words().get(0).left() >= leftEnd - SLACK) {
+            // side by side only for a reference label left of its entry; the texts stay as they are, with any links
+            if (left.words().size() != 1 || !LABEL.matcher(left.text().strip()).matches()
+                    || right.words().get(0).left() - leftEnd > NEAR_PIECE * size) {
+                return null;
+            }
+            text = left.text().strip() + space(leftEnd, right.words().get(0).left(), size) + right.text().strip();
+        } else {
+            // between each other: only plain texts, rebuilt from the words
+            if (!plain(a) || !plain(b)) {
+                return null;
+            }
+            StringBuilder out = new StringBuilder(words.get(0).text());
+            for (int w = 1; w < words.size(); w++) {
+                out.append(space(words.get(w - 1).right(), words.get(w).left(), size)).append(words.get(w).text());
+            }
+            text = out.toString();
+        }
+        Line body = a.words().size() >= b.words().size() ? a : b;
+        float rightEnd = Math.max(a.x() + a.width(), b.x() + b.width());
+        return new Line(body.page(), body.pageHeight(), left.x(), body.y(), body.fontSize(), body.bold(), false, text, -1,
+                rightEnd - left.x(), left.pageX(), body.pageY(), words, body.heading());
+    }
+
+    /** Whether the text of the line is its words with single spaces. */
+    private static boolean plain(Line line) {
+        return line.text().strip().replaceAll("\\s+", " ").equals(
+                line.words().stream().map(Line.Word::text).collect(Collectors.joining(" ")));
     }
 
     /**
@@ -170,6 +300,9 @@ final class LateText {
         // a damaged or hostile page with thousands of pieces on one baseline must not take quadratic time
         for (int i : candidates.subList(0, Math.min(candidates.size(), MAX_TRIES))) {
             Line line = result.get(i);
+            if (line == null) {
+                continue; // spliced into a later line
+            }
             // MUST and MAY of RFC 9562 are 1 pt smaller; text of another size only fills a gap between words,
             // as pieces of formulas in arXiv papers on the same baseline would otherwise join at the line ends
             boolean sameSize = line.sizeKey() == late.sizeKey();
