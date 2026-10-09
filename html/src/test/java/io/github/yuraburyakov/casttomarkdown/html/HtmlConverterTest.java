@@ -194,6 +194,8 @@ class HtmlConverterTest {
                 .isEqualTo("\\<<https://www.rfc-editor.org/info/rfc8141>>\n");
         // a backslash before the tag would escape our backslash instead
         assertThat(convert("<p>\\&lt;b&gt;</p>")).isEqualTo("\\\\\\<b>\n");
+        // the backslash in one text node, the tag in the next
+        assertThat(convert("<p>a\\<span></span>&lt;b&gt;</p>")).isEqualTo("a\\\\\\<b>\n");
         // Javadoc: the type parameter is a link of its own, after a text node that ends with "<"
         assertThat(convert("<p><a href='Iterator.html'>Iterator</a>&lt;<a href='List.html'>E</a>&gt; iterator()</p>"))
                 .isEqualTo("Iterator\\<E> iterator()\n");

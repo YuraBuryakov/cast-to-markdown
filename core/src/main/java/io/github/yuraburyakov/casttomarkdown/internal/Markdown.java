@@ -22,7 +22,9 @@ public final class Markdown {
     /** Line breaks inside link text: a blank line there would end the paragraph. */
     private static final Pattern LINE_BREAKS = Pattern.compile("[\\r\\n]+");
     /** The start of something CommonMark reads as raw HTML: a tag, a closing tag, a comment, an instruction. */
-    private static final Pattern TAG_START = Pattern.compile("(\\\\*)<(?=[A-Za-z/!?])(?!(?i:https?|mailto):)");
+    /** The start of a tag-like text, unless it is a whole autolink to a safe address (no space, quote or {@code <}). */
+    private static final Pattern TAG_START = Pattern.compile(
+            "(\\\\*)<(?=[A-Za-z/!?])(?!(?i:https?|mailto):[^\\s<>\"']*>)");
     /** A pipe with the backslashes right before it (group 1). */
     private static final Pattern PIPE_WITH_BACKSLASHES = Pattern.compile("(\\\\*)\\|");
     /** What an autolink {@code <...>} cannot hold: CommonMark ends it there or does not read it at all. */

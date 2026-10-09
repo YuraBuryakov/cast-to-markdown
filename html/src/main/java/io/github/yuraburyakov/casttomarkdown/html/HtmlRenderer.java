@@ -48,6 +48,7 @@ final class HtmlRenderer {
     private static final Pattern BLANK_LINE = Pattern.compile("\\n[\\s\\p{Z}&&[^\\n]]*\\n");
     /** The start of something CommonMark reads as raw HTML: a tag, a closing tag, a comment, an instruction. */
     private static final Pattern TAG_START = Pattern.compile("(\\\\*)<(?=[A-Za-z/!?]|$)");
+    private static final Pattern TRAILING_BACKSLASHES = Pattern.compile("(\\\\+)$");
     private static final Pattern BACKTICKS = Pattern.compile("`+");
     /** The language of a code block in a class: {@code language-x}, {@code lang-x}, {@code brush: x} (MDN), {@code highlight-x} (Sphinx). */
     private static final Pattern LANGUAGE = Pattern.compile("(?:^|\\s)(?:lang(?:uage)?-|highlight-|brush:\\s*)([\\w+#-]+)");
@@ -277,7 +278,9 @@ final class HtmlRenderer {
 
     private void inline(StringBuilder out, Node node, int depth) {
         if (node instanceof TextNode text) {
-            out.append(escapeTags(SPACES.matcher(text.getWholeText()).replaceAll(" ")));
+            // backslashes at the end of a text node are doubled: the next node may start with "<"
+            out.append(TRAILING_BACKSLASHES.matcher(escapeTags(SPACES.matcher(text.getWholeText()).replaceAll(" ")))
+                    .replaceAll("$1$1"));
         } else if (node instanceof Element element) {
             if (depth > MAX_DEPTH) {
                 out.append(element.text());
