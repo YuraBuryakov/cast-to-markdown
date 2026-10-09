@@ -76,14 +76,6 @@ public final class Markdown {
     }
 
     /**
-     * Text of one table cell with every {@code |} escaped, and the backslashes right before it doubled: a GFM table
-     * reads {@code \\} as an escaped backslash, so the {@code |} after {@code x\} would end the cell and shift the
-     * columns of the row.
-     *
-     * @param text the text of the cell, on one line
-     * @return the text safe inside a cell
-     */
-    /**
      * Escapes text a CommonMark renderer would read as raw HTML and run or hide: {@code <} before a letter,
      * {@code /}, {@code !} or {@code ?} ({@code <script>}, {@code List<E>}, {@code <!--}). {@code a < b} and
      * {@code x<5} stay. An address in angle brackets ({@code <https://...>} of an RFC text file) is escaped too and
@@ -100,6 +92,14 @@ public final class Markdown {
         });
     }
 
+    /**
+     * Text of one table cell with every {@code |} escaped, and the backslashes right before it doubled: a GFM table
+     * reads {@code \\} as an escaped backslash, so the {@code |} after {@code x\} would end the cell and shift the
+     * columns of the row.
+     *
+     * @param text the text of the cell, on one line
+     * @return the text safe inside a cell
+     */
     public static String tableCell(String text) {
         return PIPE_WITH_BACKSLASHES.matcher(text).replaceAll(match -> {
             String backslashes = match.group(1);
