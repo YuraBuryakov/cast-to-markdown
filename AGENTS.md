@@ -35,10 +35,10 @@ If the vault is not reachable, give the author a short summary to save.
 
 ## Read first
 
-The source of truth for this project lives in the author's Obsidian vault (MiniBrain), not in this repository:
+The source of truth for this project lives in the author's Obsidian vault (MiniBrain), not in this repository; its location on the author's machine is in the assistant's local project memory:
 
 ```text
-C:\Users\yurab\Dropbox\Obsidian\MiniBrain\
+<vault>\
 ├── 00 Meta\Obsidian — AI Working Rules.md
 ├── 30 Projects\Document Preparation\CastToMarkdown — Project Context.md      ← main context
 ├── 30 Projects\Document Preparation\CastToMarkdown — Product Scope & Value.md
