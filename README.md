@@ -84,16 +84,16 @@ A conversion has no time limit. For untrusted uploads run it in your own executo
 
 ## How it compares
 
-Measured against [OpenDataLoader PDF](https://github.com/opendataloader-project/opendataloader-pdf) 2.5.12, the other pure-Java PDF-to-Markdown library, on 13 public PDFs that were not used to tune this library. They come from different generators: pdfTeX (one- and two-column arXiv papers, revtex, ACM), Ghostscript, Acrobat Distiller, InDesign, Word, Aspose.Words, LibreOffice, Google Docs, Chrome and WeasyPrint (an RFC). OpenDataLoader ran with its defaults (`hybrid=off`, `readingOrder=xycut`) and again with `useStructTree=true`. Both ran on OpenJDK 21 in separate JVMs, and the time is the second (warm) pass.
+Measured against [OpenDataLoader PDF](https://github.com/opendataloader-project/opendataloader-pdf) 2.5.12, the other pure-Java PDF-to-Markdown library, on 12 public PDFs that were not used to tune this library. They come from different generators: pdfTeX (one- and two-column arXiv papers, revtex, ACM), Ghostscript, Acrobat Distiller, InDesign, Word, Aspose.Words, LibreOffice, Google Docs and WeasyPrint (an RFC). OpenDataLoader ran with its defaults (`hybrid=off`, `readingOrder=xycut`) and again with `useStructTree=true`. Both ran on OpenJDK 21 in separate JVMs, and the time is the second (warm) pass.
 
 | | CastToMarkdown 0.1.0 | OpenDataLoader 2.5.12 (default / `useStructTree`) |
 |---|---|---|
-| Words of the PDF text kept (reference: `pdftotext -raw`, 147,121 words) | 97.2 % | 96.4 % / 95.8 % |
+| Words of the PDF text kept (reference: `pdftotext -raw`, 143,012 words) | 97.3 % | 96.6 % / 96.5 % |
 | Headings of the PDF outline found (312 entries in 7 files) / headings that are not in the outline | 269 / 25 | 237 / 89; 255 / 84 |
-| Web links written as Markdown links | 449 | 0 |
+| Web links written as Markdown links | 362 | 0 |
 | Compounds that lost their hyphen at a line break | 0 | 21 |
 | Statistical tables (BLS Employment Situation, Fed H.4.1) as Markdown tables | 0 of 2 files | 43 tables in 2 files (11 with `useStructTree`) |
-| Time for the 13 files | 1.9 s | 3.5 s |
+| Time for the 12 files | 1.9 s | 3.4 s |
 | Runtime jars | 6, 4.0 MB | 33, 25 MB |
 
 Where OpenDataLoader does better:
@@ -106,7 +106,7 @@ Where this library does better:
 - It finds fewer false headings.
 - It keeps the hyphen of compounds (`anti-dumping`, `single-shot`).
 
-A 14th file, a tagged Typst PDF, was left out of these numbers because it was used to tune the headings of tagged PDFs; how both libraries do on it is in the benchmark notes. The files with their download links, how each number was taken and the numbers per file are in [docs/benchmark.md](docs/benchmark.md).
+Two more files were left out of these numbers because they were used to tune this library after the first comparison: a tagged Typst PDF (headings of tagged PDFs) and the Python documentation printed by Chrome (lines drawn out of order). How both libraries do on them is in the benchmark notes. The files with their download links, how each number was taken and the numbers per file are in [docs/benchmark.md](docs/benchmark.md).
 
 ## Formats
 

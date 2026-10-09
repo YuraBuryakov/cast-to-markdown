@@ -1,16 +1,16 @@
 # Benchmark: CastToMarkdown vs OpenDataLoader PDF
 
-Measured on 2026-10-08, recounted on 2026-10-09 for the release candidate. The numbers in the README section "How it compares" come from here.
+Measured on 2026-10-08, recounted on 2026-10-09 for the release candidate on 12 files. The numbers in the README section "How it compares" come from here.
 
 ## What was compared
 
-- **CastToMarkdown** release candidate `8961b64` (0.1.0-SNAPSHOT, PDFBox 3.0.8; first measured on `main` at `3650529`, which gave the same words, links and hyphens on every file, one heading less on the 13 files and 10 instead of 36 on the Typst file): `CastToMarkdown.create().convert(path).markdown()`.
+- **CastToMarkdown** release candidate (0.1.0-SNAPSHOT, PDFBox 3.0.8, `feat-release-fixes`; first measured on `main` at `3650529`, which gave the same words, links and hyphens on every file, one heading less on the 12 files and 10 instead of 36 on the Typst file): `CastToMarkdown.create().convert(path).markdown()`.
 - **OpenDataLoader PDF** 2.5.12 (`org.opendataloader:opendataloader-pdf-core`): `OpenDataLoaderPDF.processFile(path, config)` with `generateMarkdown=true`, `generateJSON=false`, `imageOutput=off` and the defaults for the rest (`hybrid=off`, `readingOrder=xycut`, `tableMethod=default`, `includeHeaderFooter=false`). A second run sets `useStructTree=true`.
 - Windows 11, OpenJDK 21.0.12, each library in its own JVM (they need different PDFBox versions). Every file is converted twice in one JVM, and the second pass is timed.
 
 ## Files
 
-14 public PDFs from different generators. None of them was used to tune CastToMarkdown, and none was changed for it before the first numbers were taken. After that the Typst file was used to tune the headings of tagged PDFs, so it is left out of the totals: the README and the table below count 13 files. Its row in the per-file table is kept. None is a scan. The files are not in this repository; download them from the links. Three of them are replaced at their address from time to time, so a later download may differ.
+14 public PDFs from different generators. None of them was used to tune CastToMarkdown, and none was changed for it before the first numbers were taken. After that two of them were used to tune it, so they are left out of the totals: the Typst file for the headings of tagged PDFs, and chrome-python-json for lines drawn out of order (commit `40f38af` names its section headings). The README and the table below count 12 files. Their rows in the per-file table are kept. None is a scan. The files are not in this repository; download them from the links. Three of them are replaced at their address from time to time, so a later download may differ.
 
 | File | Generator | Pages | Source |
 |---|---|---|---|
@@ -36,20 +36,20 @@ Measured on 2026-10-08, recounted on 2026-10-09 for the release candidate. The n
 - **Links:** `[text](http...)` and `<http...>` in the Markdown.
 - **Hyphens:** every word that `pdftotext` shows split by a hyphen at a line end (524), looked up in each output: joined without the hyphen, joined with it, or still broken. The cases where the outputs differ (46) were labelled by hand as word break, compound or unclear.
 - **Tables:** the number of Markdown tables (a `|---|` separator row), checked by eye on the files where the counts differ.
-- **Time:** wall time of the second pass over the 13 files, both libraries run one after the other on the same machine.
+- **Time:** wall time of the second pass over the 12 files, both libraries run one after the other on the same machine.
 
 ## Results
 
 | | CastToMarkdown | OpenDataLoader | OpenDataLoader, `useStructTree` |
 |---|---|---|---|
-| Words kept (147,121 reference words) | 97.2 % | 96.4 % | 95.8 % |
+| Words kept (143,012 reference words) | 97.3 % | 96.6 % | 96.5 % |
 | Outline headings found (312 in 7 files) / extra | 269 / 25 | 237 / 89 | 255 / 84 |
-| Links | 449 | 0 | 0 |
+| Links | 362 | 0 | 0 |
 | Word breaks left with their hyphen, of the 46 cases where the outputs differ | 25 | 0 | |
 | Compounds that lost their hyphen, of the same 46 | 0 | 21 | |
-| Time, 13 files | 1.9 s | 3.5 s | |
+| Time, 12 files | 1.9 s | 3.4 s | |
 
-With the Typst file (14 files): words 97.2 % / 96.5 % / 95.9 % of 149,688; headings 305 / 82, 252 / 110, 353 / 96 of 420; links 457, 0, 0; time 2.0 s and 3.6 s. The 46 hyphen cases have none in the Typst file.
+With the two left-out files (14 files): words 97.2 % / 96.5 % / 95.9 % of 149,688; headings 305 / 82, 252 / 110, 353 / 96 of 420; links 457, 0, 0; time 2.1 s and 3.6 s. Of the 46 hyphen cases none is in these two files.
 
 Per file:
 
@@ -61,7 +61,7 @@ Per file:
 | arxiv-1801.00862-nisq-quantph | 96.8 / 96.6 / 96.6 | 23; 23/3, 17/5, 17/5 | 0 / 0 / 0 | 46 / 0 |
 | arxiv-math-0211159-perelman-math | 97.3 / 95.5 / 95.5 | no outline | 0 / 0 / 0 | 0 / 0 |
 | bls-empsit | 99.0 / 99.4 / 99.0 | no outline | 0 / 32 / 0 | 0 / 0 |
-| chrome-python-json | 92.2 / 92.1 / 73.6 | no outline | 2 / 2 / 2 | 87 / 0 |
+| chrome-python-json (not in the totals) | 92.2 / 92.1 / 73.6 | no outline | 2 / 2 / 2 | 87 / 0 |
 | eu-key-figures-2014-2019-indesign | 94.5 / 96.5 / 99.5 | no outline | 0 / 8 / 0 | 0 / 0 |
 | fed-h41-aspose | 98.6 / 99.5 / 99.5 | no outline | 0 / 11 / 11 | 0 / 0 |
 | gdocs-chromium-win32k-lockdown | 99.9 / 99.9 / 99.9 | 30; 28/0, 28/1, 28/0 | 1 / 1 / 1 | 17 / 0 |
