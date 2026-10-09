@@ -25,6 +25,8 @@ final class PageFurniture {
     private static final float MIN_PAGE_SHARE = 0.4f;
     private static final int MIN_PAGES = 3;
     private static final float X_BUCKET = 20;
+    /** A repeated line on the baseline of the text nearest the edge (a page number beside a title) still goes. */
+    private static final float SAME_BASELINE = 0.5f;
     private static final Pattern NUMBER = Pattern.compile("\\d+");
     private static final Pattern WORD = Pattern.compile("\\p{L}{3}");
     /** A line that is only a roman page number: "iv", "xii". */
@@ -51,10 +53,37 @@ final class PageFurniture {
                 runningTexts.add(text);
             }
         });
+        java.util.function.Predicate<Line> repeated = line -> !line.isTable() && atEdge(line)
+                && (pagesByKey.get(key(line)).size() >= minPages || runningTexts.contains(text(line)));
+        // per page: the text of that page nearest to its top and bottom edge that is not repeated
+        Map<Integer, Float> topText = new HashMap<>();
+        Map<Integer, Float> bottomText = new HashMap<>();
+        for (Line line : lines) {
+            if (!line.rotated() && atEdge(line) && !repeated.test(line)) {
+                if (line.y() < line.pageHeight() / 2) {
+                    topText.merge(line.page(), line.y(), Math::min);
+                } else {
+                    bottomText.merge(line.page(), line.y(), Math::max);
+                }
+            }
+        }
         return lines.stream()
-                .filter(line -> line.isTable() || !atEdge(line)
-                        || pagesByKey.get(key(line)).size() < minPages && !runningTexts.contains(text(line)))
+                .filter(line -> !repeated.test(line) || !outside(line, topText.get(line.page()), bottomText.get(line.page())))
                 .toList();
+    }
+
+    /**
+     * Whether a repeated line is between the page edge and the text of its page, as running headers and footers
+     * are: Fed Z.1 repeats the row of years of its tables at the top of every page, below the title of each
+     * table. Rotated text in a side margin always is.
+     */
+    private static boolean outside(Line line, Float topText, Float bottomText) {
+        if (line.rotated()) {
+            return true;
+        }
+        return line.y() < line.pageHeight() / 2
+                ? topText == null || line.y() < topText + SAME_BASELINE
+                : bottomText == null || line.y() > bottomText - SAME_BASELINE;
     }
 
     /**

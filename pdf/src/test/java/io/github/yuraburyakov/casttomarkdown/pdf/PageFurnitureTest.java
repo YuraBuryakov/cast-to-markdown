@@ -97,6 +97,28 @@ class PageFurnitureTest {
     }
 
     @Test
+    void repeatedTextBelowTextOfItsOwnPageStays() {
+        // Fed Z.1: under the running header the title of each table, then the same row of years on every page
+        String[] titles = {"S1.a Total economy", "S1.b Derivation of net wealth", "S2.a Households", "S3.a Businesses",
+            "S4.a Banks"};
+        List<Line> lines = new ArrayList<>();
+        for (int page = 1; page <= 5; page++) {
+            lines.add(line(page, 38, 28.6f, String.valueOf(26 + page)));
+            lines.add(line(page, 38, 45.8f, "Z.1, September 11, 2026"));
+            lines.add(line(page, 39, 59.3f, titles[page - 1]));
+            lines.add(line(page, 312, 81.4f, "2023 2024 2025 2025:Q2 2025:Q3"));
+            lines.add(line(page, 43, 400, "Body " + page));
+        }
+
+        assertThat(texts(PageFurniture.remove(lines))).containsExactly(
+                "S1.a Total economy", "2023 2024 2025 2025:Q2 2025:Q3", "Body 1",
+                "S1.b Derivation of net wealth", "2023 2024 2025 2025:Q2 2025:Q3", "Body 2",
+                "S2.a Households", "2023 2024 2025 2025:Q2 2025:Q3", "Body 3",
+                "S3.a Businesses", "2023 2024 2025 2025:Q2 2025:Q3", "Body 4",
+                "S4.a Banks", "2023 2024 2025 2025:Q2 2025:Q3", "Body 5");
+    }
+
+    @Test
     void onlyTextWithWordsLeavesItsPlace() {
         // "Page 20" elsewhere is the running text; a bare "20" elsewhere may be a chart label and stays
         List<Line> lines = new ArrayList<>();

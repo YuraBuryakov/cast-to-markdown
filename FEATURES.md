@@ -164,10 +164,12 @@ PDFs with a text layer, based on Apache PDFBox.
 - Text repeated at the top or bottom edge of the pages is removed, with page numbers, Roman or Arabic; so is rotated margin text repeated on every page.
 - Repeated text in the middle of a page, and numbers at the page edge that change place, are kept.
 - Running text with words found in one place on many pages also goes from the edge of the other pages, wherever it is there (`Return to Contents` placed elsewhere on the covers). Tested by `PageFurnitureTest`.
+- Repeated text at the edge stays when text of its own page is between it and the edge: the row of years under the title of each table of Fed Z.1 (`2023 2024 2025 2025:Q2 ...`), the column headings and units of statistical tables. Only the lines outside the page's own text go, as running headers and footers are. Tested by `PageFurnitureTest.repeatedTextBelowTextOfItsOwnPageStays`.
 
 **Cannot**
 - Needs at least three pages: in one- or two-page documents headers and footers stay in the text.
 - Text at the page edge that only happens to equal a running header or footer is removed too. Not covered.
+- Repeated text with nothing of its page between it and the edge goes even when it belongs to the content: the same source line under charts near the bottom of many pages (`Source: European Commission.` in an InDesign factsheet; seen on a file not used for tuning). Not covered.
 
 **Tests:** `PageFurnitureTest`
 
