@@ -33,6 +33,8 @@ final class Paragraphs {
     private static final int FULL_LINE = 40;
     /** A table of contents line: "Introduction ........ 32". */
     private static final Pattern TOC_ENTRY = Pattern.compile("(\\.\\s?){4,}\\s*\\d+\\s*$");
+    /** The caption of a figure or table that LaTeX floats into the middle of a sentence. */
+    private static final Pattern CAPTION = Pattern.compile("^\\s*(Figure|Fig\\.|Table)\\s*\\d+[.:]");
 
     private Paragraphs() {
     }
@@ -70,7 +72,55 @@ final class Paragraphs {
         if (!footnotes.isEmpty()) {
             paragraphs.addAll(group(footnotes));
         }
-        return paragraphs;
+        return pastCaptions(paragraphs);
+    }
+
+    /**
+     * A sentence cut by captions goes on after them: LaTeX floats a figure or table to the top or bottom of a
+     * column, and its caption (and the table) is read between "language model-" and "ing and auto-encoder" (arXiv
+     * 1810.04805 Figure 1). The paragraph is joined with its rest, and the captions follow it. The rest is in the
+     * same style, starts in lower case or the paragraph ends with a hyphen, as for a sentence over a page end.
+     */
+    private static List<List<Line>> pastCaptions(List<List<Line>> paragraphs) {
+        List<List<Line>> result = new ArrayList<>(paragraphs.size());
+        for (int i = 0; i < paragraphs.size(); i++) {
+            List<Line> paragraph = paragraphs.get(i);
+            int rest = i + 1;
+            while (rest < paragraphs.size() && isCaptionOrTable(paragraphs.get(rest))) {
+                rest++;
+            }
+            if (rest == i + 1 || rest == paragraphs.size() || isCaptionOrTable(paragraph)
+                    || !goesOnPastCaptions(paragraph.get(paragraph.size() - 1), paragraphs.get(rest).get(0))) {
+                result.add(paragraph);
+                continue;
+            }
+            List<Line> joined = new ArrayList<>(paragraph);
+            joined.addAll(paragraphs.get(rest));
+            result.add(joined);
+            result.addAll(paragraphs.subList(i + 1, rest));
+            i = rest;
+        }
+        return result;
+    }
+
+    private static boolean isCaptionOrTable(List<Line> paragraph) {
+        return paragraph.get(0).isTable() || CAPTION.matcher(paragraph.get(0).text()).find();
+    }
+
+    /** As over a page end, and the rest starts with a letter: a lone "." of a caption is no rest (arXiv 1512.00567). */
+    private static boolean goesOnPastCaptions(Line previous, Line line) {
+        String last = previous.text().strip();
+        String text = line.text().strip();
+        return !text.isEmpty() && Character.isLetter(text.codePointAt(0))
+                && !line.isTable() && !line.rotated() && !previous.rotated()
+                && line.page() - previous.page() <= 1
+                && line.sizeKey() == previous.sizeKey()
+                && line.bold() == previous.bold()
+                && last.length() >= FULL_LINE
+                && !SENTENCE_END.matcher(last).find()
+                && !TOC_ENTRY.matcher(previous.text()).find()
+                && !LIST_ITEM.matcher(line.text()).find()
+                && goesOnInLowerCase(previous, line);
     }
 
     /**

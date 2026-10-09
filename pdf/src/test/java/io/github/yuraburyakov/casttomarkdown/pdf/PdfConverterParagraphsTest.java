@@ -31,6 +31,24 @@ class PdfConverterParagraphsTest {
     }
 
     @Test
+    void sentenceGoesOnPastTheCaptionOfAFloatedFigure() {
+        // arXiv 1810.04805: Figure 1 is read between "language model-" and "ing and auto-encoder"
+        List<Line> lines = List.of(
+                line(1, 72, 300, 10, "the GLUE benchmark (Wang et al., 2018a). Left-to-right language models"),
+                line(1, 72, 400, 9, "Figure 1: Overall pre-training and fine-tuning procedures for BERT."),
+                line(1, 72, 500, 10, "and auto-encoder objectives have been used for pre-training."),
+                line(1, 72, 600, 10, "A paragraph after a full stop."),
+                line(1, 72, 700, 9, "Table 1: Results."),
+                line(1, 72, 800, 10, "stays apart: its paragraph ended."));
+
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo(
+                "the GLUE benchmark (Wang et al., 2018a). Left-to-right language models\n"
+                        + "and auto-encoder objectives have been used for pre-training.\n\n"
+                        + "Figure 1: Overall pre-training and fine-tuning procedures for BERT.\n\n"
+                        + "A paragraph after a full stop.\n\nTable 1: Results.\n\nstays apart: its paragraph ended.");
+    }
+
+    @Test
     void sentenceGoesOnInTheNextColumn() {
         // arXiv 1512.00567: the left column ends "yielded simi-", the right one starts "larly high performance"
         List<Line> lines = List.of(
