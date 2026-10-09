@@ -40,6 +40,7 @@ class HtmlConverterTest {
                 + "<header><a href='/'>Site</a><nav><a href='/a'>Home</a></nav></header>"
                 + "<div role='navigation'>Menu</div><aside>Related</aside>"
                 + "<div id='main'><h1>Post</h1><p>Body.</p>"
+                + "<aside aria-label='Advertisement'><span>Sponsor Message</span></aside>"
                 + "<form><label>Search</label><input value='q'><button>Go</button></form></div>"
                 + "<div hidden>Secret</div><div aria-hidden='true'>Icon</div><p style='display: none'>Gone</p>"
                 + "<script>var x = 1;</script><style>p {}</style><noscript>Enable JS</noscript>"

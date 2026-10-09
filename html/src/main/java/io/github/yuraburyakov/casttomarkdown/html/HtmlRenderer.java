@@ -22,12 +22,13 @@ final class HtmlRenderer {
 
     /**
      * Page furniture that is never content: scripts, embedded media and form controls (not the form: ASP.NET wraps
-     * the whole page in one), navigation, sidebars, hidden elements and the landmark roles of the same.
+     * the whole page in one), navigation, sidebars, hidden elements, the landmark roles of the same, and
+     * advertisements marked for screen readers ("Sponsor Message" boxes inside an NPR story).
      */
     private static final String FURNITURE = "script, style, noscript, template, svg, canvas, iframe, object, embed,"
             + " img, picture, video, audio, map, input, select, textarea, button, nav, [hidden],"
             + " [aria-hidden=true], [role=navigation], [role=banner], [role=contentinfo], [role=complementary],"
-            + " [role=search]";
+            + " [role=search], [aria-label=advertisement]";
     private static final Pattern HIDDEN_STYLE = Pattern.compile("(?i)display\\s*:\\s*none|visibility\\s*:\\s*hidden");
     /** A link that skips the navigation: "Skip to main content". */
     private static final Pattern PERMALINK = Pattern.compile("[¶§#🔗]");

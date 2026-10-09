@@ -405,14 +405,14 @@ Web pages saved as `.html` or `.htm`, based on jsoup. Developed on 13 public pag
 
 **Can**
 - The only `<main>` (or `role="main"`) is the content; with none or several, the whole body. Tested by `HtmlConverterTest.theOnlyMainIsTheContent`, `twoMainsKeepTheWholeBody`.
-- Left out: scripts, styles, embedded media, images, form controls, `nav`, hidden elements (`hidden`, `aria-hidden`, inline `display:none`), the landmark roles `navigation`, `banner`, `contentinfo`, `complementary`, `search`, "Skip to" links, and the `header`, `footer` and `aside` of the page. Those of an article, `main` or section stay (the title of a post, Sphinx footnotes). Tested by `navigationAndOtherPageFurnitureIsLeftOut`, `headerAndFooterOfAnArticleStay`, `sphinxPageKeepsFootnotesAndSourceLinkButNotPermalinks`.
+- Left out: scripts, styles, embedded media, images, form controls, `nav`, hidden elements (`hidden`, `aria-hidden`, inline `display:none`), the landmark roles `navigation`, `banner`, `contentinfo`, `complementary`, `search`, advertisements marked `aria-label="advertisement"` (the "Sponsor Message" boxes inside an NPR story), "Skip to" links, and the `header`, `footer` and `aside` of the page. Those of an article, `main` or section stay (the title of a post, Sphinx footnotes). Tested by `navigationAndOtherPageFurnitureIsLeftOut`, `headerAndFooterOfAnArticleStay`, `sphinxPageKeepsFootnotesAndSourceLinkButNotPermalinks`.
 - A form's text stays, only its controls go: ASP.NET wraps the whole page in one form. Tested by `navigationAndOtherPageFurnitureIsLeftOut`.
 - Left out also: a list of at least three links to the page in other languages (`hreflang`), the `[edit]` links of MediaWiki and heading permalinks (`¶`, `§`, `#`). Tested by `languageSwitcherAndMediaWikiEditLinksAreLeftOut`, `sphinxPageKeepsFootnotesAndSourceLinkButNotPermalinks`.
 - With no `h1`, the page `<title>` is the first heading. Tested by `titleIsTheHeadingWhenThereIsNoH1`.
 - A heading below level 1 with nothing under it, before a heading of a higher level or at the end, is left out: the navigation under it is gone (gov.uk "Related content", GitHub "Repository files navigation"). Two headings of one level stay (the title of a gov.uk guide and of its part). Tested by `headingWithNothingUnderItIsLeftOut`.
 
 **Cannot**
-- Furniture made of plain `div`s stays: GitHub's sidebar (About, Topics, Stars), Wikipedia's categories, a "Help improve" box at the end of MDN. Only what is marked up as furniture goes; a page without `<main>` keeps everything else rather than risk losing text.
+- Furniture made of plain `div`s stays: GitHub's sidebar (About, Topics, Stars), Wikipedia's categories, a "Help improve" box at the end of MDN, and in an NPR story the related-story boxes, "hide caption" and the title and teaser written again for voice assistants (`div.speakable`, hidden by the site's CSS). Only what is marked up as furniture goes; a page without `<main>` keeps everything else rather than risk losing text.
 - A table of contents in `nav` is left out with the navigation (RFC HTML); its headings are in the text anyway.
 
 ### Text
