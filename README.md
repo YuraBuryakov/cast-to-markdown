@@ -109,6 +109,18 @@ Where this library does better:
 
 The fix of running headers in 0.2.0-SNAPSHOT was prompted by two of the files (Fed H.4.1, BLS) and tuned on two other Fed releases (Z.1, H.8); the compared files were run once after it. Two more files were left out of these numbers because they were used to tune this library after the first comparison: a tagged Typst PDF (headings of tagged PDFs) and the Python documentation printed by Chrome (lines drawn out of order). How both libraries do on them is in the benchmark notes. The files with their download links, how each number was taken and the numbers per file are in [docs/benchmark.md](docs/benchmark.md).
 
+### HTML (0.2.0, not released yet)
+
+Measured on 10 public pages not used to develop the module, one per site type (Sphinx, MkDocs, Docusaurus, Javadoc, a blog, MediaWiki, usa.gov, GitHub, a Fed data table, a news article), against copy-down 1.1, the Java port of Turndown, which converts the whole page:
+
+| | CastToMarkdown | copy-down |
+|---|---|---|
+| Words of the page's main text kept (mean per page) | 95.0 % | 99.6 % |
+| Words of the output from outside the main text (mean per page) | 1.5 % | 32.8 % |
+| Raw HTML a renderer would hide | 0 | 8 |
+
+CastToMarkdown leaves out navigation, page header and footer and hidden elements, also inside `<main>`, which costs words where those are part of the main element (a GitHub pull request, usa.gov). copy-down keeps the whole page. Pages saved without their address lose relative links here; copy-down keeps them as relative paths (the commons-lang Javadoc: 759 links against 1,986). How the numbers were taken and the numbers per page are in [docs/benchmark-html.md](docs/benchmark-html.md).
+
 ## Formats
 
 | Format | Version | Module |
