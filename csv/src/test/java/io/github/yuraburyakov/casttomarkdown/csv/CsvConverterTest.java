@@ -37,6 +37,13 @@ class CsvConverterTest {
     }
 
     @Test
+    void spacesBeforeAnOpeningQuote() {
+        // airtravel.csv (people.sc.fsu.edu): "Month", "1958", "1959"
+        assertThat(convert("\"Month\", \"1958\", \"1959\"\n\"JAN\",  340,  360\n", "a.csv"))
+                .isEqualTo("| Month | 1958 | 1959 |\n| --- | --- | --- |\n| JAN | 340 | 360 |\n");
+    }
+
+    @Test
     void semicolonAndTabSeparators() {
         // Excel in Europe writes semicolons; a .tsv has tabs
         assertThat(convert("Name;Preis\nKaffee;3,50\n", "a.csv")).isEqualTo("| Name | Preis |\n| --- | --- |\n| Kaffee | 3,50 |\n");

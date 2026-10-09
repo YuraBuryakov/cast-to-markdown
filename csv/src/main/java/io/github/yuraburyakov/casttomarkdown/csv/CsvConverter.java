@@ -25,8 +25,6 @@ public final class CsvConverter implements DocumentConverter {
 
     private static final char[] SEPARATORS = {',', ';', '\t'};
     private static final Pattern LINE_BREAK = Pattern.compile("\\s*\\R\\s*");
-    /** The start of something CommonMark reads as raw HTML, also inside a table cell. */
-    private static final Pattern TAG_START = Pattern.compile("<(?=[A-Za-z/!?])");
 
     /** Creates the converter; {@link java.util.ServiceLoader} calls it. */
     public CsvConverter() {
@@ -81,7 +79,7 @@ public final class CsvConverter implements DocumentConverter {
         out.append('|');
         for (String cell : cells) {
             String text = Markdown.tableCell(LINE_BREAK.matcher(cell).replaceAll(" ").strip());
-            out.append(' ').append(TAG_START.matcher(text).replaceAll("\\\\<")).append(" |");
+            out.append(' ').append(Markdown.escapeTags(text)).append(" |");
         }
         out.append('\n');
     }
@@ -121,6 +119,8 @@ public final class CsvConverter implements DocumentConverter {
         StringBuilder field = new StringBuilder();
         boolean quoted = false;
         boolean fieldStarted = false;
+        // only spaces in the field so far: an opening quote may still come ("Month", "1958")
+        boolean blank = true;
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
             if (quoted) {
@@ -129,15 +129,18 @@ public final class CsvConverter implements DocumentConverter {
                     i++;
                 } else if (c == '"') {
                     quoted = false;
+                    blank = false;
                 } else {
                     field.append(c);
                 }
-            } else if (c == '"' && field.length() == 0) {
+            } else if (c == '"' && blank) {
+                field.setLength(0);
                 quoted = true;
                 fieldStarted = true;
             } else if (c == separator) {
                 row.add(field.toString());
                 field.setLength(0);
+                blank = true;
                 fieldStarted = true;
             } else if (c == '\r' || c == '\n') {
                 if (c == '\r' && i + 1 < text.length() && text.charAt(i + 1) == '\n') {
@@ -146,9 +149,11 @@ public final class CsvConverter implements DocumentConverter {
                 endRow(rows, row, field, fieldStarted);
                 row = new ArrayList<>();
                 field.setLength(0);
+                blank = true;
                 fieldStarted = false;
             } else {
                 field.append(c);
+                blank &= Character.isWhitespace(c);
                 fieldStarted = true;
             }
         }
