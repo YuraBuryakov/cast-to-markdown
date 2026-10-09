@@ -182,6 +182,9 @@ class HtmlConverterTest {
         // a relative <base> is resolved against it, and wins over it
         assertThat(convert("<head><base href='/v2/'></head>" + body, source))
                 .isEqualTo("[Intro](https://a.org/docs/intro) [Next](https://a.org/v2/next)\n");
+        // a user name and password in the address do not reach the links
+        assertThat(convert(body, URI.create("https://ada:secret@a.org/guide/page.html")))
+                .isEqualTo("[Intro](https://a.org/docs/intro) [Next](https://a.org/guide/next)\n");
         // only http(s) addresses are used
         assertThat(convert(body, URI.create("file:///C:/pages/page.html"))).isEqualTo("Intro Next\n");
     }

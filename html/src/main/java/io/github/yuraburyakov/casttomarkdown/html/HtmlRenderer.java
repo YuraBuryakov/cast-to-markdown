@@ -78,7 +78,23 @@ final class HtmlRenderer {
     /** {@code source}: the address the page was read from, {@code null} if unknown. */
     HtmlRenderer(Document document, URI source) {
         this.document = document;
-        this.base = base(document, source);
+        this.base = base(document, withoutUserInfo(source));
+    }
+
+    /**
+     * The address without user name and password: relative links resolved against it would copy them into the
+     * Markdown ("https://user:secret@host/docs").
+     */
+    private static URI withoutUserInfo(URI source) {
+        if (source == null || source.getRawUserInfo() == null) {
+            return source;
+        }
+        try {
+            return new URI(source.getScheme(), null, source.getHost(), source.getPort(), source.getPath(),
+                    source.getQuery(), null);
+        } catch (java.net.URISyntaxException e) {
+            return null;
+        }
     }
 
     String render() {

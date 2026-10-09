@@ -445,7 +445,7 @@ Web pages saved as `.html` or `.htm`, based on jsoup. Developed on 13 public pag
 
 **Can**
 - Links are `[text](url)`; only http, https and mailto, as in the other formats. The whole text of the link counts, also when it is part of the address (`Lib/json/__init__.py`). Spaces at the ends of the link text stay outside it. Tested by `headingsParagraphsAndLinks`, `unsafeLinksStayText`, `sphinxPageKeepsFootnotesAndSourceLinkButNotPermalinks`, `spaceAtTheEndOfALinkStays`.
-- Relative links resolve against `<base href>`, else the address the caller read the page from (`convert(InputStream, fileName, URI)`), else the address the page gives itself: the canonical link or `og:url`. A relative `<base href>` is resolved against the caller's address. Only http(s) addresses count. Without one they stay text; links to anchors on the page always do. Tested by `relativeLinksUseTheAddressThePageGives`, `relativeLinksUseTheAddressTheCallerGives`.
+- Relative links resolve against `<base href>`, else the address the caller read the page from (`convert(InputStream, fileName, URI)`), else the address the page gives itself: the canonical link or `og:url`. A relative `<base href>` is resolved against the caller's address; a user name and password in it do not reach the links. Only http(s) addresses count. Without one they stay text; links to anchors on the page always do. Tested by `relativeLinksUseTheAddressThePageGives`, `relativeLinksUseTheAddressTheCallerGives`.
 
 **Cannot**
 - `convert(Path)` takes no address: a saved page without a base, canonical link or `og:url` keeps its relative links as text; read it as a stream to pass one.
