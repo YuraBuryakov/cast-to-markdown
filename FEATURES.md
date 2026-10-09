@@ -324,6 +324,7 @@ Word 2007+ files, based on Apache POI.
 - Body-level content controls (`SDT`) keep their text at the original position, with block syntax escaped on each line; empty controls add no block. Inline controls retain their existing behaviour.
 
 **Cannot**
+- A bold paragraph without a heading style stays a paragraph, also when the author meant it as a section title: a false heading cuts a document for RAG in the wrong place, and court forms and glossaries use bold text for labels and terms (decided 2026-10-09). Tested by `DocxConverterTest.boldParagraphWithoutAHeadingStyleStaysAParagraph`.
 - Internal heading/list/table/link structure inside a body-level SDT is flattened to the text exposed by POI. Its paragraphs become lines of one Markdown text block, rather than separate Markdown paragraphs. Table-of-contents controls are retained as text; SDT is not a signal to discard content.
 
 **Tests:** `DocxConverterTest`

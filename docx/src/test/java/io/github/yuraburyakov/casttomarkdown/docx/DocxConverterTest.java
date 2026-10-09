@@ -76,6 +76,18 @@ class DocxConverterTest {
     }
 
     @Test
+    void boldParagraphWithoutAHeadingStyleStaysAParagraph() throws IOException {
+        // decided 2026-10-09: a false heading cuts a document for RAG in the wrong place; court forms use bold text
+        // for labels, glossaries for terms
+        byte[] docx = TestDocx.builder()
+                .boldParagraph("Applicant details")
+                .paragraph("Body text.")
+                .bytes();
+
+        assertThat(convert(docx)).isEqualTo("Applicant details\n\nBody text.\n");
+    }
+
+    @Test
     void skipsEmptyParagraphsAndEscapesHashAtLineStart() throws IOException {
         byte[] docx = TestDocx.builder()
                 .paragraph("First.")

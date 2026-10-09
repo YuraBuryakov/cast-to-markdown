@@ -39,6 +39,13 @@ final class TestDocx {
         return this;
     }
 
+    TestDocx boldParagraph(String text) {
+        var run = document.createParagraph().createRun();
+        run.setBold(true);
+        run.setText(text);
+        return this;
+    }
+
     TestDocx paragraph(String text) {
         document.createParagraph().createRun().setText(text);
         return this;
