@@ -22,6 +22,17 @@ class LineCollectorTest {
     Path dir;
 
     @Test
+    void boldFontsOfTexWithoutAWeightAreBold() {
+        // arXiv 1706.03762 subsections and 1404.7828 headings: weight 0 in the descriptor
+        assertThat(LineCollector.isBoldName("RCUMTF+NimbusRomNo9L-Medi")).isTrue();
+        assertThat(LineCollector.isBoldName("NimbusRomNo9L-MediItal")).isTrue();
+        assertThat(LineCollector.isBoldName("CYUPTR+CMBX10")).isTrue();
+        assertThat(LineCollector.isBoldName("AECCXO+NimbusRomNo9L-Regu")).isFalse();
+        assertThat(LineCollector.isBoldName("Roboto-Medium")).isFalse();
+        assertThat(LineCollector.isBoldName("FUIULY+CMR10")).isFalse();
+    }
+
+    @Test
     void lineSizeIsTheSizeOfMostCharacters() {
         // Word 365: a glossary line of 94 characters in 12 pt with one opening quote in 14 pt.
         assertThat(LineCollector.dominantSize(Map.of(12f, 94, 14f, 1))).isEqualTo(12f);

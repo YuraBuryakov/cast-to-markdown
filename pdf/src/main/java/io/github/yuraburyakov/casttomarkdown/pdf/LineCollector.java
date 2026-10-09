@@ -48,7 +48,12 @@ final class LineCollector extends PDFTextStripper {
     record Collected(List<Line> lines, Map<Integer, StringBuilder> cellText) {
     }
 
-    private static final Pattern BOLD_FONT_NAME = Pattern.compile("(?i)bold|black|heavy|semibold|demibold");
+    /**
+     * Also the bold fonts of TeX without a weight in their descriptor: {@code NimbusRomNo9L-Medi} (URW Times Bold,
+     * the subsections of arXiv 1706.03762) and Computer Modern {@code CMBX10}.
+     */
+    private static final Pattern BOLD_FONT_NAME = Pattern.compile("(?i)bold|black|heavy|semibold|demibold"
+            + "|-Medi(Ital)?$|(^|\\+)CMBX");
     /** Ligatures and other presentation forms, the characters PDFBox decomposes in the text of a line. */
     private static final Pattern PRESENTATION_FORMS = Pattern.compile("[\\uFB00-\\uFDFF\\uFE70-\\uFEFF]");
     /** A horizontal gap larger than this share of the font size between two characters of a cell is a space. */
@@ -673,6 +678,10 @@ final class LineCollector extends PDFTextStripper {
         if (descriptor != null && (descriptor.isForceBold() || descriptor.getFontWeight() >= 600)) {
             return true;
         }
-        return font.getName() != null && BOLD_FONT_NAME.matcher(font.getName()).find();
+        return isBoldName(font.getName());
+    }
+
+    static boolean isBoldName(String fontName) {
+        return fontName != null && BOLD_FONT_NAME.matcher(fontName).find();
     }
 }

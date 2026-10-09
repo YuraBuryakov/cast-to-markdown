@@ -347,6 +347,24 @@ class PdfConverterHeadingsTest {
         assertThat(PdfConverter.toMarkdown(lines)).startsWith("# The Case for Learned Index Structures\n\n");
     }
 
+    @Test
+    void contentsEntryWithPageNumberIsNotHeading() {
+        // arXiv 1404.7828: the contents are bold like the headings, page number after the title, no dot leaders
+        List<Line> lines = List.of(
+                bold(80, 10, "1 Introduction 4"),
+                bold(100, 10, "2 Notation 5"),
+                line(120, 10, BODY),
+                bold(160, 10, "1 Introduction"),
+                line(180, 10, BODY),
+                bold(220, 10, "2 Notation"),
+                line(240, 10, BODY));
+
+        assertThat(PdfConverter.toMarkdown(lines)).isEqualTo(String.join("\n\n",
+                "1 Introduction 4", "2 Notation 5", BODY,
+                "## 1 Introduction", BODY,
+                "## 2 Notation", BODY));
+    }
+
     private static Line line(double y, double fontSize, String text) {
         return new Line(1, 72, (float) y, (float) fontSize, text);
     }

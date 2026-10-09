@@ -57,6 +57,9 @@ final class Headings {
     /** An e-mail address, also the {@code {kahe, v-xiangz}@microsoft.com} of a paper's authors. */
     private static final Pattern EMAIL = Pattern.compile("[\\w.}-]@[\\w-]+\\.[\\w.]+");
 
+    /** Text and a page number after it; group 1 is the text. */
+    private static final Pattern PAGE_NUMBER_AT_END = Pattern.compile("(.*\\S)\\s+\\d{1,4}");
+
     /** Arabic section number; group 1 is the top-level number. */
     private static final Pattern TOP_NUMBER = Pattern.compile("^(\\d{1,2})(?:\\.\\d{1,2})*\\.?(?=[\\s\\u2014:])");
 
@@ -170,6 +173,7 @@ final class Headings {
                     || bodySizes.contains(paragraphs.get(i + 1).get(0).sizeKey());
             headings[i] = candidate && followedByText;
         }
+        dropContentsEntries(paragraphs, headings);
         dropNumbersOutOfSequence(paragraphs, headings);
         dropDatesAndAuthors(paragraphs, headings);
         // after the others, so that it does not make the authors above it headings followed by a heading
@@ -179,6 +183,23 @@ final class Headings {
             }
         }
         return headings;
+    }
+
+    /**
+     * An entry of a table of contents without dot leaders is the text of a later paragraph and a page number
+     * ("1 Introduction to Deep Learning (DL) in Neural Networks (NNs) 4", arXiv 1404.7828, bold like the
+     * headings); left as a heading, its numbers would also drop the real headings as out of sequence.
+     */
+    private static void dropContentsEntries(List<List<Line>> paragraphs, boolean[] headings) {
+        java.util.Set<String> later = new java.util.HashSet<>();
+        for (int i = paragraphs.size() - 1; i >= 0; i--) {
+            String text = text(paragraphs.get(i));
+            Matcher entry = PAGE_NUMBER_AT_END.matcher(text);
+            if (headings[i] && entry.matches() && later.contains(entry.group(1))) {
+                headings[i] = false;
+            }
+            later.add(text);
+        }
     }
 
     /**
