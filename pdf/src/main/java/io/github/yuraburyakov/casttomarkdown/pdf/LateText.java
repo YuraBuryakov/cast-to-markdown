@@ -106,7 +106,7 @@ final class LateText {
             for (int j : same.subList(0, Math.min(same.size(), MAX_TRIES))) {
                 Line entry = result.get(j);
                 if (j == i || entry == null || !eligible(entry) || entry.sizeKey() != label.sizeKey()
-                        || entry.words().size() <= 1 || entry.x() <= label.x()) {
+                        || entry.words().size() <= 1 || entry.words().size() > MAX_WORDS || entry.x() <= label.x()) {
                     continue;
                 }
                 Line joined = splice(label, entry);

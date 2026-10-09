@@ -26,6 +26,25 @@ class LateTextTest {
     }
 
     @Test
+    void manyLabelsNextToAHugeLineTakeLinearTime() {
+        // a hostile page: one line of 100 000 words and 100 000 labels left of it on the same baseline
+        List<Line.Word> words = new ArrayList<>();
+        for (int i = 0; i < 100_000; i++) {
+            words.add(new Line.Word("w", 100 + i * 10, 106 + i * 10));
+        }
+        List<Line> lines = new ArrayList<>();
+        lines.add(new Line(1, 792, 100, 50, 10, false, false, "w ".repeat(100_000).strip(), -1, 1_000_000, 100, 50, words));
+        for (int i = 0; i < 100_000; i++) {
+            float x = 60 - i * 0.0001f; // each one further left, so that each is tried against the line
+            lines.add(new Line(1, 792, x, 50, 10, false, false, "[a]", -1, 30, x, 50, List.of(new Line.Word("[a]", x, x + 30))));
+        }
+
+        List<Line> result = assertTimeoutPreemptively(Duration.ofSeconds(5), () -> LateText.insert(lines));
+
+        assertThat(result).isNotEmpty();
+    }
+
+    @Test
     void pageDrawnBottomUpTakesLinearTime() {
         // a hostile page: 200 000 lines, each drawn above all before it
         List<Line> lines = new ArrayList<>();
