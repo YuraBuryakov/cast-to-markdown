@@ -109,6 +109,23 @@ class HyphensTest {
     }
 
     @Test
+    void wordsJoinedByTheirEndingAndPartsOfCompoundsAreWordsOfTheDocument() {
+        // arXiv 1512.00567 writes "dimensionality" only as "dimensional-" / "ity", and breaks it also as "di-" and
+        // "dimen-"; arXiv 1404.7828 writes "encoder" only in "auto-encoder" and breaks it as "en-" / "coder"
+        List<Line> lines = List.of(
+                new Line(1, 72, 100, 10, "the dimensional-"),
+                new Line(1, 72, 112, 10, "ity of the"),
+                new Line(1, 72, 124, 10, "an auto-encoder and"),
+                new Line(1, 72, 136, 10, "an e-mail"));
+
+        Set<String> words = Hyphens.words(lines);
+
+        assertThat(words).contains("dimensionality", "encoder", "mail").doesNotContain("e");
+        assertThat(Hyphens.join(List.of("by the di-", "mensionality of"), words)).containsExactly("by the dimensionality", "of");
+        assertThat(Hyphens.join(List.of("a sequence en-", "coder was"), words)).containsExactly("a sequence encoder", "was");
+    }
+
+    @Test
     void aSpaceAfterTheHyphenAtTheLineEndIsNoMatter() {
         // Word draws a space after the hyphen it wraps at: "Supplier's non- " / "promotional"
         List<String> lines = List.of("the Supplier's non- ", "promotional price.");
@@ -149,6 +166,6 @@ class HyphensTest {
     @Test
     void wordsKeepTheirInnerHyphens() {
         assertThat(Hyphens.words(List.of(new Line(1, 72, 100, 10, "A multi-layer Net, 2 layers"))))
-                .containsExactlyInAnyOrder("a", "multi-layer", "net", "layers");
+                .containsExactlyInAnyOrder("a", "multi-layer", "multi", "layer", "net", "layers");
     }
 }

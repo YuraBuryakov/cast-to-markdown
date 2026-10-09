@@ -41,16 +41,37 @@ final class Hyphens {
     /** Endings a hyphenation breaks off a word and no compound ends with. */
     private static final Pattern ENDING = Pattern.compile("ing|ings|tions?|sions?|ity|ities|ments?|ness|able|ible|ics");
 
+    /** A part of a compound counts as a word from this many letters: not the "e" of "e-mail". */
+    private static final int MIN_PART = 4;
+
     private Hyphens() {
     }
 
-    /** Lower-case words of the lines, with their inner hyphens. */
+    /**
+     * Lower-case words of the lines, with their inner hyphens. Also the words the document shows otherwise: the
+     * parts of its compounds of at least {@link #MIN_PART} letters ("encoder" of "auto-encoder"), and a word split
+     * before an {@link #ENDING} ("dimensional-" / "ity"): arXiv 1512.00567 writes "dimensionality" only so, and
+     * breaks it as "di-" / "mensionality" too.
+     */
     static Set<String> words(List<Line> lines) {
         Set<String> words = new HashSet<>();
         for (Line line : lines) {
             Matcher word = WORD.matcher(line.text());
             while (word.find()) {
-                words.add(word.group().toLowerCase(Locale.ROOT));
+                String found = word.group().toLowerCase(Locale.ROOT);
+                words.add(found);
+                for (String part : found.split("-")) {
+                    if (part.length() >= MIN_PART && part.length() < found.length()) {
+                        words.add(part);
+                    }
+                }
+            }
+        }
+        for (int i = 0; i + 1 < lines.size(); i++) {
+            Matcher end = LINE_END.matcher(lines.get(i).text());
+            Matcher start = LINE_START.matcher(lines.get(i + 1).text().stripLeading());
+            if (end.find() && start.matches() && ENDING.matcher(start.group(1)).matches()) {
+                words.add((end.group(1) + start.group(1)).toLowerCase(Locale.ROOT));
             }
         }
         return words;
