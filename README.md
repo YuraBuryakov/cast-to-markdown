@@ -2,7 +2,7 @@
 
 Java-native library that converts common document formats into clean, LLM/RAG-friendly Markdown through one consistent API, using mature Java parsers under the hood.
 
-> **Status:** early development (`0.1.0-SNAPSHOT`), preparing the first release `0.1.0`; the API may still change before `1.0`. PDF: paragraphs, headings, bullet lists, headers/footers removed, tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports) and captioned ruled tables of untagged ones, web links. DOCX: headings, lists, tables, footnotes, links.
+> **Status:** first release `0.1.0`, early development; the API may still change before `1.0`. PDF: paragraphs, headings, bullet lists, headers/footers removed, tables of tagged PDFs (Word, InDesign, Chrome, LibreOffice exports) and captioned ruled tables of untagged ones, web links. DOCX: headings, lists, tables, footnotes, links.
 
 ## Goals
 
@@ -13,7 +13,7 @@ Java-native library that converts common document formats into clean, LLM/RAG-fr
 
 ## Installation
 
-After the first release, add the format modules you need (Java 17+); each brings `cast-to-markdown-core` with it:
+Add the format modules you need (Java 17+); each brings `cast-to-markdown-core` with it:
 
 ```xml
 <dependency>
